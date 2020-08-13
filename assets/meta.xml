@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+  <name>dumpling</name>
+  <coder>Crementif and emiyl</coder>
+  <version>2.0.0</version>
+  <release_date>20200813200000</release_date>
+  <short_description>Simple Cemu File Dumper</short_description>
+  <long_description>A simple, all-in-one Wii U file dumper! Developed with the intent of making dumping games and other files for Cemu faster and easier.</long_description>
+</app>
