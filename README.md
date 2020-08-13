@@ -39,8 +39,6 @@ Using it is as simple as running Mocha or Haxchi and launching Dumpling in the h
 - Has features to dump the base game files, update files and DLC files separately.
 
 ## Credits
-- dimok789 for [ft2sd](https://github.com/dimok789/ft2sd/)
-- dimok789 and FIX94 for [FTPiiU Everywhere](https://github.com/FIX94/ftpiiu/tree/ftpiiu_everywhere)
-- GaryOderNichts for added support of Haxchi and other controllers
-- shepgoba, rw-r-r-0644, luigoalma, vgmoose and Pysis for helping me with the project
-- chrissie and CrafterPika for testing
+- @Crementif for [dumpling-rework](https://github.com/emiyl/dumpling)
+- @emiyl for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
+- chrissie for testing
