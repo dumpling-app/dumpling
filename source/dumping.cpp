@@ -127,26 +127,26 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
 
 bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
     if ((config.dumpTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/rework"+entry.base.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::UPDATE) == dumpTypeFlags::UPDATE && entry.hasUpdate) {
-        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/rework"+entry.update.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.update.outputPath, totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC && entry.hasDLC) {
-        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/rework"+entry.dlc.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::COMMONSAVE) == dumpTypeFlags::COMMONSAVE && !entry.commonSave.path.empty()) {
-        if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/rework/Saves/"+entry.normalizedTitle+"/common", totalBytes)) return false;
+        if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/common", totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE && !entry.saves.empty()) {
         for (auto& save : entry.saves) {
             if (save.account->persistentId == config.accountID) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/rework/Saves/"+entry.normalizedTitle+"/80000001", totalBytes)) return false;
+                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/80000001", totalBytes)) return false;
             }
         }
     }
     if ((config.dumpTypes & dumpTypeFlags::CUSTOM) == dumpTypeFlags::CUSTOM && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/rework"+entry.base.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
     }
     return true;
 }
