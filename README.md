@@ -39,6 +39,6 @@ Using it is as simple as running Mocha or Haxchi and launching Dumpling in the h
 - Has features to dump the base game files, update files and DLC files separately.
 
 ## Credits
-- @Crementif for [dumpling-rework](https://github.com/emiyl/dumpling)
-- @emiyl for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
+- [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
+- [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
 - chrissie for testing
