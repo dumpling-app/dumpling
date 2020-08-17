@@ -196,12 +196,5 @@ titleLocation deviceToLocation(char* device) {
     if (memcmp(device, "odd", 3) == 0) return titleLocation::Disc;
     if (memcmp(device, "usb", 3) == 0) return titleLocation::USB;
     if (memcmp(device, "mlc", 3) == 0) return titleLocation::Nand;
-    
-    WHBLogPrint("Unknown device type detected:");
-    WHBLogPrint(device);
-    WHBLogConsoleDraw();
-    OSSleepTicks(OSSecondsToTicks(2));
-
-    // TODO: Check what happens with multiple USB drives. Do you get usb2 or something?
     return titleLocation::Unknown;
 }

@@ -15,7 +15,7 @@ bool showLoadingScreen() {
     WHBLogPrint("");
     WHBLogPrint("Loading games...");
     WHBLogConsoleDraw();
-    return loadUsers() && loadTitles();
+    return loadUsers() && loadTitles(true);
 }
 
 void showMainMenu() {

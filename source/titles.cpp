@@ -1,6 +1,7 @@
 #include "titles.h"
 #include "filesystem.h"
 #include "users.h"
+#include "iosuhax.h"
 #include <nn/acp.h>
 #include <iomanip>
 #include <cctype>
@@ -82,9 +83,10 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
                 userAccount* userAccount = getUserByPersistentID(saveID);
                 if (userAccount == nullptr) {
                     WHBLogPrint("Couldn't find the user by the persistence ID:");
-                    WHBLogPrint("saveID: %s");
+                    WHBLogPrintf("saveID: %s", dirEntry->d_name);
+                    WHBLogPrint(path.c_str());
                     WHBLogConsoleDraw();
-                    OSSleepTicks(OSMillisecondsToTicks(5000));
+                    //OSSleepTicks(OSMillisecondsToTicks(5000));
                     continue;
                 }
 
@@ -100,7 +102,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     return true;
 }
 
-bool loadTitles() {
+bool loadTitles(bool skipDiscs) {
     // Delete previous titles
     installedTitles.clear();
 
@@ -120,9 +122,19 @@ bool loadTitles() {
     uint32_t titlesListed;
     MCP_TitleList(mcpHandle, &titlesListed, titleList.data(), titleByteSize);
 
+    // Close MCP
+    MCP_Close(mcpHandle);
+
+    if (!openIosuhax()) return false;
+
+    if (!mountDevices()) return false;
+
     // Queue and group parts of each title
     std::map<uint32_t, std::vector<std::reference_wrapper<MCPTitleListType>>> sortedQueue;
     for (auto& title : titleList) {
+        // Skip discs whenever skipDiscs is set
+        if (skipDiscs && deviceToLocation(title.indexedDevice) == titleLocation::Disc) continue;
+
         // Check if it's a supported app type
         if (isBase(title.appType) || isUpdate(title.appType) || isDLC(title.appType) || isSystemApp(title.appType)) {
             std::string posixPath = convertToPosixPath(title.path);
@@ -224,8 +236,6 @@ bool loadTitles() {
         }
     }
 
-    // Cleanup
-    MCP_Close(mcpHandle);
     return true;
 }
 

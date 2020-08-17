@@ -4,8 +4,8 @@ int fsaHandle = -1;
 int iosuhaxHandle = -1;
 int mcpHookHandle = -1;
 
-void someFunc(IOSError err, void* arg) {
-    (void)arg;
+void haxchiCallback(IOSError err, void* dummy) {
+    return;
 }
 
 bool openMCPHook() {
@@ -13,7 +13,12 @@ bool openMCPHook() {
     mcpHookHandle = MCP_Open();
     if (mcpHookHandle < 0) return false;
 
-    IOS_IoctlAsync(mcpHookHandle, 0x62, (void*)0, 0, (void*)0, 0, someFunc, (void*)0);
+    IOSError err = IOS_IoctlAsync(mcpHookHandle, 0x62, NULL, 0, NULL, 0, haxchiCallback, NULL);
+    if (err != IOS_ERROR_OK) {
+        MCP_Close(mcpHookHandle);
+        mcpHookHandle = -1;
+        return false;
+    }
     OSSleepTicks(OSSecondsToTicks(1));
 
     if (IOSUHAX_Open("/dev/mcp") < 0) {

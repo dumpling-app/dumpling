@@ -39,3 +39,5 @@
 # Project specific
 /build
 /dist
+dumpling.rpx
+dumpling.elf

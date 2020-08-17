@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     IMDisableAPD(); // Disable auto-shutdown feature
 
     // Setup environment to dump discs
-    if (openIosuhax() && mountDevices() && showLoadingScreen()) {
+    if (showLoadingScreen()) {
         showMainMenu();
     }
 

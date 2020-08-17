@@ -22,9 +22,6 @@ void initializeInputs() {
 void updateInputs() {
     // Read VPAD (Gamepad) input
     VPADRead(VPADChan::VPAD_CHAN_0, vpadBuffer, 1, &vpadError);
-    if (vpadError != VPAD_READ_SUCCESS) {
-        WHBLogPrint("Couldn't read the VPAD controller input");
-    }
 
     // Read WPAD (Pro Controller, Wiimote, Classic) input
     // Loop over each controller channel
@@ -55,10 +52,8 @@ bool vpadButtonPressed(VPADButtons button) {
 // Check whether any KPAD controller is pressing the specified button
 bool kpadButtonPressed(WPADButton button) {
     for (const auto& pad : KPADControllers) {
-        if (pad.connected && pad.status.error == KPAD_ERROR_OK) {
-            if (pad.status.hold & button) {
-                return true;
-            }
+        if (pad.connected && pad.status.hold & button) {
+            return true;
         }
     }
     return false;
@@ -73,14 +68,13 @@ bool getStickDirection(float stickValue, float threshold) {
 bool getKPADSticksDirection(bool XAxis, float threshold) {
     for (const auto& pad : KPADControllers) {
         if (!pad.connected) continue;
-        
-        if (pad.type == KPADExtensionType::WPAD_EXT_NUNCHUK || pad.type == KPADExtensionType::WPAD_EXT_MPLUS_NUNCHUK) {
+        if (pad.status.extensionType == KPADExtensionType::WPAD_EXT_NUNCHUK || pad.status.extensionType == KPADExtensionType::WPAD_EXT_MPLUS_NUNCHUK) {
             return getStickDirection(XAxis ? pad.status.nunchuck.stick.x : pad.status.nunchuck.stick.y, threshold);
         }
-        else if (pad.type == KPADExtensionType::WPAD_EXT_CLASSIC || pad.type == KPADExtensionType::WPAD_EXT_MPLUS_CLASSIC) {
+        if (pad.status.extensionType == KPADExtensionType::WPAD_EXT_CLASSIC || pad.status.extensionType == KPADExtensionType::WPAD_EXT_MPLUS_CLASSIC) {
             return getStickDirection(XAxis ? pad.status.classic.leftStick.x : pad.status.classic.leftStick.y, threshold);
         }
-        else if (pad.type == KPADExtensionType::WPAD_EXT_PRO_CONTROLLER) {
+        if (pad.status.extensionType == KPADExtensionType::WPAD_EXT_PRO_CONTROLLER) {
             return getStickDirection(XAxis ? pad.status.pro.leftStick.x : pad.status.pro.leftStick.y, threshold);
         }
     }

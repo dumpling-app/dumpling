@@ -60,7 +60,7 @@ void showCurrentProgress() {
     WHBLogPrint("");
     WHBLogPrint("Details:");
     WHBLogPrintf("Current Speed = %fMB/s", (double)bytesCopiedSecond/1000000.0);
-    if (totalQueueBytes != 0) WHBLogPrintf("Overal Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
+    if (totalQueueBytes != 0) WHBLogPrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
     WHBLogPrint("");
     WHBLogPrintf("File Name = %s", currFilename);
     WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());

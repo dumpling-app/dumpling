@@ -133,7 +133,7 @@ bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
         if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.update.outputPath, totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC && entry.hasDLC) {
-        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.dlc.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::COMMONSAVE) == dumpTypeFlags::COMMONSAVE && !entry.commonSave.path.empty()) {
         if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/common", totalBytes)) return false;
@@ -237,7 +237,7 @@ bool dumpDisc() {
     while(queue.empty()) {
         mountDisc();
         // Reload titles
-        if (!loadTitles()) {
+        if (!loadTitles(false)) {
             showDialogPrompt("A fatal error occured while trying to check for game discs!", "OK");
             showDialogPrompt("Dumpling will now forcefully be closed...", "OK");
             return false;
