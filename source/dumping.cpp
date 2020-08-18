@@ -82,13 +82,10 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath) {
 bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Open folder
     DIR* dirHandle;
-    if ((dirHandle = opendir(srcPath.c_str())) == NULL) {
-        //showDialogPrompt(srcPath.c_str(), "FAILURE");
-        //setErrorPrompt("Couldn't open a folder to copy!");
-        return true; // Ignore folder errors since symlinks
-    }
+    if ((dirHandle = opendir(srcPath.c_str())) == NULL) return true; // Ignore folder opening errors since they also happen when you open the special folders.
 
-    createPath(destPath.c_str());
+    // Append slash when last character isn't a slash
+    if (totalBytes == nullptr) createPath(destPath.c_str());
 
     // Loop over directory contents
     struct dirent *dirEntry;

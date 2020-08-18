@@ -30,8 +30,13 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
             title.shortTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             title.normalizedTitle = normalizeTitle(title.shortTitle);
-            part.outputPath += title.normalizedTitle;
-            foundShortTitle = true;
+            
+            // Create generic names for games that have non-standard characters (like kanji)
+            if (title.normalizedTitle.empty() && !title.productCode.empty()) {
+                title.shortTitle = std::string("Undisplayable Game Name [") + title.productCode + "]";
+                title.normalizedTitle = title.productCode;
+            }
+            else foundShortTitle = true;
         }
         else if (!foundLongTitle && line.find("longname_en") != std::string::npos) {
             title.longTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find(">")+1));
@@ -41,7 +46,11 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
             title.productCode = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             foundProductCode = true;
         }
-        if (foundShortTitle && foundLongTitle && foundProductCode) return true;
+        if (foundShortTitle && foundLongTitle && foundProductCode) {
+            // Finish up information
+            part.outputPath += title.normalizedTitle;
+            return true;
+        }
     }
 
     WHBLogPrintf("Could only partially parse %lu information bits:");
@@ -126,7 +135,6 @@ bool loadTitles(bool skipDiscs) {
     MCP_Close(mcpHandle);
 
     if (!openIosuhax()) return false;
-
     if (!mountDevices()) return false;
 
     // Queue and group parts of each title
@@ -206,19 +214,6 @@ bool loadTitles(bool skipDiscs) {
                     WHBLogConsoleDraw();
                     OSSleepTicks(OSSecondsToTicks(10));
                 }
-            }
-        }
-
-        // Create generic names for games that have non-standard characters
-        if (title.normalizedTitle.empty()) {
-            if (!title.productCode.empty()) {
-                title.shortTitle = std::string("Undisplayable Game Name [") + title.productCode + "]";
-                title.normalizedTitle = title.productCode;
-            }
-            else {
-                title.hasBase = false;
-                title.hasUpdate = false;
-                title.hasDLC = false;
             }
         }
 
