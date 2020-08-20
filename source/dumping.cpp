@@ -9,7 +9,7 @@
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (31250 * BUFFER_SIZE_ALIGNMENT)
+#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 
 bool copyFile(const char* filename, std::string srcPath, std::string destPath) {
     // Check if file is an actual file first
