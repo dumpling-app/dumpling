@@ -24,7 +24,6 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
 
     // Parse data from it using string matching
     bool foundShortTitle = !title.shortTitle.empty();
-    bool foundLongTitle = !title.longTitle.empty();
     bool foundProductCode = !title.productCode.empty();
     while(getline(xmlFile, line)) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
@@ -38,15 +37,11 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
             }
             else foundShortTitle = true;
         }
-        else if (!foundLongTitle && line.find("longname_en") != std::string::npos) {
-            title.longTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find(">")+1));
-            foundLongTitle = true;
-        }
         else if (!foundProductCode && line.find("product_code") != std::string::npos) {
             title.productCode = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             foundProductCode = true;
         }
-        if (foundShortTitle && foundLongTitle && foundProductCode) {
+        if (foundShortTitle && foundProductCode) {
             // Finish up information
             part.outputPath += title.normalizedTitle;
             return true;
@@ -55,7 +50,6 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
 
     WHBLogPrintf("Could only partially parse %lu information bits:");
     WHBLogPrintf("shortname_en = %s", title.shortTitle.c_str());
-    WHBLogPrintf("longname_en = %s", title.longTitle.c_str());
     WHBLogPrintf("product_code = %s", title.productCode.c_str());
     WHBLogConsoleDraw();
     return false;

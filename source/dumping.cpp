@@ -36,7 +36,7 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath) {
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == NULL) {
-        setErrorPrompt("Couldn't open the file to copy to!");
+        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         fclose(readHandle);
         free(copyBuffer);
         return false;
@@ -242,7 +242,10 @@ bool dumpDisc() {
 
         // Check if there's a disc title
         for (auto& title : installedTitles) {
-            if (title.hasBase && title.base.location == titleLocation::Disc) queue.emplace_back(std::ref(title));
+            if (title.hasBase && title.base.location == titleLocation::Disc) {
+                queue.emplace_back(std::ref(title));
+                break;
+            }
         }
 
         // Print menu
@@ -264,6 +267,7 @@ bool dumpDisc() {
 
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};
+    if (!showOptionMenu(config, true)) return true;
     dumpQueue(queue, config);
     unmountDisc();
     return true;
@@ -272,8 +276,9 @@ bool dumpDisc() {
 void dumpOnlineFiles() {
     std::vector<std::reference_wrapper<titleEntry>> queue;
     dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::CUSTOM)};
-    titleEntry ccertsEntry{.shortTitle = "ccerts folder", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
-    titleEntry scertsEntry{.shortTitle = "scerts folder", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/scerts"}};
+    titleEntry miiEntry{.shortTitle = "Mii Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10056000/content"}};
+    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
+    titleEntry scertsEntry{.shortTitle = "scerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/scerts"}};
     titleEntry accountsEntry{.shortTitle = "Selected Account", .hasBase = true, .base = {.path = "", .outputPath = "/Online Files/mlc01/usr/save/system/act/80000001"}};
 
     // Loop until a valid account has been chosen, or when 
@@ -298,7 +303,7 @@ void dumpOnlineFiles() {
     }
 
     // Add (custom) title entries to queue
-    queue.emplace_back(getTitleWithName("Friend List"));
+    queue.emplace_back(std::ref(miiEntry));
     queue.emplace_back(std::ref(ccertsEntry));
     queue.emplace_back(std::ref(scertsEntry));
     queue.emplace_back(std::ref(accountsEntry));

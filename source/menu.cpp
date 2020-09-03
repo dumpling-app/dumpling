@@ -10,7 +10,7 @@
 
 bool showLoadingScreen() {
     WHBLogConsoleSetColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.0");
+    WHBLogPrint("Dumpling V2.0.4");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogPrint("Loading games...");
@@ -24,7 +24,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         clearScreen();
-        WHBLogPrint("Dumpling V2.0");
+        WHBLogPrint("Dumpling V2.0.4");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -66,7 +66,6 @@ void showMainMenu() {
                 if (exitSelectedOption == 0) return;
                 else break;
             }
-
             OSSleepTicks(OSMillisecondsToTicks(50));
         }
     }

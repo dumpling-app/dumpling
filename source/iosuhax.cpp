@@ -5,7 +5,6 @@ int iosuhaxHandle = -1;
 int mcpHookHandle = -1;
 
 void haxchiCallback(IOSError err, void* dummy) {
-    return;
 }
 
 bool openMCPHook() {

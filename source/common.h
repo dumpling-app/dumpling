@@ -98,7 +98,6 @@ struct titleSaveCommon {
 struct titleEntry {
     uint32_t titleLowID;
     std::string shortTitle = "";
-    std::string longTitle = "";
     std::string productCode = "";
     std::string normalizedTitle = "";
     bool hasBase = false;
