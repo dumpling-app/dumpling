@@ -8,14 +8,12 @@
 
 // Menu screens
 
-bool showLoadingScreen() {
+void showLoadingScreen() {
     WHBLogConsoleSetColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.0.4");
+    WHBLogPrint("Dumpling V2.1.0");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
-    WHBLogPrint("Loading games...");
     WHBLogConsoleDraw();
-    return loadUsers() && loadTitles(true);
 }
 
 void showMainMenu() {
@@ -24,20 +22,20 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         clearScreen();
-        WHBLogPrint("Dumpling V2.0.4");
+        WHBLogPrint("Dumpling V2.1.0");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
         WHBLogPrint("");
         WHBLogPrintf("%c Dump files to use Cemu online", selectedOption==2 ? '>' : ' ');
         WHBLogPrintf("%c Dump Wii U applications (e.g. Friend List, Browser etc.)", selectedOption==3 ? '>' : ' ');
-        WHBLogPrintf("%c Dump Compatibility Files for Cemu", selectedOption==4 ? '>' : ' ');
+        //WHBLogPrintf("%c Dump Amiibo Files for Cemu", selectedOption==4 ? '>' : ' ');
         WHBLogPrint("");
-        WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==5 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only Base files of a game", selectedOption==6 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only Update files of a game", selectedOption==7 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==8 ? '>' : ' ');
-        //WHBLogPrintf("%c Dump only Save files of a game", selectedOption==9 ? '>' : ' '); // TODO: To extend save file dumping purposes, read the meta files from the save files to show save files that are from disc games
+        WHBLogPrintf("%c Dump only Base files of a game", selectedOption==4 ? '>' : ' ');
+        WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
+        WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
+        WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==7 ? '>' : ' ');
+        //WHBLogPrintf("%c Dump only Save files of a game", selectedOption==8 ? '>' : ' '); // TODO: To extend save file dumping purposes, read the meta files from the save files to show save files that are from disc games
         WHBLogPrint("===============================");
         WHBLogPrint("A Button = Select Option");
         WHBLogPrint("B Button = Exit Dumpling");
@@ -63,7 +61,10 @@ void showMainMenu() {
             }
             if (pressedBack()) {
                 uint8_t exitSelectedOption = showDialogPrompt("Do you really want to exit Dumpling?", "Yes", "No");
-                if (exitSelectedOption == 0) return;
+                if (exitSelectedOption == 0) {
+                    clearScreen();
+                    return;
+                }
                 else break;
             }
             OSSleepTicks(OSMillisecondsToTicks(50));
@@ -85,19 +86,18 @@ void showMainMenu() {
             showTitleList("Select all the system applications you want to dump!", {.filterTypes = dumpTypeFlags::SYSTEM_APP, .dumpTypes = dumpTypeFlags::GAME, .queue = true});
             break;
         case 4:
-            dumpCompatibilityFiles();
-            break;
-        case 5:
-            dumpMLC();
-            break;
-        case 6:
             showTitleList("Select all the games that you want to dump the base game from!", {.filterTypes = dumpTypeFlags::GAME, .dumpTypes = dumpTypeFlags::GAME, .queue = true});
             break;
-        case 7:
+        case 5:
             showTitleList("Select all the games that you want to dump the update from!", {.filterTypes = dumpTypeFlags::UPDATE, .dumpTypes = dumpTypeFlags::UPDATE, .queue = true});
             break;
-        case 8:
+        case 6:
             showTitleList("Select all the games that you want to dump the DLC from!", {.filterTypes = dumpTypeFlags::DLC, .dumpTypes = dumpTypeFlags::DLC, .queue = true});
+            break;
+        case 7:
+            dumpMLC();
+            break;
+        case 8:
             break;
         case 9:
             //showTitleList("Select all the games that you want to dump the save from!", {.filterTypes = (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE), .dumpTypes = (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE), .queue = true});
@@ -105,6 +105,8 @@ void showMainMenu() {
         default:
             break;
     }
+
+    if (isUSBInserted()) unmountUSBDrives();
 
     OSSleepTicks(OSMillisecondsToTicks(500));
     showMainMenu();
@@ -144,6 +146,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             if (navigatedLeft()) {
                 if (selectedOption == 0 && config.location == dumpLocation::USBFat) {
                     config.location = dumpLocation::SDFat;
+                    unmountUSBDrives();
                 }
                 if (selectedOption == 1 && showAccountOption && selectedAccount > 0) {
                     selectedAccount--;
@@ -152,8 +155,8 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             }
             if (navigatedRight()) {
                 if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
-                    if (usbfatMounted) config.location = dumpLocation::USBFat;
-                    else showDialogPrompt("Didn't detect a FAT32 formatted USB stick when Dumpling started.\nMake sure that it's plugged in BEFORE you start Dumpling!", "OK");
+                    if (mountUSBDrives()) config.location = dumpLocation::USBFat;
+                    else showDialogPrompt("Couldn't detect an useable FAT32 USB stick.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
                 if (selectedOption == 1 && showAccountOption && selectedAccount < allUsers.size()-1) {
                     selectedAccount++;
@@ -182,6 +185,7 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
         // Print dialog and buttons
         clearScreen();
         WHBLogPrint(message);
+        WHBLogPrint("");
         WHBLogPrint("");
         WHBLogPrintf("%c %s", selectedButton==0 ? '>' : ' ', button1);
         if (button2 != NULL) WHBLogPrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);

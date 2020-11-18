@@ -5,16 +5,23 @@
 #include "navigation.h"
 #include "titles.h"
 #include "users.h"
+#include "iosuhax.h"
 
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 
-bool copyFile(const char* filename, std::string srcPath, std::string destPath) {
+bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Check if file is an actual file first
     struct stat fileStat;
     if (stat(srcPath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
+        return true;
+    }
+
+    // If totalBytes is set, it's just a file size scan
+    if (totalBytes != nullptr) {
+        *totalBytes += fileStat.st_size;
         return true;
     }
 
@@ -91,19 +98,10 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     struct dirent *dirEntry;
     while((dirEntry = readdir(dirHandle)) != NULL) {
         if (dirEntry->d_type == DT_REG) {
-            if (totalBytes != nullptr) {
-                // Get the amount of bytes for each file
-                struct stat fileStat;
-                if (stat(std::string(srcPath+"/"+dirEntry->d_name).c_str(), &fileStat) == 0 && S_ISREG(fileStat.st_mode)) {
-                    *totalBytes += fileStat.st_size;
-                }
-            }
-            else {
-                // Copy file
-                if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name)) {
-                    closedir(dirHandle);
-                    return false;
-                }
+            // Copy file
+            if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
+                closedir(dirHandle);
+                return false;
             }
         }
         else if (dirEntry->d_type == DT_DIR) {
@@ -230,24 +228,7 @@ void dumpMLC() {
 
 bool dumpDisc() {
     // Loop until a disk is found
-    std::vector<std::reference_wrapper<titleEntry>> queue;
-    while(queue.empty()) {
-        mountDisc();
-        // Reload titles
-        if (!loadTitles(false)) {
-            showDialogPrompt("A fatal error occured while trying to check for game discs!", "OK");
-            showDialogPrompt("Dumpling will now forcefully be closed...", "OK");
-            return false;
-        }
-
-        // Check if there's a disc title
-        for (auto& title : installedTitles) {
-            if (title.hasBase && title.base.location == titleLocation::Disc) {
-                queue.emplace_back(std::ref(title));
-                break;
-            }
-        }
-
+    while(!isDiscInserted()) {
         // Print menu
         clearScreen();
         WHBLogPrint("Looking for a game disc...");
@@ -256,12 +237,33 @@ bool dumpDisc() {
         WHBLogPrint("===============================");
         WHBLogPrint("B Button = Back to Main Menu");
         WHBLogConsoleDraw();
-        OSSleepTicks(OSMillisecondsToTicks(20));
+        OSSleepTicks(OSSecondsToTicks(2));
 
         updateInputs();
-        if (pressedBack()) {
-            unmountDisc();
-            return true;
+        if (pressedBack()) return true;
+    }
+
+    // Disable iosuhax to perform getting the titles, which uses the currently hooked MCP
+    closeIosuhax();
+    OSSleepTicks(OSSecondsToTicks(2));
+
+    clearScreen();
+    WHBLogPrint("Reloading games list:");
+    WHBLogPrint("");
+    WHBLogConsoleDraw();
+    if (!(getTitles() && openIosuhax() && mountDisc() && loadTitles(false))) {
+        showDialogPrompt("Fatal error while reloading titles!\nExiting Dumpling instantly...", "OK");
+        unmountDisc();
+        return false;
+    }
+
+    // Make a queue from game disc
+
+    std::vector<std::reference_wrapper<titleEntry>> queue;
+    for (auto& title : installedTitles) {
+        if (title.hasBase && title.base.location == titleLocation::Disc) {
+            queue.emplace_back(std::ref(title));
+            break;
         }
     }
 
@@ -308,23 +310,14 @@ void dumpOnlineFiles() {
     queue.emplace_back(std::ref(scertsEntry));
     queue.emplace_back(std::ref(accountsEntry));
 
-    if (!dumpQueue(queue, onlineConfig)) showDialogPrompt("Failed to dump the online files...", "OK");
-    else showDialogPrompt("Successfully dumped all of the online files!", "OK");
-}
+    std::ofstream otpFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/otp.bin", std::ofstream::out | std::ofstream::binary);
+    std::ofstream seepromFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/seeprom.bin", std::ofstream::out | std::ofstream::binary);
 
-void dumpCompatibilityFiles() {
-    std::vector<std::reference_wrapper<titleEntry>> queue;
-    dumpingConfig compatConfig = {.dumpTypes = (dumpTypeFlags::CUSTOM)};
-    titleEntry miiEntry{.shortTitle = "Mii Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Compatibility Files/mlc01/sys/title/0005001b/10056000/content"}};
-    titleEntry keyboardEntry{.shortTitle = "Keyboard Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/1004f000", .outputPath = "/Compatibility Files/mlc01/sys/title/0005001b/1004f000"}};
-    titleEntry rplEntry{.shortTitle = "RPL Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/00050010/1000400a", .outputPath = "/Compatibility Files/mlc01/sys/title/00050010/1000400a"}};
-
-    if (!showOptionMenu(compatConfig, false)) return;
-
-    queue.emplace_back(std::ref(miiEntry));
-    queue.emplace_back(std::ref(keyboardEntry));
-    queue.emplace_back(std::ref(rplEntry));
-
-    if (!dumpQueue(queue, compatConfig)) showDialogPrompt("Failed to dump the compatibility files...", "OK");
-    else showDialogPrompt("Successfully dumped all of the compatibility files!", "OK");
+    if (!dumpQueue(queue, onlineConfig) || otpFile.fail() || seepromFile.fail()) {
+        showDialogPrompt("Failed to dump the online files...", "OK");
+        return;
+    }
+    otpFile.write((char*)0xF5E10400, 1024);
+    seepromFile.write((char*)0xF5E10400+1024, 512);
+    showDialogPrompt("Successfully dumped all of the online files!", "OK");
 }

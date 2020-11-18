@@ -1,17 +1,19 @@
 #include "common.h"
 
-// Mount Indicators
-extern bool mlcMounted;
-extern bool usbMounted;
-extern bool discMounted;
-extern bool sdfatMounted;
-extern bool usbfatMounted;
-
 // Functions related to devices
-bool mountDevices();
+bool mountSystemDrives();
+bool mountSD();
+bool mountUSBDrives();
 bool mountDisc();
-bool unmountDevices();
+bool unmountSystemDrives();
+void unmountUSBDrives();
+void unmountSD();
+void unmountUSBDrives();
 bool unmountDisc();
+
+bool isUSBInserted();
+bool isDiscInserted();
+bool isExternalStorageInserted();
 
 // Filesystem helper functions
 std::string convertToPosixPath(const char* volPath);

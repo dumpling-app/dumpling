@@ -1,15 +1,25 @@
 #pragma once
 
+#include <coreinit/screen.h>
 #include <coreinit/mcp.h>
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
+#include <coreinit/ios.h>
+#include <coreinit/cache.h>
+#include <coreinit/dynload.h>
+#include <coreinit/cache.h>
+#include <coreinit/event.h>
+#include <sysapp/launch.h>
 #include <nn/act.h>
 #include <whb/log.h>
 #include <whb/log_console.h>
 
-#include <string>
 #include <string.h>
 #include <malloc.h>
+#include <limits.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <string>
 #include <sstream>
 #include <vector>
 #include <array>
@@ -19,9 +29,6 @@
 #include <iterator>
 #include <functional>
 #include <fstream>
-#include <limits.h>
-#include <dirent.h>
-#include <sys/stat.h>
 
 // Enums and Structs
 

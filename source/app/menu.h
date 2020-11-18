@@ -1,6 +1,6 @@
 #include "common.h"
 
-bool showLoadingScreen();
+void showLoadingScreen();
 void showMainMenu();
 
 uint8_t showDialogPrompt(const char* message, const char* button1, const char* button2);

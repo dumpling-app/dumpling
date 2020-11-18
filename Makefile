@@ -19,14 +19,14 @@ include $(DEVKITPRO)/wut/share/wut_rules
 #-------------------------------------------------------------------------------
 TARGET		:=	dumpling
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source/app
 DATA		:=	data
 INCLUDES	:=	include
 
 #-------------------------------------------------------------------------------
 # options for code generation
 #-------------------------------------------------------------------------------
-CFLAGS	:=	-g -Wall -Os -O2 -ffunction-sections \
+CFLAGS	:=	-g -Wall -Os -O2 -ffunction-sections -Wno-narrowing \
 			$(MACHDEP)
 
 CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__
@@ -36,7 +36,7 @@ CXXFLAGS	:= $(CFLAGS) -std=c++20
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lfat -lstdc++ -lwut -liosuhax
+LIBS	:= -lstdc++ -lwut -lfat -liosuhax
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
@@ -97,12 +97,20 @@ all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_usb -f $(CURDIR)/source/cfw/ios_usb/Makefile
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_odm -f $(CURDIR)/source/cfw/ios_odm/Makefile
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp -f $(CURDIR)/source/cfw/ios_mcp/Makefile
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel -f $(CURDIR)/source/cfw/ios_kernel/Makefile
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:
-	@echo clean ...
+	@echo Clean files from app...
 	@rm -fr $(BUILD) $(TARGET).rpx $(TARGET).elf
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel -f $(CURDIR)/source/cfw/ios_kernel/Makefile
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp -f $(CURDIR)/source/cfw/ios_mcp/Makefile
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_odm -f $(CURDIR)/source/cfw/ios_odm/Makefile
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_usb -f $(CURDIR)/source/cfw/ios_usb/Makefile
 
 #-------------------------------------------------------------------------------
 dist:

@@ -15,7 +15,10 @@ Use the Wii U App Store to download and install it in the homebrew launcher. See
 **Method 2:**  
 Download the [latest release from Github](https://github.com/emiyl/dumpling/releases), and extract the `dumpling.zip` file to the root of your SD card.
 
-Using it is as simple as running Mocha or Haxchi and launching Dumpling in the homebrew launcher.
+## How to use
+Using it just requires you to open up the homebrew launcher and launch the app. No Mocha or Haxchi required!
+
+For an always up-to-date guide to dump your games for Cemu using Dumpling, see [cemu.cfw.guide](https://cemu.cfw.guide/dumping-games)! It also goes through the steps of installing and running homebrew and Dumpling for the first time!
 
 
 ## How to compile
@@ -28,17 +31,17 @@ Using it is as simple as running Mocha or Haxchi and launching Dumpling in the h
 
 ## Features
 - Dumps everything related to your games! Game, updates, DLC and saves are all dumpable!
-- Dumps both disc and digital games in an extracted format, making for easy modding.
+- Dumps both disc and digital games in an extracted format, making for easy modding and usage with Cemu.
 - Creates 1:1 copies of data with proper meta data.
 - Allows dumping to an SD or USB stick/drive (must be formatted as fat32).
 - Allows you to dump system applications too.
-- Quickly dump files required for online dumping
-- Feature to quickly dump all the files needed for Cemu online play
-  - You must dump `otp.bin` and `seeprom.bin` separately with [wiiu-nanddumper](https://github.com/koolkdev/wiiu-nanddumper) (for now!)
-- Feature to quickly dump compatibility files which can be used to improve graphics and game compatibillity in Cemu.
+- Feature to quickly dump everything needed to play online with Cemu, including the otp.bin and seeprom.bin!
+- Also dumps extra compatibility files for Cemu when dumping online files.
 - Has features to dump the base game files, update files and DLC files separately.
 
 ## Credits
 - [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
 - [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
 - chrissie for testing
+- FIX94, Maschell and Quarky for making and maintaining homebrew (libraries)
+- smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for help making exploits and CFW possible

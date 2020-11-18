@@ -4,4 +4,4 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 bool dumpDisc();
 void dumpMLC();
 void dumpOnlineFiles();
-void dumpCompatibilityFiles();
+void dumpAmiibo();

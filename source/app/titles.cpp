@@ -1,12 +1,12 @@
 #include "titles.h"
 #include "filesystem.h"
 #include "users.h"
-#include "iosuhax.h"
 #include <nn/acp.h>
 #include <iomanip>
 #include <cctype>
 
 std::vector<titleEntry> installedTitles = {};
+std::vector<MCPTitleListType> unparsedTitleList = {};
 
 bool readInfoFromXML(titleEntry& title, titlePart& part) {
     // Check if /meta/meta.xml file exists
@@ -105,9 +105,12 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     return true;
 }
 
-bool loadTitles(bool skipDiscs) {
-    // Delete previous titles
-    installedTitles.clear();
+bool getTitles() {
+    WHBLogPrint("Loading titles...");
+    WHBLogConsoleDraw();
+    
+    // Clear unparsed titles
+    unparsedTitleList.clear();
 
     // Open MCP tunnel
     int32_t mcpHandle = MCP_Open();
@@ -120,21 +123,27 @@ bool loadTitles(bool skipDiscs) {
     int32_t titleCount = MCP_TitleCount(mcpHandle);
     uint32_t titleByteSize = titleCount * sizeof(struct MCPTitleListType);
 
-    std::vector<MCPTitleListType> titleList(titleCount);
+    unparsedTitleList.resize(titleCount);
 
     uint32_t titlesListed;
-    MCP_TitleList(mcpHandle, &titlesListed, titleList.data(), titleByteSize);
+    MCP_TitleList(mcpHandle, &titlesListed, unparsedTitleList.data(), titleByteSize);
 
     // Close MCP
     MCP_Close(mcpHandle);
+    return true;
+}
 
-    if (!openIosuhax()) return false;
-    if (!mountDevices()) return false;
+bool loadTitles(bool skipDiscs) {
+    WHBLogPrint("Searching for games...");
+    WHBLogConsoleDraw();
+
+    // Delete previous titles
+    installedTitles.clear();
 
     // Queue and group parts of each title
     std::map<uint32_t, std::vector<std::reference_wrapper<MCPTitleListType>>> sortedQueue;
-    for (auto& title : titleList) {
-        // Skip discs whenever skipDiscs is set
+    for (auto& title : unparsedTitleList) {
+        // Skip discs whenever there's an initial scan
         if (skipDiscs && deviceToLocation(title.indexedDevice) == titleLocation::Disc) continue;
 
         // Check if it's a supported app type
@@ -220,11 +229,13 @@ bool loadTitles(bool skipDiscs) {
             savePath << "/";
             savePath << std::nouppercase << std::right << std::setw(8) << std::setfill('0') << std::hex << title.titleLowID;
             savePath << "/user";
-            if (usbMounted) getSaves((std::string("storage_usb01:") + savePath.str()), title.saves, title.commonSave);
-            if (mlcMounted) getSaves((std::string("storage_mlc01:") + savePath.str()), title.saves, title.commonSave);
+            if (isExternalStorageInserted()) getSaves((std::string("storage_usb01:") + savePath.str()), title.saves, title.commonSave);
+            getSaves((std::string("storage_mlc01:") + savePath.str()), title.saves, title.commonSave);
         }
     }
 
+    // Clear unparsed titles
+    unparsedTitleList.clear();
     return true;
 }
 

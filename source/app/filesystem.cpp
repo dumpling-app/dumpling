@@ -8,27 +8,39 @@
 
 #include "iosuhax.h"
 
-bool mlcMounted = false;
-bool usbMounted = false;
+bool systemMLCMounted = false;
+bool systemUSBMounted = false;
 bool discMounted = false;
-bool sdfatMounted = false;
-bool usbfatMounted = false;
+bool SDMounted = false;
+bool USBMounted = false;
 
-bool mountDevices() {
-    // Mount internal storage devices
-    if (mount_fs("storage_mlc01", getFSAHandle(), NULL, "/vol/storage_mlc01") == 0) mlcMounted = true;
-    if (mount_fs("storage_usb01", getFSAHandle(), NULL, "/vol/storage_usb01") == 0) usbMounted = true;
-    // Mount SD card and USB using libfat
-    if (fatMountSimple("sdfat", &IOSUHAX_sdio_disc_interface)) sdfatMounted = true;
-    if (fatMountSimple("usbfat", &IOSUHAX_usb_disc_interface)) usbfatMounted = true;
-    //WHBLogPrintf("SD MOUNTED: %d", sdfatMounted);
-    //WHBLogPrintf("USB MOUNTED: %d", usbfatMounted);
-    //WHBLogConsoleDraw();
-    //OSSleepTicks(OSMillisecondsToTicks(2000));
-    return mlcMounted && sdfatMounted; // Require both the NAND and SD card to be mounted
+int32_t sdHandle = 0;
+
+bool mountSystemDrives() {
+    if (mount_fs("storage_mlc01", getFSAHandle(), NULL, "/vol/storage_mlc01") == 0) systemMLCMounted = true;
+    if (mount_fs("storage_usb01", getFSAHandle(), NULL, "/vol/storage_usb01") == 0) systemUSBMounted = true;
+    if (systemMLCMounted) WHBLogPrint("Successfully mounted the internal Wii U storage!");
+    if (systemUSBMounted) WHBLogPrint("Successfully mounted the external Wii U storage!");
+    WHBLogConsoleDraw();
+    return systemMLCMounted; // Require only the MLC to be mounted for this function to be successful
+}
+
+bool mountSD() {
+    if (fatMountSimple("sdfat", &IOSUHAX_sdio_disc_interface)) SDMounted = true;
+    if (SDMounted) WHBLogPrint("Successfully mounted the SD card!");
+    WHBLogConsoleDraw();
+    return SDMounted;
+}
+
+bool mountUSBDrives() {
+    if (fatMountSimple("usbfat", &IOSUHAX_usb_disc_interface)) USBMounted = true;
+    if (USBMounted) WHBLogPrint("Successfully mounted an USB stick!");
+    WHBLogConsoleDraw();
+    return USBMounted;
 }
 
 bool mountDisc() {
+    if (!isDiscInserted()) return false;
     if (mount_fs("storage_odd01", getFSAHandle(), "/dev/odd01", "/vol/storage_odd_tickets") == 0) discMounted = true; 
     if (mount_fs("storage_odd02", getFSAHandle(), "/dev/odd02", "/vol/storage_odd_updates") == 0) discMounted = true;
     if (mount_fs("storage_odd03", getFSAHandle(), "/dev/odd03", "/vol/storage_odd_content") == 0) discMounted = true;
@@ -36,15 +48,19 @@ bool mountDisc() {
     return discMounted;
 }
 
-bool unmountDevices() {
+bool unmountSystemDrives() {
     // Unmount all of the devices
-    if (mlcMounted && unmount_fs("storage_mlc01") == 0) mlcMounted = false;
-    if (usbMounted && unmount_fs("storage_usb01") == 0) usbMounted = false;
-    if (sdfatMounted) fatUnmount("sdfat");
-    if (usbfatMounted) fatUnmount("usbfat");
-    sdfatMounted = false;
-    usbfatMounted = false;
-    return (!mlcMounted && !usbMounted);
+    if (systemMLCMounted && unmount_fs("storage_mlc01") == 0) systemMLCMounted = false;
+    if (systemMLCMounted && unmount_fs("storage_usb01") == 0) systemUSBMounted = false;
+    return (!systemMLCMounted && !systemUSBMounted);
+}
+
+void unmountSD() {
+    if (SDMounted) fatUnmount("sdfat");
+}
+
+void unmountUSBDrives() {
+    if (USBMounted) fatUnmount("usbfat");
 }
 
 bool unmountDisc() {
@@ -53,6 +69,20 @@ bool unmountDisc() {
     if (unmount_fs("storage_odd03") == 0) discMounted = false;
     if (unmount_fs("storage_odd04") == 0) discMounted = false;
     return !discMounted;
+}
+
+bool isDiscInserted() {
+    // The ios_odm module writes the disc key whenever a disc is inserted
+    DCInvalidateRange((void*)0xF5E10C00, 32);
+    return *(volatile uint32_t*)0xF5E10C00 != 0;
+}
+
+bool isUSBInserted() {
+    return USBMounted;
+}
+
+bool isExternalStorageInserted() {
+    return systemUSBMounted;
 }
 
 // Filesystem Helper Functions

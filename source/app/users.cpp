@@ -5,6 +5,9 @@
 std::vector<userAccount> allUsers;
 
 bool loadUsers() {
+    WHBLogPrint("Loading users...");
+    WHBLogConsoleDraw();
+
     nn::act::SlotNo currentAccount = nn::act::GetSlotNo();
     nn::act::SlotNo defaultAccount = nn::act::GetDefaultAccount();
 
