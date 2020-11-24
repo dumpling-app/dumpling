@@ -6,11 +6,15 @@
 #include "titles.h"
 #include "users.h"
 #include "iosuhax.h"
+#include "gui.h"
 
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
+
+static uint8_t* copyBuffer = nullptr;
+static bool cancelledScanning = false;
 
 bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Check if file is an actual file first
@@ -19,33 +23,42 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return true;
     }
 
-    // If totalBytes is set, it's just a file size scan
-    if (totalBytes != nullptr) {
-        *totalBytes += fileStat.st_size;
-        return true;
-    }
-
-    // Allocate buffer to copy bytes between
-    uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
-    if (copyBuffer == NULL) {
-        setErrorPrompt("Couldn't allocate the memory to copy files!");
-        return false;
+    if (copyBuffer == nullptr) {
+        // Allocate buffer to copy bytes between
+        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        if (copyBuffer == nullptr) {
+            setErrorPrompt("Couldn't allocate the memory to copy files!");
+            return false;
+        }
     }
 
     // Open source file
     FILE* readHandle = fopen(srcPath.c_str(), "rb");
-    if (readHandle == NULL) {
+    if (readHandle == nullptr) {
         //setErrorPrompt("Couldn't open the file to copy from!");
-        free(copyBuffer);
-        return true; // Ignore file open errors since symlinks
+        return true; // Ignore file open errors since symlinks cause these to appear. They aren't catched by stat.
+    }
+    
+    // If totalBytes is set it means that it's scanning for file sizes of openable files
+    if (totalBytes != nullptr) {
+        *totalBytes += fileStat.st_size;
+        fclose(readHandle);
+
+        // Check whether user has cancelled scanning
+        updateInputs();
+        if (pressedBack()) {
+            *totalBytes = 0;
+            cancelledScanning = true;
+            return false;
+        }
+        return true;
     }
 
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
-    if (writeHandle == NULL) {
+    if (writeHandle == nullptr) {
         setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         fclose(readHandle);
-        free(copyBuffer);
         return false;
     }
 
@@ -59,7 +72,6 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         // Check if the same amounts of bytes are written
         if (bytesWritten < bytesRead) {
             setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
-            free(copyBuffer);
             fclose(readHandle);
             fclose(writeHandle);
             return false;
@@ -72,15 +84,12 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
             uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
             if (selectedChoice == 0) {
                 setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-                free(copyBuffer);
                 fclose(readHandle);
                 fclose(writeHandle);
                 return false;
             }
         }
     }
-
-    free(copyBuffer);
     fclose(readHandle);
     fclose(writeHandle);
     return true;
@@ -89,14 +98,14 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
 bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Open folder
     DIR* dirHandle;
-    if ((dirHandle = opendir(srcPath.c_str())) == NULL) return true; // Ignore folder opening errors since they also happen when you open the special folders.
+    if ((dirHandle = opendir(srcPath.c_str())) == nullptr) return true; // Ignore folder opening errors since they also happen when you open the special folders.
 
     // Append slash when last character isn't a slash
     if (totalBytes == nullptr) createPath(destPath.c_str());
 
     // Loop over directory contents
     struct dirent *dirEntry;
-    while((dirEntry = readdir(dirHandle)) != NULL) {
+    while((dirEntry = readdir(dirHandle)) != nullptr) {
         if (dirEntry->d_type == DT_REG) {
             // Copy file
             if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
@@ -147,35 +156,55 @@ bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
 }
 
 bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingConfig& config) {
-    // Show message about the scanning process which freezes the game
-    clearScreen();
-    WHBLogPrint("Starting the dumping process!");
-    WHBLogPrint("This might take a few minutes if you choose a lot of titles...");
-    WHBLogConsoleDraw();
-
-    // Scan folder to get the full queue size
+    // Ask user whether it wants to do an initial scan
+    uint8_t scanChoice = showDialogPrompt("Run an initial scan to determine the dump size?\nThis might take some minutes but adds:\n - Progress while dumping\n - Check if enough storage is available\n - Give a rough time estimate", "Yes, check size", "No, just dump");
+    
     uint64_t totalDumpSize = 0;
-    for (titleEntry& entry : queue) {
-        if (!dumpTitle(entry, config, &totalDumpSize)) {
-            showErrorPrompt("Exit to Main Menu");
-            showDialogPrompt("Failed while trying to get the size of a title", "Exit to Main Menu");
-            return false;
+    cancelledScanning = false;
+    if (scanChoice == 0) {
+        // Scan folder to get the full queue size
+        for (uint64_t i=0; i<queue.size(); i++) {
+            // Show message about the scanning process which freezes the game
+            clearScreen();
+            WHBLogPrint("Scanning the dump size!");
+            WHBLogPrint("This might take a few minutes if you selected a lot of titles...");
+            WHBLogPrint("Your Wii U isn't frozen in that case!");
+            WHBLogPrint("");
+            WHBLogPrintf("Scanning %s... (title %lu/%lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
+            WHBLogPrint("");
+            WHBLogPrint("===============================");
+            WHBLogPrint("B Button = Cancel scanning and just do dumping");
+            WHBLogConsoleDraw();
+            if (!dumpTitle(queue[i], config, &totalDumpSize) && !cancelledScanning) {
+                showErrorPrompt("Exit to Main Menu");
+                showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
+                return false;
+            }
         }
     }
 
-    // Check if there's enough space on the storage location and otherwise give a warning
-    uint64_t sizeAvailable = getFreeSpace(getRootFromLocation(config.location).c_str());
-    if (sizeAvailable < totalDumpSize) {
-        std::string freeSpaceWarning;
-        freeSpaceWarning += "You only have ";
-        freeSpaceWarning += formatByteSize(sizeAvailable);
-        freeSpaceWarning += ", while you require ";
-        freeSpaceWarning += formatByteSize(totalDumpSize);
-        freeSpaceWarning += " of free space!\n";
-        if (sizeAvailable == 0) freeSpaceWarning += "Make sure that your storage device is still plugged in!";
-        else freeSpaceWarning += "Make enough space, or dump one game at a time.";
-        showDialogPrompt(freeSpaceWarning.c_str(), "Exit to Main Menu");
-        return false;
+    if (totalDumpSize != 0) {
+        // Check if there's enough space on the storage location and otherwise give a warning
+        uint64_t sizeAvailable = getFreeSpace(getRootFromLocation(config.location).c_str());
+        if (sizeAvailable < totalDumpSize) {
+            std::string freeSpaceWarning;
+            freeSpaceWarning += "You only have ";
+            freeSpaceWarning += formatByteSize(sizeAvailable);
+            freeSpaceWarning += ", while you require ";
+            freeSpaceWarning += formatByteSize(totalDumpSize);
+            freeSpaceWarning += " of free space!\n";
+            if (sizeAvailable == 0) freeSpaceWarning += "Make sure that your storage device is still plugged in!";
+            else freeSpaceWarning += "Make enough space, or dump one game at a time.";
+            showDialogPrompt(freeSpaceWarning.c_str(), "Exit to Main Menu");
+            return false;
+        }
+        else {
+            clearScreen();
+            WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
+            WHBLogPrint("Dumping will start in 5 seconds...");
+            WHBLogConsoleDraw();
+            OSSleepTicks(OSSecondsToTicks(5));
+        }
     }
 
     // Dump title
@@ -228,7 +257,7 @@ void dumpMLC() {
 
 bool dumpDisc() {
     // Loop until a disk is found
-    while(!isDiscInserted()) {
+    while(true) {
         // Print menu
         clearScreen();
         WHBLogPrint("Looking for a game disc...");
@@ -237,28 +266,32 @@ bool dumpDisc() {
         WHBLogPrint("===============================");
         WHBLogPrint("B Button = Back to Main Menu");
         WHBLogConsoleDraw();
-        OSSleepTicks(OSSecondsToTicks(2));
+        OSSleepTicks(OSMillisecondsToTicks(500));
 
         updateInputs();
         if (pressedBack()) return true;
+        if (isDiscInserted()) break;
     }
 
-    // Disable iosuhax to perform getting the titles, which uses the currently hooked MCP
+    // Disable iosuhax to get the titles via MCP, which is hooked for iosuhax
+    if (!unmountSystemDrives()) {
+        showDialogPrompt("Error: Couldn't unmount internal Wii U storage.\nRestarting your Wii U might fix these odd issues...", "OK");
+        return true;
+    }
+    unmountSD();
     closeIosuhax();
-    OSSleepTicks(OSSecondsToTicks(2));
 
     clearScreen();
     WHBLogPrint("Reloading games list:");
     WHBLogPrint("");
     WHBLogConsoleDraw();
-    if (!(getTitles() && openIosuhax() && mountDisc() && loadTitles(false))) {
+    if (!(getTitles() && openIosuhax() && mountSystemDrives() && mountSD() && mountDisc() && loadTitles(false))) {
         showDialogPrompt("Fatal error while reloading titles!\nExiting Dumpling instantly...", "OK");
         unmountDisc();
         return false;
     }
 
     // Make a queue from game disc
-
     std::vector<std::reference_wrapper<titleEntry>> queue;
     for (auto& title : installedTitles) {
         if (title.hasBase && title.base.location == titleLocation::Disc) {
@@ -304,20 +337,35 @@ void dumpOnlineFiles() {
         }
     }
 
+    // Dump otp.bin and seeprom.bin
+    createPath(std::string(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/").c_str());
+
+    std::ofstream otpFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/otp.bin", std::ofstream::out | std::ofstream::binary);
+    std::ofstream seepromFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/seeprom.bin", std::ofstream::out | std::ofstream::binary);
+
+    if (otpFile.fail() || seepromFile.fail()) {
+        showDialogPrompt("Failed to create the seeprom.bin and otp.bin...", "OK");
+    }
+
+    otpFile.write((char*)0xF5E10400, 1024);
+    seepromFile.write((char*)0xF5E10400+1024, 512);
+
+    if (otpFile.fail() || seepromFile.fail()) {
+        showDialogPrompt("Failed to write the seeprom.bin and otp.bin.\nMake sure that you've got space left.", "OK");
+    }
+
     // Add (custom) title entries to queue
     queue.emplace_back(std::ref(miiEntry));
     queue.emplace_back(std::ref(ccertsEntry));
     queue.emplace_back(std::ref(scertsEntry));
     queue.emplace_back(std::ref(accountsEntry));
 
-    std::ofstream otpFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/otp.bin", std::ofstream::out | std::ofstream::binary);
-    std::ofstream seepromFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/seeprom.bin", std::ofstream::out | std::ofstream::binary);
+    if (dumpQueue(queue, onlineConfig)) showDialogPrompt("Successfully dumped all of the online files!", "OK");
+    else showDialogPrompt("Failed to dump the online files...", "OK");
+}
 
-    if (!dumpQueue(queue, onlineConfig) || otpFile.fail() || seepromFile.fail()) {
-        showDialogPrompt("Failed to dump the online files...", "OK");
-        return;
-    }
-    otpFile.write((char*)0xF5E10400, 1024);
-    seepromFile.write((char*)0xF5E10400+1024, 512);
-    showDialogPrompt("Successfully dumped all of the online files!", "OK");
+void cleanDumpingProcess() {
+    if (copyBuffer != nullptr) free(copyBuffer);
+    copyBuffer = nullptr;
+    unmountUSBDrives();
 }

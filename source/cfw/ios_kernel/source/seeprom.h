@@ -13,9 +13,4 @@
 
 #define HW_REG(reg)         (*(volatile unsigned int*)(reg))
 
-static inline void regDelay(uint32_t ticks) {
-	uint32_t now = HW_REG(LT_TIMER);
-	while((HW_REG(LT_TIMER) - now) < ticks);
-}
-
 void readSeeprom(uint16_t* seepromBuffer);

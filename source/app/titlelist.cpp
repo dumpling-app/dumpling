@@ -3,7 +3,7 @@
 #include "dumping.h"
 #include "menu.h"
 #include "navigation.h"
-
+#include "gui.h"
 
 #define MAX_LIST_SIZE (9)
 
@@ -102,8 +102,6 @@ void showTitleList(const char* message, dumpingConfig config) {
         }
     }
 
-    // Start dumping process of selected title(s)
-
     // Create dumping queue
     std::vector<std::reference_wrapper<titleEntry>> queuedTitles = {};
     for (auto& title : printTitles) {
@@ -119,7 +117,5 @@ void showTitleList(const char* message, dumpingConfig config) {
     // Show the option screen and give a last chance to stop the update
     if (!showOptionMenu(config, (config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE)) return;
 
-    if (dumpQueue(queuedTitles, config)) {
-        showDialogPrompt("Dumping was successful!", "Continue to Main Menu");
-    }
+    if (dumpQueue(queuedTitles, config)) showDialogPrompt("Dumping was successful!", "Continue to Main Menu");
 }

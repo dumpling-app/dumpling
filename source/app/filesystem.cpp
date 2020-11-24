@@ -1,18 +1,17 @@
 #include "filesystem.h"
-#include <sys/stat.h>
 #include <iosuhax.h>
 #include <iosuhax_devoptab.h>
 #include <iosuhax_disc_interface.h>
 #include <fat.h>
 #include <sys/statvfs.h>
-
+#include "gui.h"
 #include "iosuhax.h"
 
-bool systemMLCMounted = false;
-bool systemUSBMounted = false;
-bool discMounted = false;
-bool SDMounted = false;
-bool USBMounted = false;
+static bool systemMLCMounted = false;
+static bool systemUSBMounted = false;
+static bool discMounted = false;
+static bool SDMounted = false;
+static bool USBMounted = false;
 
 int32_t sdHandle = 0;
 
@@ -45,13 +44,15 @@ bool mountDisc() {
     if (mount_fs("storage_odd02", getFSAHandle(), "/dev/odd02", "/vol/storage_odd_updates") == 0) discMounted = true;
     if (mount_fs("storage_odd03", getFSAHandle(), "/dev/odd03", "/vol/storage_odd_content") == 0) discMounted = true;
     if (mount_fs("storage_odd04", getFSAHandle(), "/dev/odd04", "/vol/storage_odd_content2") == 0) discMounted = true;
+    if (discMounted) WHBLogPrint("Successfully mounted the disc!");
+    WHBLogConsoleDraw();
     return discMounted;
 }
 
 bool unmountSystemDrives() {
     // Unmount all of the devices
     if (systemMLCMounted && unmount_fs("storage_mlc01") == 0) systemMLCMounted = false;
-    if (systemMLCMounted && unmount_fs("storage_usb01") == 0) systemUSBMounted = false;
+    if (systemUSBMounted && unmount_fs("storage_usb01") == 0) systemUSBMounted = false;
     return (!systemMLCMounted && !systemUSBMounted);
 }
 
@@ -97,7 +98,7 @@ std::string convertToPosixPath(const char* volPath) {
 
     // Get and append the mount path
     const char* drivePathEnd = strchr(volPath+5, '/');
-    if (drivePathEnd == NULL) {
+    if (drivePathEnd == nullptr) {
         // Return just the mount path
         posixPath.append(volPath+5);
         posixPath.append(":");

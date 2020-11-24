@@ -33,7 +33,7 @@ all: dirs $(PROJECTNAME)
 $(PROJECTNAME): $(OFILES)
 	@echo "Linking files for $(PROJECTNAME)..."
 	@$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(OFILES)
-	@$(OBJCOPY) -j .text -j .rodata -j .data -j .bss -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
+	@$(OBJCOPY) -j .text -j .rodata -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
 	@xxd -i $(PROJECTNAME).bin | sed "s/unsigned/static const unsigned/g" > $(PROJECTNAME).h
 
 dirs:

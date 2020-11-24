@@ -10,6 +10,10 @@ int32_t mainKernel() {
 
     // Save state
     int32_t level = disableInterrupts();
+    
+    readSeeprom((uint16_t*)(0x01E10400+1024));
+    flushDCache(0x01E10400+1024, 512);
+    
     uint32_t controlRegister = disableMMU();
 
     // Save the request handle to reply later in the USB module
@@ -24,7 +28,7 @@ int32_t mainKernel() {
     kernelMemcpy((void*)0x10100174, repairData_USBRootThread, sizeof(repairData_USBRootThread));
 
     readOTP(0, (void*)0x01E10400, 1024);
-    readSeeprom((uint16_t*)0x01E10400+1024);
+    flushDCache(0x01E10400, 1024);
 
     // Copy ios_mcp, ios_usb and ios_odm code so that it can be run
     kernelMemcpy((void*)0x101312D0, (void*)0x01E50000, sizeof(ios_usb_bin));

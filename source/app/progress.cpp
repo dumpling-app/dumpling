@@ -1,6 +1,7 @@
 #include "progress.h"
 #include "menu.h"
 #include "filesystem.h"
+#include "gui.h"
 
 // TODO: Fix smoothing so it doesn't show a radically different speed
 #define SMOOTHING_FACTOR 1.0

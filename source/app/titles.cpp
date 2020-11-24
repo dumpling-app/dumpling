@@ -1,9 +1,7 @@
 #include "titles.h"
 #include "filesystem.h"
 #include "users.h"
-#include <nn/acp.h>
-#include <iomanip>
-#include <cctype>
+#include "gui.h"
 
 std::vector<titleEntry> installedTitles = {};
 std::vector<MCPTitleListType> unparsedTitleList = {};
@@ -154,7 +152,8 @@ bool loadTitles(bool skipDiscs) {
                 sortedQueue[gameId].emplace_back(std::ref(title));
             }
             else {
-                WHBLogPrint("Couldn't convert the path or find this folder!");
+                WHBLogPrint("Couldn't convert the path or find this folder:");
+                WHBLogPrint(posixPath.c_str());
                 WHBLogConsoleDraw();
                 OSSleepTicks(OSSecondsToTicks(2));
             }

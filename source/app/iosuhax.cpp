@@ -1,4 +1,5 @@
 #include "iosuhax.h"
+#include "gui.h"
 
 int32_t mcpHookHandle = -1;
 int32_t fsaHandle = -1;
@@ -45,6 +46,7 @@ void closeIosuhax() {
     if (fsaHandle > 0) IOSUHAX_FSA_Close(fsaHandle);
     if (iosuhaxHandle > 0) IOSUHAX_Close();
     if (mcpHookHandle > 0) MCP_Close(mcpHookHandle);
+    OSSleepTicks(OSSecondsToTicks(1));
     mcpHookHandle = -1;
     fsaHandle = -1;
     iosuhaxHandle = -1;

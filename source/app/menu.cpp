@@ -5,12 +5,13 @@
 #include "titlelist.h"
 #include "dumping.h"
 #include "filesystem.h"
+#include "gui.h"
 
 // Menu screens
 
 void showLoadingScreen() {
-    WHBLogConsoleSetColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.1.0");
+    setBackgroundColor(0x0b5d5e00);
+    WHBLogPrint("Dumpling V2.1.1");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogConsoleDraw();
@@ -22,7 +23,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         clearScreen();
-        WHBLogPrint("Dumpling V2.1.0");
+        WHBLogPrint("Dumpling V2.1.1");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -60,7 +61,7 @@ void showMainMenu() {
                 break;
             }
             if (pressedBack()) {
-                uint8_t exitSelectedOption = showDialogPrompt("Do you really want to exit Dumpling?", "Yes", "No");
+                uint8_t exitSelectedOption = showDialogPrompt("Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
                 if (exitSelectedOption == 0) {
                     clearScreen();
                     return;
@@ -74,7 +75,11 @@ void showMainMenu() {
     // Go to the selected menu
     switch(selectedOption) {
         case 0:
-            if (!dumpDisc()) return; // Quit the homebrew completely when a fatal error occurs during disc dumping
+            if (!dumpDisc()) {
+                // Quit the homebrew completely when a fatal error occurs during disc dumping
+                cleanDumpingProcess();
+                return;
+            }
             break;
         case 1:
             showTitleList("Select all the games you want to dump!", {.filterTypes = dumpTypeFlags::GAME, .dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE), .queue = true});
@@ -106,7 +111,7 @@ void showMainMenu() {
             break;
     }
 
-    if (isUSBInserted()) unmountUSBDrives();
+    cleanDumpingProcess();
 
     OSSleepTicks(OSMillisecondsToTicks(500));
     showMainMenu();
@@ -184,8 +189,15 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
     while(true) {
         // Print dialog and buttons
         clearScreen();
-        WHBLogPrint(message);
-        WHBLogPrint("");
+
+        // Print each line
+        std::istringstream messageStream(message);
+        std::string line;
+
+        while(std::getline(messageStream, line)) {
+            WHBLogPrint(line.c_str());
+        }
+
         WHBLogPrint("");
         WHBLogPrintf("%c %s", selectedButton==0 ? '>' : ' ', button1);
         if (button2 != NULL) WHBLogPrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);
@@ -224,7 +236,7 @@ void showDialogPrompt(const char* message, const char* button) {
     showDialogPrompt(message, button, NULL);
 }
 
-const char* errorMessage;
+const char* errorMessage = nullptr;
 void setErrorPrompt(const char* message) {
     errorMessage = message;
 }
