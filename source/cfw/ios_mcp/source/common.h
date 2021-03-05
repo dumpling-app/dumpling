@@ -97,19 +97,3 @@ typedef void* (*memcpy_t)(void*, const void*, int32_t);
 
 static usleep_t usleep = (usleep_t)0x050564E4;
 static memcpy_t memcpy = (memcpy_t)0x05054E54;
-
-static inline void* memset(void* dest, int32_t value, int32_t size) {
-	// todo: Find memset function for speedup or use longer types to do faster copying
-	for (int32_t i=0; i<size; i++) {
-		((char*)dest)[i] = value;
-	}
-	return dest;
-}
-
-static inline char* strncpy(char* dest, const char* src, int32_t size) {
-	for (int32_t i=0; i<size; i++) {
-		dest[i] = src[i];
-		if (dest[i] == '\0') return dest;
-	}
-	return dest;
-}

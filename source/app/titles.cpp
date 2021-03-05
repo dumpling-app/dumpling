@@ -248,6 +248,18 @@ std::reference_wrapper<titleEntry> getTitleWithName(std::string nameOfTitle) {
 
 // Helper functions
 
+static inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+static inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
 std::string normalizeTitle(std::string& unsafeTitle) {
     std::string retTitle;
     uint32_t actualCharacters = 0;
@@ -261,6 +273,10 @@ std::string normalizeTitle(std::string& unsafeTitle) {
         }
     }
     if (actualCharacters <= 2) return "";
+
+    rtrim(retTitle);
+    ltrim(retTitle);
+
     return retTitle;
 }
 

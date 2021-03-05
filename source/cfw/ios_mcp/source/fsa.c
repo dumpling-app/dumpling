@@ -1,6 +1,22 @@
 #include "fsa.h"
 #include "svc.h"
 
+void* memset(void* dest, int32_t value, int32_t size) {
+	// todo: Find memset function for speedup or use longer types to do faster copying
+	for (int32_t i=0; i<size; i++) {
+		((char*)dest)[i] = value;
+	}
+	return dest;
+}
+
+char* strncpy(char* dest, const char* src, int32_t size) {
+	for (int32_t i=0; i<size; i++) {
+		dest[i] = src[i];
+		if (dest[i] == '\0') return dest;
+	}
+	return dest;
+}
+
 static void* allocIobuf()
 {
 	void* ptr = svcAlloc(0xCAFF, 0x828);

@@ -57,6 +57,7 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == nullptr) {
+        showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Cancel Dumping");
         setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         fclose(readHandle);
         return false;
@@ -262,6 +263,7 @@ bool dumpDisc() {
         clearScreen();
         WHBLogPrint("Looking for a game disc...");
         WHBLogPrint("Please insert one if you haven't already!");
+        WHBLogPrint("Reinsert the disc if you started Dumpling with a disc inserted!");
         WHBLogPrint("");
         WHBLogPrint("===============================");
         WHBLogPrint("B Button = Back to Main Menu");
