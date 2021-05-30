@@ -42,7 +42,7 @@ dirs:
 clean:
 	@echo "Cleaning up files from $(PROJECTNAME)..."
 	@rm -f build/*.o build/*.d
-	@rmdir build 2>/nul; true
+	@rmdir build 2>/dev/null || true
 	@rm -f $(PROJECTNAME).elf $(PROJECTNAME).bin $(PROJECTNAME).s $(PROJECTNAME).h
 
 #---------------------------------------------------------------------------------

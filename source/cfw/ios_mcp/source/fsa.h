@@ -46,3 +46,6 @@ int FSA_RawOpen(int fd, char* device_path, int* outHandle);
 int FSA_RawRead(int fd, void* data, u32 size_bytes, u32 cnt, u64 sector_offset, int device_handle);
 int FSA_RawWrite(int fd, void* data, u32 size_bytes, u32 cnt, u64 sector_offset, int device_handle);
 int FSA_RawClose(int fd, int device_handle);
+
+void* memset(void* dest, int32_t value, int32_t size);
+char* strncpy(char* dest, const char* src, int32_t size);

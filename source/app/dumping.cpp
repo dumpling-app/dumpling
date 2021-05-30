@@ -57,7 +57,7 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == nullptr) {
-        showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Cancel Dumping");
+        showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
         setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         fclose(readHandle);
         return false;
@@ -313,6 +313,7 @@ bool dumpDisc() {
 void dumpOnlineFiles() {
     std::vector<std::reference_wrapper<titleEntry>> queue;
     dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::CUSTOM)};
+    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .hasBase = true, .base = {.path = "storage_mlc01:/usr/save/system/nim/ec/", .outputPath = "/Online Files/mlc01/usr/save/system/nim/ec"}};
     titleEntry miiEntry{.shortTitle = "Mii Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10056000/content"}};
     titleEntry ccertsEntry{.shortTitle = "ccerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
     titleEntry scertsEntry{.shortTitle = "scerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/scerts"}};
@@ -357,6 +358,7 @@ void dumpOnlineFiles() {
     }
 
     // Add (custom) title entries to queue
+    queue.emplace_back(std::ref(ecAccountInfoEntry));
     queue.emplace_back(std::ref(miiEntry));
     queue.emplace_back(std::ref(ccertsEntry));
     queue.emplace_back(std::ref(scertsEntry));

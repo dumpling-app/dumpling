@@ -142,7 +142,14 @@ bool loadTitles(bool skipDiscs) {
     std::map<uint32_t, std::vector<std::reference_wrapper<MCPTitleListType>>> sortedQueue;
     for (auto& title : unparsedTitleList) {
         // Skip discs whenever there's an initial scan
-        if (skipDiscs && deviceToLocation(title.indexedDevice) == titleLocation::Disc) continue;
+        if (deviceToLocation(title.indexedDevice) == titleLocation::Disc && skipDiscs) {
+            DCInvalidateRange((void*)0xF5E10C00, 32);
+            DCFlushRange((void*)0xF5E10C00, 32);
+            *(volatile uint32_t*)0xF5E10C00 = 0x123;
+            DCInvalidateRange((void*)0xF5E10C00, 32);
+            DCFlushRange((void*)0xF5E10C00, 32);
+            continue;
+        }
 
         // Check if it's a supported app type
         if (isBase(title.appType) || isUpdate(title.appType) || isDLC(title.appType) || isSystemApp(title.appType)) {
