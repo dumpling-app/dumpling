@@ -39,8 +39,8 @@ int main() {
     OSSleepTicks(OSSecondsToTicks(5));
 
     // Prevent shutdown when some debugging keys are pressed
-    bool shutdownOnExit = true;
-    if (navigatedUp() && pressedStart()) shutdownOnExit = true;
+    bool shutdownOnExit = false; // todo: change back
+    if (navigatedUp() && pressedStart()) shutdownOnExit = false;
 
     // Close application properly
     unmountSD();
@@ -53,4 +53,5 @@ int main() {
     shutdownGUI();
     
     if (shutdownOnExit) OSShutdown(1);
+    else SYSRelaunchTitle(0, NULL);
 }

@@ -39,6 +39,10 @@
 #include <cctype>
 #include <locale>
 #include <codecvt>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <unordered_set>
 
 // Enums and Structs
 

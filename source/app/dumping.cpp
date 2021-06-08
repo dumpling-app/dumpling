@@ -7,16 +7,16 @@
 #include "users.h"
 #include "iosuhax.h"
 #include "gui.h"
+#include "transfer.h"
+#include "fat32.h"
+#include "scanning.h"
 
 // Dumping Functions
-
-#define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 
 static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
 
-bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
+bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
     // Check if file is an actual file first
     struct stat fileStat;
     if (stat(srcPath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
@@ -55,48 +55,54 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     }
 
     // Open the destination file
-    FILE* writeHandle = fopen(destPath.c_str(), "wb");
-    if (writeHandle == nullptr) {
-        showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
-        fclose(readHandle);
-        return false;
-    }
+    // ChunkFile* writeHandle = interface->openFile();
+    // if (writeHandle == nullptr) {
+    //     showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
+    //     setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
+    //     fclose(readHandle);
+    //     return false;
+    // }
 
     // Loop over input to copy
     size_t bytesRead = 0;
     size_t bytesWritten = 0;
+    size_t bytesCompleted = fileStat.st_size;
     setFile(filename, fileStat.st_size);
     
     while((bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle)) > 0) {
-        bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
-        // Check if the same amounts of bytes are written
-        if (bytesWritten < bytesRead) {
-            setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
-            fclose(readHandle);
-            fclose(writeHandle);
-            return false;
-        }
-        setFileProgress(bytesWritten);
+        // bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
+        // // Check if the same amounts of bytes are written
+        // if (bytesWritten < bytesRead) {
+        //     setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
+        //     fclose(readHandle);
+        //     fclose(writeHandle);
+        //     return false;
+        // }
+
+        setFileProgress(bytesRead);
         showCurrentProgress();
         // Check whether the inputs break
         updateInputs();
+
+        bytesCompleted -= bytesRead;
+        if (bytesRead != 0) {
+            interface->addChunk(destPath, copyBuffer, bytesRead, bytesCompleted <= 0 || pressedBack());
+        }
+
         if (pressedBack()) {
             uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
             if (selectedChoice == 0) {
                 setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
                 fclose(readHandle);
-                fclose(writeHandle);
                 return false;
             }
         }
     }
     fclose(readHandle);
-    fclose(writeHandle);
     return true;
 }
 
-bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
+bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
     // Open folder
     DIR* dirHandle;
     if ((dirHandle = opendir(srcPath.c_str())) == nullptr) return true; // Ignore folder opening errors since they also happen when you open the special folders.
@@ -109,7 +115,7 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     while((dirEntry = readdir(dirHandle)) != nullptr) {
         if (dirEntry->d_type == DT_REG) {
             // Copy file
-            if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
+            if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes, interface)) {
                 closedir(dirHandle);
                 return false;
             }
@@ -119,7 +125,7 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
             // Copy all the files in this subdirectory
-            if (!copyFolder(srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
+            if (!copyFolder(srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes, interface)) {
                 closedir(dirHandle);
                 return false;
             }
@@ -130,28 +136,28 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     return true;
 }
 
-bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
+bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes, TransferInterface* interface) {
     if ((config.dumpTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes, interface)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::UPDATE) == dumpTypeFlags::UPDATE && entry.hasUpdate) {
-        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.update.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.update.outputPath, totalBytes, interface)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC && entry.hasDLC) {
-        if (!copyFolder(entry.dlc.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.dlc.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes, interface)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::COMMONSAVE) == dumpTypeFlags::COMMONSAVE && !entry.commonSave.path.empty()) {
-        if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/common", totalBytes)) return false;
+        if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/common", totalBytes, interface)) return false;
     }
     if ((config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE && !entry.saves.empty()) {
         for (auto& save : entry.saves) {
             if (save.account->persistentId == config.accountID) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/80000001", totalBytes)) return false;
+                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/80000001", totalBytes, interface)) return false;
             }
         }
     }
     if ((config.dumpTypes & dumpTypeFlags::CUSTOM) == dumpTypeFlags::CUSTOM && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes, interface)) return false;
     }
     return true;
 }
@@ -176,7 +182,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogPrint("===============================");
             WHBLogPrint("B Button = Cancel scanning and just do dumping");
             WHBLogConsoleDraw();
-            if (!dumpTitle(queue[i], config, &totalDumpSize) && !cancelledScanning) {
+            if (!dumpTitle(queue[i], config, &totalDumpSize, nullptr) && !cancelledScanning) {
                 showErrorPrompt("Exit to Main Menu");
                 showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
                 return false;
@@ -210,6 +216,8 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
     // Dump title
     startQueue(totalDumpSize);
+    TransferInterface* dumpInterface = new Fat32Transfer();
+    dumpInterface->initializeTransfer();
     for (size_t i=0; i<queue.size(); i++) {
         std::string status("Currently dumping ");
         status += queue[i].get().shortTitle;
@@ -228,11 +236,13 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         status += "...";
 
         setDumpingStatus(status);
-        if (!dumpTitle(queue[i], config, nullptr)) {
+        if (!dumpTitle(queue[i], config, nullptr, dumpInterface)) {
+            dumpInterface->stopTransfer();
             showErrorPrompt("Back to Main Menu");
             return false;
         }
     }
+    dumpInterface->stopTransfer();
 
     return true;
 }
@@ -250,7 +260,7 @@ void dumpMLC() {
     }
 
     setDumpingStatus("Currently dumping the whole MLC...");
-    if (!dumpTitle(mlcEntry, mlcConfig, nullptr)) {
+    if (!dumpTitle(mlcEntry, mlcConfig, nullptr, nullptr)) {
         showErrorPrompt("Back to Main Menu");
         return;
     }
@@ -304,8 +314,9 @@ bool dumpDisc() {
 
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};
-    if (!showOptionMenu(config, true)) return true;
-    dumpQueue(queue, config);
+    if (showOptionMenu(config, true)) {
+        dumpQueue(queue, config);
+    }
     unmountDisc();
     return true;
 }
