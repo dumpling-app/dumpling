@@ -27,14 +27,12 @@ bool mountSystemDrives() {
 bool mountSD() {
     if (fatMountSimple("sdfat", &IOSUHAX_sdio_disc_interface)) SDMounted = true;
     if (SDMounted) WHBLogPrint("Successfully mounted the SD card!");
-    WHBLogConsoleDraw();
     return SDMounted;
 }
 
-bool mountUSBDrives() {
+bool mountUSBDrive() {
     if (fatMountSimple("usbfat", &IOSUHAX_usb_disc_interface)) USBMounted = true;
     if (USBMounted) WHBLogPrint("Successfully mounted an USB stick!");
-    WHBLogConsoleDraw();
     return USBMounted;
 }
 
@@ -58,18 +56,37 @@ bool unmountSystemDrives() {
 
 void unmountSD() {
     if (SDMounted) fatUnmount("sdfat");
+    SDMounted = false;
 }
 
-void unmountUSBDrives() {
+void unmountUSBDrive() {
     if (USBMounted) fatUnmount("usbfat");
+    USBMounted = false;
 }
 
 bool unmountDisc() {
+    if (!discMounted) return false;
     if (unmount_fs("storage_odd01") == 0) discMounted = false;
     if (unmount_fs("storage_odd02") == 0) discMounted = false;
     if (unmount_fs("storage_odd03") == 0) discMounted = false;
     if (unmount_fs("storage_odd04") == 0) discMounted = false;
     return !discMounted;
+}
+
+bool isSDMounted() {
+    return SDMounted;
+}
+
+bool isUSBDriveMounted() {
+    return USBMounted;
+}
+
+bool isDiscMounted() {
+    return discMounted;
+}
+
+bool isExternalStorageMounted() {
+    return systemUSBMounted;
 }
 
 bool isDiscInserted() {
@@ -78,12 +95,16 @@ bool isDiscInserted() {
     return *(volatile uint32_t*)0xF5E10C00 != 0;
 }
 
-bool isUSBInserted() {
-    return USBMounted;
+bool isSDInserted() {
+    bool sdInserted = mountSD();
+    if (sdInserted) unmountSD();
+    return sdInserted;
 }
 
-bool isExternalStorageInserted() {
-    return systemUSBMounted;
+bool isUSBDriveInserted() {
+    bool usbInserted = mountUSBDrive();
+    if (usbInserted) unmountUSBDrive();
+    return usbInserted;
 }
 
 // Filesystem Helper Functions

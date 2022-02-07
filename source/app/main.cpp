@@ -29,7 +29,7 @@ int main() {
 
     // Start Dumpling
     showLoadingScreen();
-    if (getTitles() && executeExploit() && openIosuhax() && mountSystemDrives() && mountSD() && loadUsers() && loadTitles(true)) {
+    if (getTitles() && executeExploit() && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         showMainMenu();
     }
 
@@ -44,7 +44,7 @@ int main() {
 
     // Close application properly
     unmountSD();
-    unmountUSBDrives();
+    unmountUSBDrive();
     unmountSystemDrives();
     closeIosuhax();
     nn::act::Finalize();

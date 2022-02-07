@@ -263,12 +263,13 @@ bool dumpDisc() {
         clearScreen();
         WHBLogPrint("Looking for a game disc...");
         WHBLogPrint("Please insert one if you haven't already!");
-        WHBLogPrint("Reinsert the disc if you started Dumpling with a disc inserted!");
+        WHBLogPrint("");
+        WHBLogPrint("Reinsert the disc if you started Dumpling with a disc already inserted!");
         WHBLogPrint("");
         WHBLogPrint("===============================");
         WHBLogPrint("B Button = Back to Main Menu");
         WHBLogConsoleDraw();
-        OSSleepTicks(OSMillisecondsToTicks(500));
+        OSSleepTicks(OSMillisecondsToTicks(100));
 
         updateInputs();
         if (pressedBack()) return true;
@@ -280,16 +281,15 @@ bool dumpDisc() {
         showDialogPrompt("Error: Couldn't unmount internal Wii U storage.\nRestarting your Wii U might fix these odd issues...", "OK");
         return true;
     }
-    unmountSD();
     closeIosuhax();
 
+    // Reinitialize everything but also scan disc titles this time
     clearScreen();
     WHBLogPrint("Reloading games list:");
     WHBLogPrint("");
     WHBLogConsoleDraw();
-    if (!(getTitles() && openIosuhax() && mountSystemDrives() && mountSD() && mountDisc() && loadTitles(false))) {
+    if (!(getTitles() && openIosuhax() && mountSystemDrives() && mountDisc() && loadTitles(false))) {
         showDialogPrompt("Fatal error while reloading titles!\nExiting Dumpling instantly...", "OK");
-        unmountDisc();
         return false;
     }
 
@@ -306,7 +306,6 @@ bool dumpDisc() {
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};
     if (!showOptionMenu(config, true)) return true;
     dumpQueue(queue, config);
-    unmountDisc();
     return true;
 }
 
@@ -371,5 +370,7 @@ void dumpOnlineFiles() {
 void cleanDumpingProcess() {
     if (copyBuffer != nullptr) free(copyBuffer);
     copyBuffer = nullptr;
-    unmountUSBDrives();
+    unmountUSBDrive();
+    unmountSD();
+    unmountDisc();
 }

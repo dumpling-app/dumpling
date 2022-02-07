@@ -235,7 +235,7 @@ bool loadTitles(bool skipDiscs) {
             savePath << "/";
             savePath << std::nouppercase << std::right << std::setw(8) << std::setfill('0') << std::hex << title.titleLowID;
             savePath << "/user";
-            if (isExternalStorageInserted()) getSaves((std::string("storage_usb01:") + savePath.str()), title.saves, title.commonSave);
+            if (isExternalStorageMounted()) getSaves((std::string("storage_usb01:") + savePath.str()), title.saves, title.commonSave);
             getSaves((std::string("storage_mlc01:") + savePath.str()), title.saves, title.commonSave);
         }
     }

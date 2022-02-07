@@ -3,17 +3,20 @@
 // Functions related to devices
 bool mountSystemDrives();
 bool mountSD();
-bool mountUSBDrives();
+bool mountUSBDrive();
 bool mountDisc();
 bool unmountSystemDrives();
-void unmountUSBDrives();
 void unmountSD();
-void unmountUSBDrives();
+void unmountUSBDrive();
 bool unmountDisc();
 
-bool isUSBInserted();
+bool isSDMounted();
+bool isUSBDriveMounted();
+bool isDiscMounted();
+bool isExternalStorageMounted();
 bool isDiscInserted();
-bool isExternalStorageInserted();
+bool isSDInserted();
+bool isUSBDriveInserted();
 
 // Filesystem helper functions
 std::string convertToPosixPath(const char* volPath);

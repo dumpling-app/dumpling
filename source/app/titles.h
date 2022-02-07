@@ -3,7 +3,7 @@
 extern std::vector<titleEntry> installedTitles;
 
 bool getTitles();
-bool loadTitles(bool initialScan);
+bool loadTitles(bool skipDiscs);
 std::reference_wrapper<titleEntry> getTitleWithName(std::string nameOfTitle);
 
 std::string normalizeTitle(std::string& unsafeTitle);

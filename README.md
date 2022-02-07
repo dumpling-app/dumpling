@@ -24,7 +24,7 @@ For an always up-to-date guide to dump your games for Cemu using Dumpling, see [
 ## How to compile
 - Install [DevkitPro](https://devkitpro.org/wiki/Getting_Started) for your platform.
 - Install [wut](https://github.com/devkitPro/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
-- Compile [libiosuhax](https://github.com/yawut/libiosuhax#using-wut---static-library) from source yourself as a static library.
+- Compile [libiosuhax](https://github.com/wiiu-env/libiosuhax).
 - Compile [libfat](https://github.com/Crementif/libfat) from source, since it has been fixed to perform MUCH better in certain situations which would normally cripple the classic Dumpling.
 - Then, with all those dependencies installed, you can just run `make` to get the .rpx file that you can run on your Wii U.
 

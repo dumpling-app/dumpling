@@ -11,7 +11,7 @@
 
 void showLoadingScreen() {
     setBackgroundColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.1.4");
+    WHBLogPrint("Dumpling V2.2.0");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogConsoleDraw();
@@ -23,7 +23,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         clearScreen();
-        WHBLogPrint("Dumpling V2.1.4");
+        WHBLogPrint("Dumpling V2.2.0");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -120,6 +120,33 @@ void showMainMenu() {
 bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     uint8_t selectedOption = 0;
     uint8_t selectedAccount = 0;
+
+    while(!(isSDInserted() || isUSBDriveInserted())) {
+        clearScreen();
+        WHBLogPrint("Couldn't detect an SD card or USB drive!");
+        WHBLogPrint("");
+        WHBLogPrint("If you do have one inserted, you could try:");
+        WHBLogPrint(" - Reinserting the SD card or USB drive");
+        WHBLogPrint(" - Make sure it's formatted as FAT32");
+        WHBLogPrint(" - It only has one partition (and no hidden ones)");
+        WHBLogPrint(" - Save a Mii picture in Mii Maker to your SD card");
+        WHBLogPrint(" - Try a different USB drive or SD card");
+        WHBLogPrint("");
+        WHBLogPrint("If none of those steps worked ask for help on the");
+        WHBLogPrint("Cemu discord or report the issue on the Dumpling github.");
+        WHBLogPrint("===============================");
+        WHBLogPrint("B Button = Cancel");
+        WHBLogConsoleDraw();
+        OSSleepTicks(OSMillisecondsToTicks(100));
+        updateInputs();
+        if (pressedBack()) {
+            return false;
+        }
+    }
+
+    config.location = dumpLocation::SDFat;
+    if (!mountSD()) config.location = dumpLocation::USBFat;
+
     while(true) {
         // Print option menu text
         clearScreen();
@@ -150,8 +177,18 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             }
             if (navigatedLeft()) {
                 if (selectedOption == 0 && config.location == dumpLocation::USBFat) {
-                    config.location = dumpLocation::SDFat;
-                    unmountUSBDrives();
+                    if (mountSD()) {
+                        config.location = dumpLocation::SDFat;
+                        unmountUSBDrive();
+                    }
+                    else showDialogPrompt("Couldn't detect an useable FAT32 SD card.\nTry reformatting it and make sure it has only one partition.", "OK");
+                }
+                if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
+                    if (mountUSBDrive()) {
+                        config.location = dumpLocation::USBFat;
+                        unmountSD();
+                    }
+                    else showDialogPrompt("Couldn't detect an useable FAT32 USB stick.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
                 if (selectedOption == 1 && showAccountOption && selectedAccount > 0) {
                     selectedAccount--;
@@ -159,8 +196,18 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 break;
             }
             if (navigatedRight()) {
+                if (selectedOption == 0 && config.location == dumpLocation::USBFat) {
+                    if (mountSD()) {
+                        config.location = dumpLocation::SDFat;
+                        unmountUSBDrive();
+                    }
+                    else showDialogPrompt("Couldn't detect an useable FAT32 SD card.\nTry reformatting it and make sure it has only one partition.", "OK");
+                }
                 if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
-                    if (mountUSBDrives()) config.location = dumpLocation::USBFat;
+                    if (mountUSBDrive()) {
+                        config.location = dumpLocation::USBFat;
+                        unmountSD();
+                    }
                     else showDialogPrompt("Couldn't detect an useable FAT32 USB stick.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
                 if (selectedOption == 1 && showAccountOption && selectedAccount < allUsers.size()-1) {
