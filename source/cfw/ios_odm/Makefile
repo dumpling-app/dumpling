@@ -30,11 +30,19 @@ CWD = "$(CURDIR)"
 
 all: dirs $(PROJECTNAME)
 
-$(PROJECTNAME): $(OFILES)
+$(PROJECTNAME): $(PROJECTNAME).h
+
+$(PROJECTNAME).h: $(PROJECTNAME).bin
+	@echo "Convert payload.bin to includable header..."
+	@xxd -i $(PROJECTNAME).bin | sed "s/unsigned/static const unsigned/g" > $(PROJECTNAME).h
+
+$(PROJECTNAME).bin: $(PROJECTNAME).elf
+	@echo "Turn payload.elf into payload.bin..."
+	@$(OBJCOPY) -j .text -j .rodata -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
+
+$(PROJECTNAME).elf: $(OFILES)
 	@echo "Linking files for $(PROJECTNAME)..."
 	@$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(OFILES)
-	@$(OBJCOPY) -j .text -j .rodata -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
-	@xxd -i $(PROJECTNAME).bin | sed "s/unsigned/static const unsigned/g" > $(PROJECTNAME).h
 
 dirs:
 	@mkdir -p build

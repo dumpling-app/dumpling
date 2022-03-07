@@ -13,11 +13,15 @@
 #include <coreinit/memheap.h>
 #include <coreinit/memfrmheap.h>
 #include <coreinit/memory.h>
+#include <gx2/display.h>
 
 #include <sysapp/launch.h>
 #include <nn/act.h>
 #include <nn/ac.h>
 #include <whb/log.h>
+#include <proc_ui/procui.h>
+#include <coreinit/foreground.h>
+#include <coreinit/title.h>
 
 #include <stdlib.h>
 #include <string.h>

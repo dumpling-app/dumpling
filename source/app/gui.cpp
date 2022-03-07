@@ -19,6 +19,17 @@ static uint32_t* currDRCFrameBuffer = nullptr;
 
 static uint32_t backgroundColor = 0x0b5d5e00;
 
+static bool usingHBL = false;
+
+#define HBL_TITLE_ID (0x0005000013374842)
+#define MII_MAKER_JPN_TITLE_ID (0x000500101004A000)
+#define MII_MAKER_USA_TITLE_ID (0x000500101004A100)
+#define MII_MAKER_EUR_TITLE_ID (0x000500101004A200)
+
+void saveProcessCallback() {
+    OSSavesDone_ReadyToRelease();
+}
+
 bool initializeGUI() {
     // Prepare rendering and framebuffers
     OSScreenInit();
@@ -41,6 +52,15 @@ bool initializeGUI() {
     OSScreenSetBufferEx(SCREEN_DRC, currDRCFrameBuffer);
 
     WHBAddLogHandler(printLine);
+
+    // Setup proc UI
+    uint64_t titleId = OSGetTitleID();
+    if (titleId == HBL_TITLE_ID || titleId == MII_MAKER_USA_TITLE_ID || titleId == MII_MAKER_EUR_TITLE_ID || titleId == MII_MAKER_JPN_TITLE_ID) {
+        usingHBL = true;
+    }
+
+    OSEnableHomeButtonMenu(false);
+    ProcUIInit(&saveProcessCallback);
     return true;
 }
 
@@ -48,6 +68,21 @@ void shutdownGUI() {
     OSScreenShutdown();
     MEMHeapHandle framebufferHeap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
     MEMFreeByStateToFrmHeap(framebufferHeap, MEMORY_HEAP_TAG);
+
+    ProcUIStatus status;
+    while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {
+        if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+            ProcUIDrawDoneRelease();
+        }
+
+        if (status != PROCUI_STATUS_IN_FOREGROUND) {
+            continue;
+        }
+
+        if (usingHBL) SYSRelaunchTitle(0, NULL);
+        else SYSLaunchMenu();
+    }
+    ProcUIShutdown();
 }
 
 void WHBLogConsoleDraw() {

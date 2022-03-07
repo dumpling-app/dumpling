@@ -10,7 +10,6 @@ CC = arm-none-eabi-gcc
 LINK = arm-none-eabi-ld
 AS = arm-none-eabi-as
 OBJCOPY = arm-none-eabi-objcopy
-OBJDUMP = arm-none-eabi-objdump
 BIN2S = $(DEVKITPRO)/tools/bin/bin2s
 CFLAGS += -Wall -Wno-unused-variable -Wno-unused-function -mbig-endian -std=gnu99 -march=armv5t -Os -s -mthumb
 LDFLAGS += -EB -Tlink.ld
@@ -25,16 +24,25 @@ OFILES += $(SFILES:source/%.s=build/%.o)
 PROJECTNAME = ${shell basename "$(CURDIR)"}
 CWD = "$(CURDIR)"
 
+
 #---------------------------------------------------------------------------------
 .PHONY: all dirs $(PROJECTNAME) clean
 
 all: dirs $(PROJECTNAME)
 
-$(PROJECTNAME): $(OFILES)
+$(PROJECTNAME): $(PROJECTNAME).h
+
+$(PROJECTNAME).h: $(PROJECTNAME).bin
+	@echo "Convert payload.bin to includable header..."
+	@xxd -i $(PROJECTNAME).bin | sed "s/unsigned/static const unsigned/g" > $(PROJECTNAME).h
+
+$(PROJECTNAME).bin: $(PROJECTNAME).elf
+	@echo "Turn payload.elf into payload.bin..."
+	@$(OBJCOPY) -j .text -j .rodata -j .data -j .bss -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
+
+$(PROJECTNAME).elf: $(OFILES)
 	@echo "Linking files for $(PROJECTNAME)..."
 	@$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(OFILES)
-	@$(OBJCOPY) -j .text -j .rodata -j .data -j .bss -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
-	@xxd -i $(PROJECTNAME).bin | sed "s/unsigned/static const unsigned/g" > $(PROJECTNAME).h
 
 dirs:
 	@mkdir -p build

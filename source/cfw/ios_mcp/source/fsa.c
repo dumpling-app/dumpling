@@ -20,9 +20,7 @@ char* strncpy(char* dest, const char* src, int32_t size) {
 static void* allocIobuf()
 {
 	void* ptr = svcAlloc(0xCAFF, 0x828);
-
 	memset(ptr, 0x00, 0x828);
-
 	return ptr;
 }
 

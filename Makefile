@@ -97,20 +97,20 @@ all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_usb -f $(CURDIR)/source/cfw/ios_usb/Makefile
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_odm -f $(CURDIR)/source/cfw/ios_odm/Makefile
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp -f $(CURDIR)/source/cfw/ios_mcp/Makefile
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel -f $(CURDIR)/source/cfw/ios_kernel/Makefile
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_odm
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...
 	@rm -fr $(BUILD) $(TARGET).rpx $(TARGET).elf
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel -f $(CURDIR)/source/cfw/ios_kernel/Makefile
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp -f $(CURDIR)/source/cfw/ios_mcp/Makefile
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_odm -f $(CURDIR)/source/cfw/ios_odm/Makefile
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_usb -f $(CURDIR)/source/cfw/ios_usb/Makefile
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_odm
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
 
 #-------------------------------------------------------------------------------
 dist:

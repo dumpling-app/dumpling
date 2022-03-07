@@ -66,3 +66,4 @@
 #define KERNEL_MEMCPY               0x03
 
 int32_t loopServerThread();
+int32_t startIpcServer();

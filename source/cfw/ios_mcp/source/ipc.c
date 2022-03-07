@@ -291,10 +291,19 @@ int32_t IPC_ioctl(IPCMessage *message) {
 int32_t loopServerThread() {
     int32_t res = 0;
 
+    uint32_t messageQueue[0x10];
+    // int32_t queueHandle = svcCreateMessageQueue(messageQueue, sizeof(messageQueue)/4);
+    
+    // if (svcRegisterResourceManager("/dev/iosuhax", queueHandle) != 0) {
+    //     svcDestroyMessageQueue(queueHandle);
+    //     queueHandle = *(int32_t*)0x5070AEC;
+    //     return 0;
+    // }
+
     int32_t queueHandle = *(int32_t*)0x5070AEC;
-    IPCMessage *message;
 
     bool loopIPCServer = true;
+    IPCMessage *message;
     while(loopIPCServer) {
         if (svcReceiveMessage(queueHandle, &message, 0) < 0) {
             usleep(1000*5);
@@ -323,5 +332,17 @@ int32_t loopServerThread() {
         svcResourceReply(message, res);
     }
 
+    // svcDestroyMessageQueue(queueHandle);
     return res;
+}
+
+#define STACK_SIZE (1000)
+
+int32_t startIpcServer() {
+    // uint8_t* threadStack = svcAllocAlign(0xCAFF, STACK_SIZE, 0x20);
+    return loopServerThread();
+    // int threadId = svcCreateThread(loopServerThread, 0, (uint32_t*)(threadStack + STACK_SIZE), STACK_SIZE, 0x78, 1);
+    // if (threadId >= 0)
+    //    svcStartThread(threadId);
+    //return 1;
 }
