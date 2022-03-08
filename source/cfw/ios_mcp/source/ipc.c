@@ -2,7 +2,16 @@
 #include "ipc.h"
 #include "svc.h"
 
-int32_t IPC_ioctl(IPCMessage *message) {
+static bool loopIPCServer;
+static uint8_t threadStack[0x1000] __attribute__((aligned(0x20)));
+
+typedef void (*usleep_t)(uint32_t);
+typedef void* (*memcpy_t)(void*, const void*, int32_t);
+
+static usleep_t usleep = (usleep_t)0x050564E4;
+static memcpy_t memcpy = (memcpy_t)0x05054E54;
+
+static int32_t IPC_ioctl(IPCMessage *message) {
     int32_t res = 0;
 
     switch(message->ioctl.command) {
@@ -35,6 +44,10 @@ int32_t IPC_ioctl(IPCMessage *message) {
             else memcpy((void*)message->ioctl.buffer_in[0], (const void*)message->ioctl.buffer_in[1], message->ioctl.buffer_in[2]);
             break;
         }
+        case IOCTL_KILL_SERVER: {
+            loopIPCServer = false;
+            break;
+        }
         case IOCTL_REPEATED_WRITE: {
             if (message->ioctl.length_in < 12) return IOS_ERROR_INVALID_SIZE;
             else {
@@ -61,7 +74,6 @@ int32_t IPC_ioctl(IPCMessage *message) {
             break;
         }
         case IOCTL_KERN_READ32: {
-            // todo: Implement this in the kernel
             if ((message->ioctl.length_in < 4) || (message->ioctl.length_io < 4)) return IOS_ERROR_INVALID_SIZE;
             else {
                 uint32_t size = message->ioctl.length_io/4;
@@ -72,13 +84,20 @@ int32_t IPC_ioctl(IPCMessage *message) {
             break;
         }
         case IOCTL_KERN_WRITE32: {
-            // todo: Implement this in the kernel
             if ((message->ioctl.length_in < 4) || (message->ioctl.length_io < 4)) return IOS_ERROR_INVALID_SIZE;
             else {
                 uint32_t size = message->ioctl.length_io/4;
                 for (uint32_t i=0; i<size; i++) {
                     message->ioctl.buffer_io[i] = svcCustomKernelCommand(KERNEL_WRITE32, message->ioctl.buffer_in[0] + (i*4));
                 }
+            }
+            break;
+        }
+        case IOCTL_READ_OTP: {
+            if ((message->ioctl.length_io < 0x400)) {
+                res = IOS_ERROR_INVALID_SIZE;
+            } else {
+                svcCustomKernelCommand(KERNEL_READ_OTP, message->ioctl.buffer_io);
             }
             break;
         }
@@ -288,22 +307,21 @@ int32_t IPC_ioctl(IPCMessage *message) {
     return res;
 }
 
-int32_t loopServerThread() {
+static int32_t loopServerThread(void* args) {
     int32_t res = 0;
 
     uint32_t messageQueue[0x10];
-    // int32_t queueHandle = svcCreateMessageQueue(messageQueue, sizeof(messageQueue)/4);
+    int32_t queueHandle = svcCreateMessageQueue(messageQueue, sizeof(messageQueue)/4);
     
-    // if (svcRegisterResourceManager("/dev/iosuhax", queueHandle) != 0) {
-    //     svcDestroyMessageQueue(queueHandle);
-    //     queueHandle = *(int32_t*)0x5070AEC;
-    //     return 0;
-    // }
+    if (svcRegisterResourceManager("/dev/iosuhax", queueHandle) != 0) {
+        svcDestroyMessageQueue(queueHandle);
+        return 0;
+    }
 
-    int32_t queueHandle = *(int32_t*)0x5070AEC;
+    // int32_t queueHandle = *(int32_t*)0x5070AEC;
 
-    bool loopIPCServer = true;
     IPCMessage *message;
+    loopIPCServer = true;
     while(loopIPCServer) {
         if (svcReceiveMessage(queueHandle, &message, 0) < 0) {
             usleep(1000*5);
@@ -332,17 +350,13 @@ int32_t loopServerThread() {
         svcResourceReply(message, res);
     }
 
-    // svcDestroyMessageQueue(queueHandle);
+    svcDestroyMessageQueue(queueHandle);
     return res;
 }
 
-#define STACK_SIZE (1000)
-
-int32_t startIpcServer() {
-    // uint8_t* threadStack = svcAllocAlign(0xCAFF, STACK_SIZE, 0x20);
-    return loopServerThread();
-    // int threadId = svcCreateThread(loopServerThread, 0, (uint32_t*)(threadStack + STACK_SIZE), STACK_SIZE, 0x78, 1);
-    // if (threadId >= 0)
-    //    svcStartThread(threadId);
-    //return 1;
+int startIpcServer() {
+    int32_t threadId = svcCreateThread(loopServerThread, 0, (uint32_t*)(threadStack + sizeof(threadStack)), sizeof(threadStack), 0x78, 1);
+    if (threadId >= 0)
+       svcStartThread(threadId);
+    return 1;
 }

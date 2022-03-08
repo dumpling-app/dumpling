@@ -1,6 +1,11 @@
 #include "ipc.h"
-#include "svc.h"
+
+static bool threadsStarted = false;
 
 int32_t mainIPC() {
-    return startIpcServer();
+    if (!threadsStarted) {
+        threadsStarted = true;
+        startIpcServer();
+    }
+    return 0;
 }

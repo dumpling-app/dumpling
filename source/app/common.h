@@ -13,7 +13,6 @@
 #include <coreinit/memheap.h>
 #include <coreinit/memfrmheap.h>
 #include <coreinit/memory.h>
-#include <gx2/display.h>
 
 #include <sysapp/launch.h>
 #include <nn/act.h>
@@ -22,6 +21,7 @@
 #include <proc_ui/procui.h>
 #include <coreinit/foreground.h>
 #include <coreinit/title.h>
+#include <coreinit/launch.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +75,7 @@ struct dumpingConfig {
     dumpTypeFlags filterTypes;
     dumpTypeFlags dumpTypes;
     nn::act::PersistentId accountID = 0;
+    bool dumpAsDefaultUser = true;
     bool queue = false;
     dumpLocation location = dumpLocation::SDFat;
 };
@@ -93,6 +94,7 @@ struct userAccount {
     bool networkAccount;
     bool passwordCached;
     std::string miiName;
+    std::string persistentIdString;
     nn::act::SlotNo slot;
     nn::act::PersistentId persistentId;
 };

@@ -51,11 +51,7 @@ source/cfw/ios_mcp/ios_mcp.bin
 source/cfw/ios_mcp/ios_mcp.elf
 source/cfw/ios_mcp/ios_mcp.s
 source/cfw/ios_mcp/ios_mcp.h
-
-source/cfw/ios_odm/ios_odm.bin
-source/cfw/ios_odm/ios_odm.elf
-source/cfw/ios_odm/ios_odm.s
-source/cfw/ios_odm/ios_odm.h
+source/cfw/ios_mcp/ios_mcp_syms.h
 
 source/cfw/ios_usb/ios_usb.bin
 source/cfw/ios_usb/ios_usb.elf

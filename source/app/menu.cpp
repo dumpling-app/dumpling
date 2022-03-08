@@ -6,12 +6,13 @@
 #include "dumping.h"
 #include "filesystem.h"
 #include "gui.h"
+#include "iosuhax.h"
 
 // Menu screens
 
 void showLoadingScreen() {
     setBackgroundColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.2.0");
+    WHBLogPrint("Dumpling V2.2.1");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogConsoleDraw();
@@ -23,7 +24,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         clearScreen();
-        WHBLogPrint("Dumpling V2.2.0");
+        WHBLogPrint("Dumpling V2.2.1");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -61,7 +62,7 @@ void showMainMenu() {
                 break;
             }
             if (pressedBack()) {
-                uint8_t exitSelectedOption = showDialogPrompt("Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
+                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == CFWVersion::TIRAMISU_RPX ? "Do you really want to exit Dumpling?" : "Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
                 if (exitSelectedOption == 0) {
                     clearScreen();
                     return;
@@ -75,11 +76,7 @@ void showMainMenu() {
     // Go to the selected menu
     switch(selectedOption) {
         case 0:
-            if (!dumpDisc()) {
-                // Quit the homebrew completely when a fatal error occurs during disc dumping
-                cleanDumpingProcess();
-                return;
-            }
+            dumpDisc();
             break;
         case 1:
             showTitleList("Select all the games you want to dump!", {.filterTypes = dumpTypeFlags::GAME, .dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE), .queue = true});
@@ -147,6 +144,11 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     config.location = dumpLocation::SDFat;
     if (!mountSD()) config.location = dumpLocation::USBFat;
 
+    // Detect when multiple online files are getting dumped
+    if (showAccountOption && (config.dumpTypes & dumpTypeFlags::CUSTOM) == dumpTypeFlags::CUSTOM && dirExist((getRootFromLocation(config.location)+"/dumpling/Online Files/mlc01/usr/save/system/act/80000001").c_str())) {
+        config.dumpAsDefaultUser = false;
+    }
+
     while(true) {
         // Print option menu text
         clearScreen();
@@ -154,8 +156,9 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump destination: %s", selectedOption==0 ? '>' : ' ', config.location == dumpLocation::SDFat ? "SD Card" : "USB Drive");
         if (showAccountOption) WHBLogPrintf("%c Account: %s", selectedOption==1 ? '>' : ' ', allUsers[selectedAccount].miiName.c_str());
+        if (showAccountOption) WHBLogPrintf("%c Dump Saves/Account For Default Cemu User: %s", selectedOption==2 ? '>' : ' ', config.dumpAsDefaultUser ? "Yes" : "No");
         WHBLogPrint("");
-        WHBLogPrintf("%c Start", selectedOption==(1+showAccountOption) ? '>' : ' ');
+        WHBLogPrintf("%c Start", selectedOption==(1+showAccountOption+showAccountOption) ? '>' : ' ');
         WHBLogPrint("===============================");
         WHBLogPrint("A Button = Select Option");
         WHBLogPrint("B Button = Go Back");
@@ -171,7 +174,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 selectedOption--;
                 break;
             }
-            if (navigatedDown() && selectedOption < (1+showAccountOption)) {
+            if (navigatedDown() && selectedOption < (1+showAccountOption+showAccountOption)) {
                 selectedOption++;
                 break;
             }
@@ -193,6 +196,9 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 if (selectedOption == 1 && showAccountOption && selectedAccount > 0) {
                     selectedAccount--;
                 }
+                if (selectedOption == 2 && showAccountOption) {
+                    config.dumpAsDefaultUser = !config.dumpAsDefaultUser;
+                }
                 break;
             }
             if (navigatedRight()) {
@@ -213,9 +219,12 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 if (selectedOption == 1 && showAccountOption && selectedAccount < allUsers.size()-1) {
                     selectedAccount++;
                 }
+                if (selectedOption == 2 && showAccountOption) {
+                    config.dumpAsDefaultUser = !config.dumpAsDefaultUser;
+                }
                 break;
             }
-            if (pressedOk() && selectedOption == (1+showAccountOption)) {
+            if (pressedOk() && selectedOption == (1+showAccountOption+showAccountOption)) {
                 config.accountID = allUsers[selectedAccount].persistentId;
                 return true;
             }

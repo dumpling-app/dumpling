@@ -90,9 +90,10 @@ bool isExternalStorageMounted() {
 }
 
 bool isDiscInserted() {
-    // The ios_odm module writes the disc key whenever a disc is inserted
-    DCInvalidateRange((void*)0xF5E10C00, 32);
-    return *(volatile uint32_t*)0xF5E10C00 != 0;
+    // Get the disc key
+    std::vector<uint8_t> discKey(16, 0);
+    if (IOSUHAX_ODM_GetDiscKey(discKey.data()) < 0) return false;
+    return !std::all_of(discKey.begin(), discKey.end(), [](uint8_t i) {return i==0;});
 }
 
 bool isSDInserted() {

@@ -8,10 +8,6 @@
 #include "users.h"
 #include "gui.h"
 
-static OSDynLoad_Module coreinitHandle = nullptr;
-static int32_t (*OSShutdown)(int32_t status);
-static void (*OSForceFullRelaunch)();
-
 int main() {
     // Initialize libraries
     initializeGUI();
@@ -21,26 +17,21 @@ int main() {
 
     IMDisableAPD(); // Disable auto-shutdown feature
 
-    // Initialize OSShutdown and OSForceFullRelaunch functions
-    OSDynLoad_Acquire("coreinit.rpl", &coreinitHandle);
-    OSDynLoad_FindExport(coreinitHandle, FALSE, "OSShutdown", (void **)&OSShutdown);
-    OSDynLoad_FindExport(coreinitHandle, FALSE, "OSForceFullRelaunch", (void **)&OSForceFullRelaunch);
-    OSDynLoad_Release(coreinitHandle);
-
     // Start Dumpling
     showLoadingScreen();
-    if (getTitles() && executeExploit() && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+    CFWVersion iosuhaxCFW = testIosuhax();
+    if ((iosuhaxCFW == CFWVersion::TIRAMISU_RPX || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+        WHBLogPrint("");
+        WHBLogPrint("Finished loading!");
+        WHBLogConsoleDraw();
+        OSSleepTicks(OSSecondsToTicks(3));
         showMainMenu();
     }
 
     WHBLogPrint("");
-    WHBLogPrint("Exiting Dumpling and shutting off the console...");
+    WHBLogPrint(iosuhaxCFW == CFWVersion::TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
     WHBLogConsoleDraw();
     OSSleepTicks(OSSecondsToTicks(5));
-
-    // Prevent shutdown when some debugging keys are pressed
-    bool shutdownOnExit = true;
-    if (navigatedUp() && pressedStart()) shutdownOnExit = true;
 
     // Close application properly
     unmountSD();
@@ -51,6 +42,6 @@ int main() {
     FSShutdown();
     VPADShutdown();
     shutdownGUI();
-    
-    if (shutdownOnExit) OSShutdown(1);
+
+    exitApplication(iosuhaxCFW != CFWVersion::TIRAMISU_RPX);
 }

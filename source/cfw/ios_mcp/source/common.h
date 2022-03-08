@@ -91,9 +91,3 @@ typedef struct
    FSStat info;
    char name[256];
 } FSDirectoryEntry;
-
-typedef void (*usleep_t)(uint32_t);
-typedef void* (*memcpy_t)(void*, const void*, int32_t);
-
-static usleep_t usleep = (usleep_t)0x050564E4;
-static memcpy_t memcpy = (memcpy_t)0x05054E54;

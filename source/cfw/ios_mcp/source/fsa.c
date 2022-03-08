@@ -1,6 +1,9 @@
 #include "fsa.h"
 #include "svc.h"
 
+typedef void* (*memcpy_t)(void*, const void*, int32_t);
+static memcpy_t memcpy = (memcpy_t)0x05054E54;
+
 void* memset(void* dest, int32_t value, int32_t size) {
 	// todo: Find memset function for speedup or use longer types to do faster copying
 	for (int32_t i=0; i<size; i++) {

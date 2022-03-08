@@ -146,7 +146,7 @@ bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
     if ((config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE && !entry.saves.empty()) {
         for (auto& save : entry.saves) {
             if (save.account->persistentId == config.accountID) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/80000001", totalBytes)) return false;
+                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/"+(config.dumpAsDefaultUser?"80000001":save.account->persistentIdString), totalBytes)) return false;
             }
         }
     }
@@ -202,9 +202,9 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         else {
             clearScreen();
             WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
-            WHBLogPrint("Dumping will start in 5 seconds...");
+            WHBLogPrint("Dumping will start in 10 seconds...");
             WHBLogConsoleDraw();
-            OSSleepTicks(OSSecondsToTicks(5));
+            OSSleepTicks(OSSecondsToTicks(10));
         }
     }
 
@@ -264,7 +264,8 @@ bool dumpDisc() {
         WHBLogPrint("Looking for a game disc...");
         WHBLogPrint("Please insert one if you haven't already!");
         WHBLogPrint("");
-        WHBLogPrint("Reinsert the disc if you started Dumpling with a disc already inserted!");
+        WHBLogPrint("Reinsert the disc if you started Dumpling");
+        WHBLogPrint("with a disc already inserted!");
         WHBLogPrint("");
         WHBLogPrint("===============================");
         WHBLogPrint("B Button = Back to Main Menu");
@@ -276,20 +277,19 @@ bool dumpDisc() {
         if (isDiscInserted()) break;
     }
 
-    // Disable iosuhax to get the titles via MCP, which is hooked for iosuhax
-    if (!unmountSystemDrives()) {
-        showDialogPrompt("Error: Couldn't unmount internal Wii U storage.\nRestarting your Wii U might fix these odd issues...", "OK");
-        return true;
-    }
-    closeIosuhax();
-
-    // Reinitialize everything but also scan disc titles this time
+    // Scan disc titles this time
     clearScreen();
     WHBLogPrint("Reloading games list:");
     WHBLogPrint("");
     WHBLogConsoleDraw();
-    if (!(getTitles() && openIosuhax() && mountSystemDrives() && mountDisc() && loadTitles(false))) {
-        showDialogPrompt("Fatal error while reloading titles!\nExiting Dumpling instantly...", "OK");
+
+    if (!mountDisc()) {
+        showDialogPrompt("Error while mounting disc!", "OK");
+        return false;
+    }
+
+    if (!loadTitles(false)) {
+        showDialogPrompt("Error while scanning disc titles!", "OK");
         return false;
     }
 
@@ -305,8 +305,7 @@ bool dumpDisc() {
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};
     if (!showOptionMenu(config, true)) return true;
-    dumpQueue(queue, config);
-    return true;
+    return dumpQueue(queue, config);
 }
 
 void dumpOnlineFiles() {
@@ -316,28 +315,26 @@ void dumpOnlineFiles() {
     titleEntry miiEntry{.shortTitle = "Mii Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10056000/content"}};
     titleEntry ccertsEntry{.shortTitle = "ccerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
     titleEntry scertsEntry{.shortTitle = "scerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/scerts"}};
-    titleEntry accountsEntry{.shortTitle = "Selected Account", .hasBase = true, .base = {.path = "", .outputPath = "/Online Files/mlc01/usr/save/system/act/80000001"}};
+    titleEntry accountsEntry{.shortTitle = "Selected Account", .hasBase = true, .base = {.path = "", .outputPath = "/Online Files/mlc01/usr/save/system/act/"}};
 
-    // Loop until a valid account has been chosen, or when 
+    // Loop until a valid account has been chosen
+    std::string accountIdStr = "";
     while(accountsEntry.base.path.empty()) {
         if (!showOptionMenu(onlineConfig, true)) return;
-
+        
         // Check if the selected user has 
         for (auto& user : allUsers) {
             if (user.persistentId == onlineConfig.accountID) {
-                if (!user.networkAccount) showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
-                else if (!user.passwordCached) showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
-                else {
-                    // Create path to account folder
-                    std::ostringstream stream;
-                    stream << "storage_mlc01:/usr/save/system/act/";
-                    stream << std::hex << user.persistentId;
-                    accountsEntry.base.path = stream.str();
-                }
+                if (!user.networkAccount) return showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
+                else if (!user.passwordCached) return showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
+                accountIdStr = user.persistentIdString;
                 break;
             }
         }
     }
+
+    accountsEntry.base.path = "storage_mlc01:/usr/save/system/act/" + accountIdStr;
+    accountsEntry.base.outputPath += onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr;
 
     // Dump otp.bin and seeprom.bin
     createPath(std::string(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/").c_str());
@@ -349,8 +346,14 @@ void dumpOnlineFiles() {
         showDialogPrompt("Failed to create the seeprom.bin and otp.bin...", "OK");
     }
 
-    otpFile.write((char*)0xF5E10400, 1024);
-    seepromFile.write((char*)0xF5E10400+1024, 512);
+    std::vector<uint8_t> otpBuffer(1024);
+    std::vector<uint8_t> seepromBuffer(512);
+
+    IOSUHAX_read_otp(otpBuffer.data(), otpBuffer.size());
+    IOSUHAX_read_seeprom(seepromBuffer.data(), 0, seepromBuffer.size());
+
+    otpFile.write((char*)otpBuffer.data(), 1024);
+    seepromFile.write((char*)seepromBuffer.data(), 512);
 
     if (otpFile.fail() || seepromFile.fail()) {
         showDialogPrompt("Failed to write the seeprom.bin and otp.bin.\nMake sure that you've got space left.", "OK");

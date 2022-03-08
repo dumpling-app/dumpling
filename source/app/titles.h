@@ -2,7 +2,6 @@
 
 extern std::vector<titleEntry> installedTitles;
 
-bool getTitles();
 bool loadTitles(bool skipDiscs);
 std::reference_wrapper<titleEntry> getTitleWithName(std::string nameOfTitle);
 

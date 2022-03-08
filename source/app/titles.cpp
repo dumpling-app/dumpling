@@ -78,7 +78,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
             if (strcmp(dirEntry->d_name, "common") == 0) {
                 common.path = path;
             }
-            else if (strlen(dirEntry->d_name) == sizeof("80000001")-1) {
+            else if (strlen(dirEntry->d_name) == sizeof("8000000X")-1) {
                 // Extract information about current user
                 nn::act::PersistentId saveID = std::stoul(std::string(dirEntry->d_name), 0, 16);
                 userAccount* userAccount = getUserByPersistentID(saveID);
@@ -103,14 +103,14 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     return true;
 }
 
-bool getTitles() {
+bool loadTitles(bool skipDiscs) {
     WHBLogPrint("Loading titles...");
     WHBLogConsoleDraw();
     
     // Clear unparsed titles
     unparsedTitleList.clear();
 
-    // Open MCP tunnel
+    // Open MCP bridge
     int32_t mcpHandle = MCP_Open();
     if (mcpHandle < 0) {
         WHBLogPrint("Failed to open MPC to load all the games and updates");
@@ -128,10 +128,7 @@ bool getTitles() {
 
     // Close MCP
     MCP_Close(mcpHandle);
-    return true;
-}
 
-bool loadTitles(bool skipDiscs) {
     WHBLogPrint("Searching for games...");
     WHBLogConsoleDraw();
 
@@ -143,11 +140,6 @@ bool loadTitles(bool skipDiscs) {
     for (auto& title : unparsedTitleList) {
         // Skip discs whenever there's an initial scan
         if (deviceToLocation(title.indexedDevice) == titleLocation::Disc && skipDiscs) {
-            DCInvalidateRange((void*)0xF5E10C00, 32);
-            DCFlushRange((void*)0xF5E10C00, 32);
-            *(volatile uint32_t*)0xF5E10C00 = 0x123;
-            DCInvalidateRange((void*)0xF5E10C00, 32);
-            DCFlushRange((void*)0xF5E10C00, 32);
             continue;
         }
 

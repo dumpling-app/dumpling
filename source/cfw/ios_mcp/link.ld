@@ -1,22 +1,25 @@
 OUTPUT_ARCH(arm)
 
-MEMORY
-{
-	RAMX (rx) : ORIGIN = 0x0510E570, LENGTH = 0x00015BC
-	RAMRW (rw!i) : ORIGIN = 0x05089780, LENGTH = 0x00001F00
-}
-
 SECTIONS
 {
-	.text : {
-		build/crt0.o(.init);
-		*(.text);
-		*(.rodata);
+	.text 0x05116000 : {
+		_text_start = .;
+		_mcp_start = .;
+		*(.text*)
+		*(.rodata*)
 	}
+    _text_end = .;
 
-	.bss : {
+	.bss 0x050BD000 : {
 		_bss_start = .;
-		*(.bss);
+		*(.bss*);
 	}
 	_bss_end = .;
+
+	/DISCARD/ : {
+		*(*);
+	}
 }
+
+ASSERT((SIZEOF(.text)) < 0x3F00, "text section is too big");
+ASSERT((SIZEOF(.bss)) < 0x3000, "bss section is too big");

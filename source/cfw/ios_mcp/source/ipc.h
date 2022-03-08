@@ -31,6 +31,7 @@
 #define IOCTL_REPEATED_WRITE        0x05
 #define IOCTL_KERN_READ32           0x06
 #define IOCTL_KERN_WRITE32          0x07
+#define IOCTL_READ_OTP              0x08
 
 #define IOCTL_FSA_OPEN              0x40
 #define IOCTL_FSA_CLOSE             0x41
@@ -64,6 +65,7 @@
 #define KERNEL_READ32               0x01
 #define KERNEL_WRITE32              0x02
 #define KERNEL_MEMCPY               0x03
+#define KERNEL_GET_CFW_CONFIG       0x04
+#define KERNEL_READ_OTP             0x05
 
-int32_t loopServerThread();
-int32_t startIpcServer();
+int startIpcServer();

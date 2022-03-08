@@ -24,6 +24,11 @@ bool loadUsers() {
             std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
             newAccount.miiName = convert.to_bytes(newString);
 
+            // Convert persistent id into string
+            std::ostringstream stream;
+            stream << std::hex << nn::act::GetPersistentIdEx(i);
+            newAccount.persistentIdString = stream.str();
+
             newAccount.persistentId = nn::act::GetPersistentIdEx(i);
             newAccount.networkAccount = nn::act::IsNetworkAccountEx(i);
             newAccount.passwordCached = nn::act::IsPasswordCacheEnabledEx(i);
