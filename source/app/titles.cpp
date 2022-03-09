@@ -57,10 +57,10 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     // Open folder
     DIR* dirHandle;
     if ((dirHandle = opendir(savesPath.c_str())) == NULL) {
-        //WHBLogPrint("Can't open the folder to read the saves from the following path:");
-        //WHBLogPrint(savesPath.c_str());
-        //WHBLogConsoleDraw();
-        //OSSleepTicks(OSMillisecondsToTicks(500));
+        // WHBLogPrint("Can't open the folder to read the saves from the following path:");
+        // WHBLogPrint(savesPath.c_str());
+        // WHBLogConsoleDraw();
+        // OSSleepTicks(OSMillisecondsToTicks(500));
         return false;
     }
 

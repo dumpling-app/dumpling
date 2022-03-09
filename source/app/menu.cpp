@@ -127,7 +127,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrint(" - Make sure it's formatted as FAT32");
         WHBLogPrint(" - It only has one partition (and no hidden ones)");
         WHBLogPrint(" - Save a Mii picture in Mii Maker to your SD card");
-        WHBLogPrint(" - Try a different USB drive or SD card");
+        WHBLogPrint(" - Try a different SD card (recommended) or USB drive");
         WHBLogPrint("");
         WHBLogPrint("If none of those steps worked ask for help on the");
         WHBLogPrint("Cemu discord or report the issue on the Dumpling github.");
@@ -240,7 +240,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 // Helper functions
 
 uint8_t showDialogPrompt(const char* message, const char* button1, const char* button2) {
-    OSSleepTicks(OSMillisecondsToTicks(500));
+    OSSleepTicks(OSMillisecondsToTicks(100));
     uint8_t selectedButton = 0;
     while(true) {
         // Print dialog and buttons
@@ -263,7 +263,7 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
         WHBLogConsoleDraw();
 
         // Input loop
-        OSSleepTicks(OSMillisecondsToTicks(200));
+        OSSleepTicks(OSMillisecondsToTicks(400));
         updateInputs();
         while (true) {
             updateInputs();
