@@ -82,6 +82,10 @@ bool openIosuhax() {
     WHBLogPrint("Preparing iosuhax...");
     WHBLogConsoleDraw();
 
+#ifdef CEMU_STUBS
+    return true;
+#endif
+
     // Connect to iosuhax
     iosuhaxHandle = IOSUHAX_Open(NULL);
     if (iosuhaxHandle < 0) {

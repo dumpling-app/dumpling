@@ -36,13 +36,20 @@ CXXFLAGS	:= $(CFLAGS) -std=c++20
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lstdc++ -lwut -lfat -liosuhax
+LIBS	:=	-lstdc++ -lwut -lfat -liosuhax
 
+#-------------------------------------------------------------------------------
+# only include stubs when compiling with cemu target
+#-------------------------------------------------------------------------------
+ifdef CEMU_STUBS
+CFLAGS	+=	-DCEMU_STUBS
+SOURCES	+=	source/stub
+endif
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
 # containing include and lib
 #-------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT) $(WUT_ROOT)/usr
+LIBDIRS	:=	$(PORTLIBS) $(WUT_ROOT) $(WUT_ROOT)/usr
 
 
 #-------------------------------------------------------------------------------
@@ -90,7 +97,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-.PHONY: $(BUILD) clean dist all
+.PHONY: $(BUILD) cemu clean dist all
 
 #-------------------------------------------------------------------------------
 all: $(BUILD)
@@ -101,6 +108,11 @@ $(BUILD):
 	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
 	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+#-------------------------------------------------------------------------------
+cemu:
+	@[ -d $(BUILD) ] || mkdir -p $(BUILD)
+	@$(MAKE) CEMU_STUBS=1 --no-print-directory -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:

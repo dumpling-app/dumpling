@@ -43,5 +43,10 @@ For an always up-to-date guide to dump your games for Cemu using Dumpling, see [
 - [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
 - [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
 - chrissie for testing
+- [wut](https://github.com/devkitpro/wut) for providing the Wii U toolchain that Dumpling is built with
 - FIX94, Maschell and Quarky for making and maintaining homebrew (libraries)
-- smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for help making exploits and CFW possible
+- smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
+
+## License
+All the Dumpling code is [https://github.com/emiyl/dumpling/blob/master/LICENSE.md](MIT Licensed) except the [/source/stub](/source/stub) folder which uses wut's [GNU GPL v2.0 license](https://github.com/devkitPro/wut/blob/master/LICENSE.md).
+Releases of Dumpling will never be created with this code included since it's only used for personal debugging builds.

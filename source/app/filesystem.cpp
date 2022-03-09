@@ -1,6 +1,10 @@
 #include "filesystem.h"
 #include <iosuhax.h>
+#ifdef CEMU_STUBS
+#include "../stub/devoptab_fs.h"
+#else
 #include <iosuhax_devoptab.h>
+#endif
 #include <iosuhax_disc_interface.h>
 #include <fat.h>
 #include <sys/statvfs.h>
