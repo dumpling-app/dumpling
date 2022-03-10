@@ -257,29 +257,43 @@ void dumpMLC() {
 }
 
 bool dumpDisc() {
-    // Loop until a disk is found
-    while(true) {
-        // Print menu
-        clearScreen();
-        WHBLogPrint("Looking for a game disc...");
-        WHBLogPrint("Please insert one if you haven't already!");
-        WHBLogPrint("");
-        WHBLogPrint("Reinsert the disc if you started Dumpling");
-        WHBLogPrint("with a disc already inserted!");
-        WHBLogPrint("");
-        WHBLogPrint("===============================");
-        WHBLogPrint("B Button = Back to Main Menu");
-        WHBLogConsoleDraw();
-        OSSleepTicks(OSMillisecondsToTicks(100));
-
-        updateInputs();
-        if (pressedBack()) return true;
-        if (isDiscInserted()) break;
+    int32_t mcpHandle = MCP_Open();
+    if (mcpHandle < 0) {
+        WHBLogPrint("Failed to open MPC to check for inserted disc titles");
+        return false;
     }
+
+    if (!checkForDiscTitles(mcpHandle)) {
+        // Loop until a disk is found
+        while(true) {
+            // Print menu
+            clearScreen();
+            WHBLogPrint("Looking for a game disc...");
+            WHBLogPrint("Please insert one if you haven't already!");
+            WHBLogPrint("");
+            WHBLogPrint("Reinsert the disc if you started Dumpling");
+            WHBLogPrint("with a disc already inserted!");
+            WHBLogPrint("");
+            WHBLogPrint("===============================");
+            WHBLogPrint("B Button = Back to Main Menu");
+            WHBLogConsoleDraw();
+            OSSleepTicks(OSMillisecondsToTicks(100));
+
+            updateInputs();
+            if (pressedBack()) {
+                MCP_Close(mcpHandle);
+                return true;
+            }
+            if (checkForDiscTitles(mcpHandle)) {
+                break;
+            }
+        }
+    }
+    MCP_Close(mcpHandle);
 
     // Scan disc titles this time
     clearScreen();
-    WHBLogPrint("Reloading games list:");
+    WHBLogPrint("Refreshing games list:");
     WHBLogPrint("");
     WHBLogConsoleDraw();
 
@@ -301,6 +315,14 @@ bool dumpDisc() {
             break;
         }
     }
+
+    clearScreen();
+    WHBLogPrint("Currently inserted disc is:");
+    WHBLogPrint(queue.begin()->get().normalizedTitle.c_str());
+    WHBLogPrint("");
+    WHBLogPrint("Continuing to next step in 5 seconds...");
+    WHBLogConsoleDraw();
+    OSSleepTicks(OSSecondsToTicks(5));
 
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};

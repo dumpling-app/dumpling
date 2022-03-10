@@ -103,6 +103,23 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     return true;
 }
 
+bool checkForDiscTitles(int32_t mcpHandle) {
+    int32_t titleCount = MCP_TitleCount(mcpHandle);
+    uint32_t titleByteSize = titleCount * sizeof(MCPTitleListType);
+
+    std::vector<MCPTitleListType> titles(titleCount);
+
+    uint32_t titlesListed = 0;
+    MCP_TitleList(mcpHandle, &titlesListed, titles.data(), titleByteSize);
+
+    for (auto& title : titles) {
+        if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool loadTitles(bool skipDiscs) {
     WHBLogPrint("Loading titles...");
     WHBLogConsoleDraw();
@@ -119,7 +136,7 @@ bool loadTitles(bool skipDiscs) {
 
     // Get titles from MCP
     int32_t titleCount = MCP_TitleCount(mcpHandle);
-    uint32_t titleByteSize = titleCount * sizeof(struct MCPTitleListType);
+    uint32_t titleByteSize = titleCount * sizeof(MCPTitleListType);
 
     unparsedTitleList.resize(titleCount);
 

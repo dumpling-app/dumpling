@@ -90,12 +90,11 @@ void exitApplication(bool shutdownOnExit) {
             continue;
         }
 
-        if (usingHBL) SYSRelaunchTitle(0, NULL);
+        if (shutdownOnExit) OSShutdown(1);
+        else if (usingHBL) SYSRelaunchTitle(0, NULL);
         else SYSLaunchMenu();
     }
     ProcUIShutdown();
-
-    if (shutdownOnExit) OSShutdown(1);
 }
 
 void WHBLogConsoleDraw() {

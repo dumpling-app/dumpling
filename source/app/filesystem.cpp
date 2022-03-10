@@ -41,7 +41,6 @@ bool mountUSBDrive() {
 }
 
 bool mountDisc() {
-    if (!isDiscInserted()) return false;
     if (mount_fs("storage_odd01", getFSAHandle(), "/dev/odd01", "/vol/storage_odd_tickets") == 0) discMounted = true; 
     if (mount_fs("storage_odd02", getFSAHandle(), "/dev/odd02", "/vol/storage_odd_updates") == 0) discMounted = true;
     if (mount_fs("storage_odd03", getFSAHandle(), "/dev/odd03", "/vol/storage_odd_content") == 0) discMounted = true;
@@ -94,10 +93,26 @@ bool isExternalStorageMounted() {
 }
 
 bool isDiscInserted() {
-    // Get the disc key
-    std::vector<uint8_t> discKey(16, 0);
-    if (IOSUHAX_ODM_GetDiscKey(discKey.data()) < 0) return false;
-    return !std::all_of(discKey.begin(), discKey.end(), [](uint8_t i) {return i==0;});
+    return false;
+    // if (getCFWVersion() == CFWVersion::TIRAMISU_RPX) {
+    //     // Get the disc key via Tiramisu's CFW
+    //     std::array<uint8_t, 16> discKey = {0};
+    //     discKey.fill(0);
+    //     int32_t result = IOSUHAX_ODM_GetDiscKey(discKey.data());
+    //     if (result == 0) {
+    //         // WHBLogPrintf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", discKey.at(0), discKey.at(1), discKey.at(2), discKey.at(3), discKey.at(4), discKey.at(5), discKey.at(6), discKey.at(7), discKey.at(8), discKey.at(9), discKey.at(10), discKey.at(11), discKey.at(12), discKey.at(13), discKey.at(14), discKey.at(15));
+    //         // WHBLogConsoleDraw();
+    //         // OSSleepTicks(OSSecondsToTicks(3));
+    //         return !(std::all_of(discKey.begin(), discKey.end(), [](uint8_t i) {return i==0;}));
+    //     }
+    //     else return false;
+    // }
+    // else {
+    //     // Use the older method of detecting discs
+    //     // The ios_odm module writes the disc key whenever a disc is inserted
+    //     DCInvalidateRange((void*)0xF5E10C00, 32);
+    //     return *(volatile uint32_t*)0xF5E10C00 != 0;
+    // }
 }
 
 bool isSDInserted() {

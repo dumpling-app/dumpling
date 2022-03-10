@@ -24,7 +24,7 @@ int main() {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
         WHBLogConsoleDraw();
-        OSSleepTicks(OSSecondsToTicks(3));
+        OSSleepTicks(OSSecondsToTicks(5));
         showMainMenu();
     }
 
