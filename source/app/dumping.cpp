@@ -341,16 +341,15 @@ void dumpOnlineFiles() {
 
     // Loop until a valid account has been chosen
     std::string accountIdStr = "";
-    while(accountsEntry.base.path.empty()) {
+    while(accountIdStr.empty()) {
         if (!showOptionMenu(onlineConfig, true)) return;
         
         // Check if the selected user has 
         for (auto& user : allUsers) {
             if (user.persistentId == onlineConfig.accountID) {
-                if (!user.networkAccount) return showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
-                else if (!user.passwordCached) return showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
-                accountIdStr = user.persistentIdString;
-                break;
+                if (!user.networkAccount) showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
+                else if (!user.passwordCached) showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
+                else accountIdStr = user.persistentIdString;
             }
         }
     }
