@@ -48,7 +48,7 @@ void showTitleList(const char* message, dumpingConfig config) {
     bool startQueueDump = false;
     while(!startQueueDump) {
         // Print selection header
-        clearScreen();
+        WHBLogFreetypeStartScreen();
         WHBLogPrint(message);
         WHBLogPrint("===============================");
 
@@ -63,10 +63,10 @@ void showTitleList(const char* message, dumpingConfig config) {
             WHBLogPrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "[X]": "[ ]") : "", printTitles[i].titleEntryRef.get().shortTitle.c_str());
         }
         WHBLogPrint("===============================");
-        WHBLogPrint("Plus/Start Button = Start Dumping");
-        WHBLogPrint("A Button = Select Title");
-        WHBLogPrint("B Button = Back to Main Menu");
-        WHBLogConsoleDraw();
+        WHBLogPrint("\uE045 Button = Start Dumping");
+        WHBLogPrint("\uE000 Button = Select Title");
+        WHBLogPrint("\uE001 Button = Back to Main Menu");
+        WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
         OSSleepTicks(OSMillisecondsToTicks(250));

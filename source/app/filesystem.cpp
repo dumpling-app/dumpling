@@ -24,7 +24,7 @@ bool mountSystemDrives() {
     if (mount_fs("storage_usb01", getFSAHandle(), NULL, "/vol/storage_usb01") == 0) systemUSBMounted = true;
     if (systemMLCMounted) WHBLogPrint("Successfully mounted the internal Wii U storage!");
     if (systemUSBMounted) WHBLogPrint("Successfully mounted the external Wii U storage!");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     return systemMLCMounted; // Require only the MLC to be mounted for this function to be successful
 }
 
@@ -46,7 +46,7 @@ bool mountDisc() {
     if (mount_fs("storage_odd03", getFSAHandle(), "/dev/odd03", "/vol/storage_odd_content") == 0) discMounted = true;
     if (mount_fs("storage_odd04", getFSAHandle(), "/dev/odd04", "/vol/storage_odd_content2") == 0) discMounted = true;
     if (discMounted) WHBLogPrint("Successfully mounted the disc!");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     return discMounted;
 }
 
@@ -101,7 +101,7 @@ bool isDiscInserted() {
     //     int32_t result = IOSUHAX_ODM_GetDiscKey(discKey.data());
     //     if (result == 0) {
     //         // WHBLogPrintf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", discKey.at(0), discKey.at(1), discKey.at(2), discKey.at(3), discKey.at(4), discKey.at(5), discKey.at(6), discKey.at(7), discKey.at(8), discKey.at(9), discKey.at(10), discKey.at(11), discKey.at(12), discKey.at(13), discKey.at(14), discKey.at(15));
-    //         // WHBLogConsoleDraw();
+    //         // WHBLogFreetypeDraw();
     //         // OSSleepTicks(OSSecondsToTicks(3));
     //         return !(std::all_of(discKey.begin(), discKey.end(), [](uint8_t i) {return i==0;}));
     //     }

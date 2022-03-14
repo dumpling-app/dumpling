@@ -48,9 +48,6 @@ int mount_fs(const char *virt_name, int fsaFd, const char *dev_path, const char 
     __wut_mlc_devoptab.deviceData = data;
 
     FSCmdBlock fsCmd;
-    FSMountSource mountSource;
-    // char mountPath[0x80];
-    // char workDir[0x83];
 
     FSInit();
     rc = FSAddClient(data->client, FS_ERROR_FLAG_ALL);

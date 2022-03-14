@@ -7,7 +7,7 @@ CFWVersion currCFWVersion = CFWVersion::NONE;
 
 CFWVersion testIosuhax() {
     WHBLogPrint("Detecting prior iosuhax version...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
 
     IOSHandle mcpHandle = IOS_Open("/dev/mcp", (IOSOpenMode)0);
     if (mcpHandle < IOS_ERROR_OK) return CFWVersion::FAILED;
@@ -80,7 +80,7 @@ CFWVersion testIosuhax() {
 
 bool openIosuhax() {
     WHBLogPrint("Preparing iosuhax...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
 
 #ifdef CEMU_STUBS
     return true;

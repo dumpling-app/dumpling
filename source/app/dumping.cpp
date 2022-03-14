@@ -166,7 +166,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         // Scan folder to get the full queue size
         for (uint64_t i=0; i<queue.size(); i++) {
             // Show message about the scanning process which freezes the game
-            clearScreen();
+            WHBLogFreetypeStartScreen();
             WHBLogPrint("Scanning the dump size!");
             WHBLogPrint("This might take a few minutes if you selected a lot of titles...");
             WHBLogPrint("Your Wii U isn't frozen in that case!");
@@ -174,8 +174,8 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogPrintf("Scanning %s... (title %lu/%lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
             WHBLogPrint("");
             WHBLogPrint("===============================");
-            WHBLogPrint("B Button = Cancel scanning and just do dumping");
-            WHBLogConsoleDraw();
+            WHBLogPrint("\uE001 Button = Cancel scanning and just do dumping");
+            WHBLogFreetypeDraw();
             if (!dumpTitle(queue[i], config, &totalDumpSize) && !cancelledScanning) {
                 showErrorPrompt("Exit to Main Menu");
                 showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
@@ -200,10 +200,10 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             return false;
         }
         else {
-            clearScreen();
+            WHBLogFreetypeClear();
             WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
             WHBLogPrint("Dumping will start in 10 seconds...");
-            WHBLogConsoleDraw();
+            WHBLogFreetypeDraw();
             OSSleepTicks(OSSecondsToTicks(10));
         }
     }
@@ -267,7 +267,7 @@ bool dumpDisc() {
         // Loop until a disk is found
         while(true) {
             // Print menu
-            clearScreen();
+            WHBLogFreetypeStartScreen();
             WHBLogPrint("Looking for a game disc...");
             WHBLogPrint("Please insert one if you haven't already!");
             WHBLogPrint("");
@@ -275,8 +275,8 @@ bool dumpDisc() {
             WHBLogPrint("with a disc already inserted!");
             WHBLogPrint("");
             WHBLogPrint("===============================");
-            WHBLogPrint("B Button = Back to Main Menu");
-            WHBLogConsoleDraw();
+            WHBLogPrint("\uE001 Button = Back to Main Menu");
+            WHBLogFreetypeDrawScreen();
             OSSleepTicks(OSMillisecondsToTicks(100));
 
             updateInputs();
@@ -292,10 +292,10 @@ bool dumpDisc() {
     MCP_Close(mcpHandle);
 
     // Scan disc titles this time
-    clearScreen();
+    WHBLogFreetypeClear();
     WHBLogPrint("Refreshing games list:");
     WHBLogPrint("");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
 
     if (!mountDisc()) {
         showDialogPrompt("Error while mounting disc!", "OK");
@@ -316,12 +316,12 @@ bool dumpDisc() {
         }
     }
 
-    clearScreen();
+    WHBLogFreetypeClear();
     WHBLogPrint("Currently inserted disc is:");
     WHBLogPrint(queue.begin()->get().normalizedTitle.c_str());
     WHBLogPrint("");
     WHBLogPrint("Continuing to next step in 5 seconds...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     OSSleepTicks(OSSecondsToTicks(5));
 
     // Dump queue

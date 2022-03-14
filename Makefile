@@ -19,7 +19,8 @@ include $(DEVKITPRO)/wut/share/wut_rules
 #-------------------------------------------------------------------------------
 TARGET		:=	dumpling
 BUILD		:=	build
-SOURCES		:=	source/app
+SOURCES		:=	source/app \
+				source/font
 DATA		:=	data
 INCLUDES	:=	include
 
@@ -29,14 +30,14 @@ INCLUDES	:=	include
 CFLAGS	:=	-g -Wall -Os -O2 -ffunction-sections -Wno-narrowing \
 			$(MACHDEP)
 
-CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__
+CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ `freetype-config --cflags`
 
 CXXFLAGS	:= $(CFLAGS) -std=c++20
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	-lstdc++ -lwut -lfat -liosuhax
+LIBS	:=	-lstdc++ -lwut -lfat -liosuhax `freetype-config --libs`
 
 #-------------------------------------------------------------------------------
 # only include stubs when compiling with cemu target
@@ -130,6 +131,9 @@ dist:
 	@cp assets/meta.xml dist/wiiu/apps/dumpling/meta.xml
 	@cp assets/dumpling-banner.png dist/wiiu/apps/dumpling/icon.png
 	@cp $(TARGET).rpx dist/wiiu/apps/dumpling/$(TARGET).rpx
+	@echo Zip up a release zip
+	@rm dist/dumpling.zip
+	@cd dist && zip -q -r ./dumpling.zip ./wiiu && cd ..
 
 #-------------------------------------------------------------------------------
 

@@ -8,4 +8,3 @@ void showDialogPrompt(const char* message, const char* button);
 bool showOptionMenu(dumpingConfig& config, bool showAccountOption);
 void setErrorPrompt(const char* message);
 void showErrorPrompt(const char* button);
-void clearScreen();

@@ -52,7 +52,7 @@ void showCurrentProgress() {
     }
     
     // Print general dumping message
-    clearScreen();
+    WHBLogFreetypeStartScreen();
     WHBLogPrint("Dumping In Progress:");
     WHBLogPrint("");
     WHBLogPrint(dumpingMessage.c_str());
@@ -67,8 +67,8 @@ void showCurrentProgress() {
     WHBLogPrintf("File Name = %s", currFilename);
     WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
     WHBLogPrint("===============================");
-    WHBLogPrint("B Button = Cancel Dumping");
-    WHBLogConsoleDraw();
+    WHBLogPrint("\uE001 Button = Cancel Dumping");
+    WHBLogFreetypeDrawScreen();
 }
 
 

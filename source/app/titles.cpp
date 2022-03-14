@@ -49,7 +49,7 @@ bool readInfoFromXML(titleEntry& title, titlePart& part) {
     WHBLogPrintf("Could only partially parse %lu information bits:");
     WHBLogPrintf("shortname_en = %s", title.shortTitle.c_str());
     WHBLogPrintf("product_code = %s", title.productCode.c_str());
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     return false;
 }
 
@@ -59,7 +59,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
     if ((dirHandle = opendir(savesPath.c_str())) == NULL) {
         // WHBLogPrint("Can't open the folder to read the saves from the following path:");
         // WHBLogPrint(savesPath.c_str());
-        // WHBLogConsoleDraw();
+        // WHBLogFreetypeDraw();
         // OSSleepTicks(OSMillisecondsToTicks(500));
         return false;
     }
@@ -86,7 +86,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
                     WHBLogPrint("Couldn't find the user by the persistence ID:");
                     WHBLogPrintf("saveID: %s", dirEntry->d_name);
                     WHBLogPrint(path.c_str());
-                    WHBLogConsoleDraw();
+                    WHBLogFreetypeDraw();
                     //OSSleepTicks(OSMillisecondsToTicks(5000));
                     continue;
                 }
@@ -122,7 +122,7 @@ bool checkForDiscTitles(int32_t mcpHandle) {
 
 bool loadTitles(bool skipDiscs) {
     WHBLogPrint("Loading titles...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     
     // Clear unparsed titles
     unparsedTitleList.clear();
@@ -147,7 +147,7 @@ bool loadTitles(bool skipDiscs) {
     MCP_Close(mcpHandle);
 
     WHBLogPrint("Searching for games...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
 
     // Delete previous titles
     installedTitles.clear();
@@ -170,8 +170,8 @@ bool loadTitles(bool skipDiscs) {
             else {
                 WHBLogPrint("Couldn't convert the path or find this folder:");
                 WHBLogPrint(posixPath.c_str());
-                WHBLogConsoleDraw();
-                OSSleepTicks(OSSecondsToTicks(2));
+                WHBLogFreetypeDraw();
+                //OSSleepTicks(OSSecondsToTicks(2));
             }
         }
     }
@@ -201,7 +201,7 @@ bool loadTitles(bool skipDiscs) {
                 if (readInfoFromXML(title, title.base)) title.hasBase = true;
                 else {
                     WHBLogPrint("Failed to read meta from game!");
-                    WHBLogConsoleDraw();
+                    WHBLogFreetypeDraw();
                     OSSleepTicks(OSSecondsToTicks(10));
                 }
             }
@@ -215,7 +215,7 @@ bool loadTitles(bool skipDiscs) {
                 if (readInfoFromXML(title, title.update)) title.hasUpdate = true;
                 else {
                     WHBLogPrint("Failed to read meta from update!");
-                    WHBLogConsoleDraw();
+                    WHBLogFreetypeDraw();
                     OSSleepTicks(OSSecondsToTicks(10));
                 }
             }
@@ -229,7 +229,7 @@ bool loadTitles(bool skipDiscs) {
                 if (readInfoFromXML(title, title.dlc)) title.hasDLC = true;
                 else {
                     WHBLogPrint("Failed to read meta from dlc!");
-                    WHBLogConsoleDraw();
+                    WHBLogFreetypeDraw();
                     OSSleepTicks(OSSecondsToTicks(10));
                 }
             }

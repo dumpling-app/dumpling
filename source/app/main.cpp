@@ -23,14 +23,14 @@ int main() {
     if ((iosuhaxCFW == CFWVersion::TIRAMISU_RPX || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
-        WHBLogConsoleDraw();
+        WHBLogFreetypeDraw();
         OSSleepTicks(OSSecondsToTicks(5));
         showMainMenu();
     }
 
     WHBLogPrint("");
     WHBLogPrint(iosuhaxCFW == CFWVersion::TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
     OSSleepTicks(OSSecondsToTicks(5));
 
     // Close application properly

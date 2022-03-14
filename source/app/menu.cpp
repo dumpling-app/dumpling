@@ -7,15 +7,18 @@
 #include "filesystem.h"
 #include "gui.h"
 #include "iosuhax.h"
+#include "../font/log_freetype.h"
 
 // Menu screens
 
 void showLoadingScreen() {
-    setBackgroundColor(0x0b5d5e00);
-    WHBLogPrint("Dumpling V2.2.2");
+    WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
+    WHBLogFreetypeSetFontColor(0xFFFFFFFF);
+    WHBLogFreetypeSetFontSize(22, 0);
+    WHBLogPrint("Dumpling V2.2.4");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
-    WHBLogConsoleDraw();
+    WHBLogFreetypeDraw();
 }
 
 void showMainMenu() {
@@ -23,8 +26,8 @@ void showMainMenu() {
     bool startSelectedOption = false;
     while(!startSelectedOption) {
         // Print menu text
-        clearScreen();
-        WHBLogPrint("Dumpling V2.2.2");
+        WHBLogFreetypeStartScreen();
+        WHBLogPrint("Dumpling V2.2.4");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -37,11 +40,10 @@ void showMainMenu() {
         WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
         WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
         WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==7 ? '>' : ' ');
-        //WHBLogPrintf("%c Dump only Save files of a game", selectedOption==8 ? '>' : ' '); // TODO: To extend save file dumping purposes, read the meta files from the save files to show save files that are from disc games
         WHBLogPrint("===============================");
-        WHBLogPrint("A Button = Select Option");
-        WHBLogPrint("B Button = Exit Dumpling");
-        WHBLogConsoleDraw();
+        WHBLogPrint("\uE000 Button = Select Option");
+        WHBLogPrint("\uE001 Button = Exit Dumpling");
+        WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
         OSSleepTicks(OSMillisecondsToTicks(200)); // Cooldown between each button press
@@ -64,7 +66,7 @@ void showMainMenu() {
             if (pressedBack()) {
                 uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == CFWVersion::TIRAMISU_RPX ? "Do you really want to exit Dumpling?" : "Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
                 if (exitSelectedOption == 0) {
-                    clearScreen();
+                    WHBLogFreetypeClear();
                     return;
                 }
                 else break;
@@ -119,7 +121,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     uint8_t selectedAccount = 0;
 
     while(!(isSDInserted() || isUSBDriveInserted())) {
-        clearScreen();
+        WHBLogFreetypeStartScreen();
         WHBLogPrint("Couldn't detect an SD card or USB drive!");
         WHBLogPrint("");
         WHBLogPrint("If you do have one inserted, you could try:");
@@ -132,8 +134,8 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrint("If none of those steps worked ask for help on the");
         WHBLogPrint("Cemu discord or report the issue on the Dumpling github.");
         WHBLogPrint("===============================");
-        WHBLogPrint("B Button = Cancel");
-        WHBLogConsoleDraw();
+        WHBLogPrint("\uE001 Button = Cancel");
+        WHBLogFreetypeDrawScreen();
         OSSleepTicks(OSMillisecondsToTicks(100));
         updateInputs();
         if (pressedBack()) {
@@ -151,7 +153,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 
     while(true) {
         // Print option menu text
-        clearScreen();
+        WHBLogFreetypeStartScreen();
         WHBLogPrint("Change any options for this dump:");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump destination: %s", selectedOption==0 ? '>' : ' ', config.location == dumpLocation::SDFat ? "SD Card" : "USB Drive");
@@ -160,10 +162,10 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrint("");
         WHBLogPrintf("%c Start", selectedOption==(1+showAccountOption+showAccountOption) ? '>' : ' ');
         WHBLogPrint("===============================");
-        WHBLogPrint("A Button = Select Option");
-        WHBLogPrint("B Button = Go Back");
-        WHBLogPrint("Left/Right = Change Value");
-        WHBLogConsoleDraw();
+        WHBLogPrint("\uE000 Button = Select Option");
+        WHBLogPrint("\uE001 Button = Go Back");
+        WHBLogPrint("\uE07E/\uE081 = Change Value");
+        WHBLogFreetypeDrawScreen();
 
         OSSleepTicks(OSMillisecondsToTicks(200)); // Cooldown between each button press
         updateInputs();
@@ -243,8 +245,7 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
     OSSleepTicks(OSMillisecondsToTicks(100));
     uint8_t selectedButton = 0;
     while(true) {
-        // Print dialog and buttons
-        clearScreen();
+        WHBLogFreetypeStartScreen();
 
         // Print each line
         std::istringstream messageStream(message);
@@ -259,8 +260,8 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
         if (button2 != NULL) WHBLogPrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);
         WHBLogPrint("");
         WHBLogPrint("===============================");
-        WHBLogPrint("A Button = Select Option");
-        WHBLogConsoleDraw();
+        WHBLogPrint("\uE000 Button = Select Option");
+        WHBLogFreetypeDrawScreen();
 
         // Input loop
         OSSleepTicks(OSMillisecondsToTicks(400));
@@ -301,12 +302,4 @@ void showErrorPrompt(const char* button) {
     std::string promptMessage("An error occured:\n");
     promptMessage += errorMessage;
     showDialogPrompt(promptMessage.c_str(), button);
-}
-
-#define NUM_LINES (16)
-
-void clearScreen() {
-    for (int i=0; i<NUM_LINES; i++) {
-        WHBLogPrint("");
-    }
 }
