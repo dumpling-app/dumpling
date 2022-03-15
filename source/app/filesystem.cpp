@@ -102,7 +102,7 @@ bool isDiscInserted() {
     //     if (result == 0) {
     //         // WHBLogPrintf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X", discKey.at(0), discKey.at(1), discKey.at(2), discKey.at(3), discKey.at(4), discKey.at(5), discKey.at(6), discKey.at(7), discKey.at(8), discKey.at(9), discKey.at(10), discKey.at(11), discKey.at(12), discKey.at(13), discKey.at(14), discKey.at(15));
     //         // WHBLogFreetypeDraw();
-    //         // OSSleepTicks(OSSecondsToTicks(3));
+    //         // sleep_for(3s);
     //         return !(std::all_of(discKey.begin(), discKey.end(), [](uint8_t i) {return i==0;}));
     //     }
     //     else return false;

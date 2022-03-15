@@ -39,6 +39,7 @@
 # Project specific
 /build
 /dist
+dumpling.wuhb
 dumpling.rpx
 dumpling.elf
 

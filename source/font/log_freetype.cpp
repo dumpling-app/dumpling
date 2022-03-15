@@ -9,7 +9,7 @@
 
 char queueBuffer[NUM_LINES][LINE_LENGTH];
 uint32_t newLines = 0;
-char renderedBuffer[NUM_LINES][LINE_LENGTH];
+uint32_t bottomLines = 0;
 
 bool freetypeHasForeground = false;
 
@@ -82,7 +82,7 @@ void drawPixel(int32_t x, int32_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 void drawBitmap(FT_Bitmap *bitmap, FT_Int x, FT_Int y) {
     uint8_t r = (fontColor >> 16) & 0xff;
     uint8_t g = (fontColor >> 8) & 0xff;
-    uint8_t b = fontColor & 0xff;
+    uint8_t b = (fontColor >> 0) & 0xff;
     uint8_t a = 0xFF;
 
     FT_Int y_max = y + bitmap->rows;
@@ -295,8 +295,8 @@ bool WHBLogFreetypeInit() {
 
 void WHBLogFreetypeClear() {
     newLines = 0;
-    memset(renderedBuffer, 0, sizeof(renderedBuffer));
-    memset(queueBuffer, 0, sizeof(queueBuffer));
+    bottomLines = 0;
+    memset(queueBuffer, '\0', sizeof(queueBuffer));
 }
 
 void WHBLogFreetypeStartScreen() {
@@ -331,6 +331,22 @@ void WHBLogFreetypePrintAtPosition(uint32_t position, const char *line) {
     if (position < 0 || position > NUM_LINES) return;
 
     FreetypeSetLine(position, line);
+}
+
+void WHBLogFreetypeScreenPrintBottom(const char *line) {
+    uint32_t length = strlen(line);
+
+    if (length > LINE_LENGTH) {
+        length = LINE_LENGTH - 1;
+    }
+    
+    for (uint32_t i=(NUM_LINES-1)-bottomLines+1; i<NUM_LINES; i++) {
+        memcpy(queueBuffer[i-1], queueBuffer[i], LINE_LENGTH);
+    }
+
+    memcpy(queueBuffer[NUM_LINES - 1], line, length);
+    queueBuffer[NUM_LINES - 1][length] = '\0';
+    if (bottomLines < NUM_LINES-1) bottomLines++;
 }
 
 void WHBLogFreetypePrint(const char *line) {

@@ -8,7 +8,7 @@
 .type restoreHandle, %function
 
 _start:
-	b restoreHandle
+    b restoreHandle
     .global IOS_DCFlushAllCache
 IOS_DCFlushAllCache:
     MOV R15, R0

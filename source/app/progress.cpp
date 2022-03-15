@@ -66,8 +66,8 @@ void showCurrentProgress() {
     WHBLogPrint("");
     WHBLogPrintf("File Name = %s", currFilename);
     WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
-    WHBLogPrint("===============================");
-    WHBLogPrint("\uE001 Button = Cancel Dumping");
+    WHBLogFreetypeScreenPrintBottom("===============================");
+    WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
     WHBLogFreetypeDrawScreen();
 }
 

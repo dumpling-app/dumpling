@@ -60,7 +60,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
         // WHBLogPrint("Can't open the folder to read the saves from the following path:");
         // WHBLogPrint(savesPath.c_str());
         // WHBLogFreetypeDraw();
-        // OSSleepTicks(OSMillisecondsToTicks(500));
+        // sleep_for(500ms);
         return false;
     }
 
@@ -87,7 +87,7 @@ bool getSaves(std::string savesPath, std::vector<titleSave>& saves, titleSaveCom
                     WHBLogPrintf("saveID: %s", dirEntry->d_name);
                     WHBLogPrint(path.c_str());
                     WHBLogFreetypeDraw();
-                    //OSSleepTicks(OSMillisecondsToTicks(5000));
+                    //sleep_for(5s);
                     continue;
                 }
 
@@ -171,7 +171,7 @@ bool loadTitles(bool skipDiscs) {
                 WHBLogPrint("Couldn't convert the path or find this folder:");
                 WHBLogPrint(posixPath.c_str());
                 WHBLogFreetypeDraw();
-                //OSSleepTicks(OSSecondsToTicks(2));
+                // sleep_for(2s);
             }
         }
     }
@@ -202,7 +202,7 @@ bool loadTitles(bool skipDiscs) {
                 else {
                     WHBLogPrint("Failed to read meta from game!");
                     WHBLogFreetypeDraw();
-                    OSSleepTicks(OSSecondsToTicks(10));
+                    sleep_for(10s);
                 }
             }
             else if (isUpdate(part.appType)) { // TODO: Log cases where maybe two updates are found (one on disc and one later via the title system)
@@ -216,7 +216,7 @@ bool loadTitles(bool skipDiscs) {
                 else {
                     WHBLogPrint("Failed to read meta from update!");
                     WHBLogFreetypeDraw();
-                    OSSleepTicks(OSSecondsToTicks(10));
+                    sleep_for(10s);
                 }
             }
             else if (isDLC(part.appType)) {
@@ -230,7 +230,7 @@ bool loadTitles(bool skipDiscs) {
                 else {
                     WHBLogPrint("Failed to read meta from dlc!");
                     WHBLogFreetypeDraw();
-                    OSSleepTicks(OSSecondsToTicks(10));
+                    sleep_for(10s);
                 }
             }
         }

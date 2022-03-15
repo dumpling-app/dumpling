@@ -29,19 +29,23 @@ static devoptab_t __wut_mlc_devoptab = {
     .rmdir_r = __wut_fs_rmdir,
 };
 
-int mount_fs(const char *virt_name, int fsaFd, const char *dev_path, const char *mount_path) {
+int mount_fs(const char* virt_name, int fsaFd, const char* dev_path, const char* mount_path) {
     FSStatus rc = FS_STATUS_OK;
 
     if (std::string(virt_name) != "storage_mlc01" || std::string(mount_path) != "/vol/storage_mlc01") {
         return FS_STATUS_ACCESS_ERROR;
     }
 
-    if (__wut_mlc_devoptab.deviceData != NULL && ((devoptab_data_t *)__wut_mlc_devoptab.deviceData)->initialized) {
+    WHBLogPrint("Allow full access to storage_mlc01 via devoptab stub");
+    WHBLogFreetypeDraw();
+    sleep_for(5s);
+
+    if (__wut_mlc_devoptab.deviceData != NULL && ((devoptab_data_t*)__wut_mlc_devoptab.deviceData)->initialized) {
         return rc;
     }
 
-    devoptab_data_t *data = (devoptab_data_t *)memalign(0x20, sizeof(devoptab_data_t));
-    data->client = (FSClient *)memalign(0x20, sizeof(FSClient));
+    devoptab_data_t* data = (devoptab_data_t*)memalign(0x20, sizeof(devoptab_data_t));
+    data->client = (FSClient*)memalign(0x20, sizeof(FSClient));
     data->mount_path = mount_path;
     data->virt_path = virt_name;
     __wut_mlc_devoptab.name = virt_name;
@@ -77,13 +81,13 @@ int mount_fs(const char *virt_name, int fsaFd, const char *dev_path, const char 
     return rc;
 }
 
-int unmount_fs(const char *virt_name) {
+int unmount_fs(const char* virt_name) {
     FSStatus rc = FS_STATUS_OK;
 
-    if (__wut_mlc_devoptab.deviceData == NULL || ((devoptab_data_t *)__wut_mlc_devoptab.deviceData)->initialized) {
+    if (__wut_mlc_devoptab.deviceData == NULL || ((devoptab_data_t*)__wut_mlc_devoptab.deviceData)->initialized) {
         return rc;
     }
-    devoptab_data_t *data = ((devoptab_data_t *)__wut_mlc_devoptab.deviceData);
+    devoptab_data_t* data = ((devoptab_data_t*)__wut_mlc_devoptab.deviceData);
 
     FSDelClient(data->client, FS_ERROR_FLAG_ALL);
     free(data->client);

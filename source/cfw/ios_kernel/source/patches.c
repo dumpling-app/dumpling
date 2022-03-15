@@ -59,8 +59,8 @@ int kernel_syscall_0x81(uint32_t command, uint32_t arg1, uint32_t arg2, uint32_t
 
 void installPatches() {
     // Patch FSA raw access
-	*(volatile uint32_t*)0x1070FAE8 = 0x05812070;
-	*(volatile uint32_t*)0x1070FAEC = 0xEAFFFFF9;
+    *(volatile uint32_t*)0x1070FAE8 = 0x05812070;
+    *(volatile uint32_t*)0x1070FAEC = 0xEAFFFFF9;
 
     // Patch /dev/odm IOCTL 0x06 to return the disc key if in_buf[0] > 2.
     // *(volatile uint32_t*)0x10739948 = 0xe3a0b001; // mov r11, 0x01

@@ -13,16 +13,16 @@
 #define KERNEL_SRC_ADDR(addr) (void*)(addr - 0x05000000 + 0x081C0000)
 
 static inline uint32_t disableMMU() {
-	uint32_t controlRegister = 0;
-	asm volatile("MRC p15, 0, %0, c1, c0, 0" : "=r" (controlRegister));
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (controlRegister & 0xFFFFEFFA));
-	return controlRegister;
+    uint32_t controlRegister = 0;
+    asm volatile("MRC p15, 0, %0, c1, c0, 0" : "=r" (controlRegister));
+    asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (controlRegister & 0xFFFFEFFA));
+    return controlRegister;
 }
 
 static inline void restoreMMU(uint32_t controlRegister) {
-	asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (controlRegister));
+    asm volatile("MCR p15, 0, %0, c1, c0, 0" : : "r" (controlRegister));
 }
 
 static inline void setDomainRegister(unsigned int domain_register) {
-	asm volatile("MCR p15, 0, %0, c3, c0, 0" : : "r" (domain_register));
+    asm volatile("MCR p15, 0, %0, c3, c0, 0" : : "r" (domain_register));
 }

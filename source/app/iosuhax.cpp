@@ -112,7 +112,7 @@ bool openIosuhax() {
 void closeIosuhax() {
     if (fsaHandle > 0) IOSUHAX_FSA_Close(fsaHandle);
     if (iosuhaxHandle > 0) IOSUHAX_Close();
-    OSSleepTicks(OSSecondsToTicks(1));
+    sleep_for(1s);
     fsaHandle = -1;
     iosuhaxHandle = -1;
 }

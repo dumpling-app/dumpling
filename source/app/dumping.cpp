@@ -173,8 +173,8 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogPrint("");
             WHBLogPrintf("Scanning %s... (title %lu/%lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
             WHBLogPrint("");
-            WHBLogPrint("===============================");
-            WHBLogPrint("\uE001 Button = Cancel scanning and just do dumping");
+            WHBLogFreetypeScreenPrintBottom("===============================");
+            WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
             WHBLogFreetypeDraw();
             if (!dumpTitle(queue[i], config, &totalDumpSize) && !cancelledScanning) {
                 showErrorPrompt("Exit to Main Menu");
@@ -204,7 +204,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
             WHBLogPrint("Dumping will start in 10 seconds...");
             WHBLogFreetypeDraw();
-            OSSleepTicks(OSSecondsToTicks(10));
+            sleep_for(10s);
         }
     }
 
@@ -274,10 +274,10 @@ bool dumpDisc() {
             WHBLogPrint("Reinsert the disc if you started Dumpling");
             WHBLogPrint("with a disc already inserted!");
             WHBLogPrint("");
-            WHBLogPrint("===============================");
-            WHBLogPrint("\uE001 Button = Back to Main Menu");
+            WHBLogFreetypeScreenPrintBottom("===============================");
+            WHBLogFreetypeScreenPrintBottom("\uE001 Button = Back to Main Menu");
             WHBLogFreetypeDrawScreen();
-            OSSleepTicks(OSMillisecondsToTicks(100));
+            sleep_for(100ms);
 
             updateInputs();
             if (pressedBack()) {
@@ -322,7 +322,7 @@ bool dumpDisc() {
     WHBLogPrint("");
     WHBLogPrint("Continuing to next step in 5 seconds...");
     WHBLogFreetypeDraw();
-    OSSleepTicks(OSSecondsToTicks(5));
+    sleep_for(5s);
 
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};

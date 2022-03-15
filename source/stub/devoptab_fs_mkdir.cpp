@@ -1,6 +1,6 @@
 #include "devoptab_fs.h"
 
-int __wut_fs_mkdir(struct _reent *r, const char *path, int mode) {
+int32_t __wut_fs_mkdir(struct _reent *r, const char *path, int32_t mode) {
    FSStatus status;
    FSCmdBlock cmd;
    char *fixedPath;

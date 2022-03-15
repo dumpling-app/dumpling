@@ -24,14 +24,14 @@ int main() {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
-        OSSleepTicks(OSSecondsToTicks(5));
+        sleep_for(2s);
         showMainMenu();
     }
 
     WHBLogPrint("");
     WHBLogPrint(iosuhaxCFW == TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
     WHBLogFreetypeDraw();
-    OSSleepTicks(OSSecondsToTicks(5));
+    sleep_for(5s);
 
     // Close application properly
     unmountSD();

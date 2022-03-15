@@ -1,9 +1,9 @@
 #include "common.h"
 
 typedef struct {
-	void* ptr;
-	uint32_t length;
-	uint32_t unknown;
+    void* ptr;
+    uint32_t length;
+    uint32_t unknown;
 } iovec_s;
 
 void* svcAlloc(uint32_t heapHandle, uint32_t size);

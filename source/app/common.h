@@ -51,6 +51,11 @@ extern "C" {
 #include <cctype>
 #include <locale>
 #include <codecvt>
+#include <thread>
+#include <chrono>
+
+using namespace std::chrono_literals;
+using namespace std::this_thread;
 
 // Enums and Structs
 

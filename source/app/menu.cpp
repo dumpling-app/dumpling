@@ -40,13 +40,13 @@ void showMainMenu() {
         WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
         WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
         WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==7 ? '>' : ' ');
-        WHBLogPrint("===============================");
-        WHBLogPrint("\uE000 Button = Select Option");
-        WHBLogPrint("\uE001 Button = Exit Dumpling");
+        WHBLogFreetypeScreenPrintBottom("===============================");
+        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
+        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Exit Dumpling");
         WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
-        OSSleepTicks(OSMillisecondsToTicks(200)); // Cooldown between each button press
+        sleep_for(200ms); // Cooldown between each button press
         updateInputs();
         while(!startSelectedOption) {
             updateInputs();
@@ -71,7 +71,7 @@ void showMainMenu() {
                 }
                 else break;
             }
-            OSSleepTicks(OSMillisecondsToTicks(50));
+            sleep_for(50ms);
         }
     }
 
@@ -112,7 +112,7 @@ void showMainMenu() {
 
     cleanDumpingProcess();
 
-    OSSleepTicks(OSMillisecondsToTicks(500));
+    sleep_for(500ms);
     showMainMenu();
 }
 
@@ -133,10 +133,10 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrint("");
         WHBLogPrint("If none of those steps worked ask for help on the");
         WHBLogPrint("Cemu discord or report the issue on the Dumpling github.");
-        WHBLogPrint("===============================");
-        WHBLogPrint("\uE001 Button = Cancel");
+        WHBLogFreetypeScreenPrintBottom("===============================");
+        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel");
         WHBLogFreetypeDrawScreen();
-        OSSleepTicks(OSMillisecondsToTicks(100));
+        sleep_for(100ms);
         updateInputs();
         if (pressedBack()) {
             return false;
@@ -161,13 +161,13 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         if (showAccountOption) WHBLogPrintf("%c Dump Saves/Account For Default Cemu User: %s", selectedOption==2 ? '>' : ' ', config.dumpAsDefaultUser ? "Yes" : "No");
         WHBLogPrint("");
         WHBLogPrintf("%c Start", selectedOption==(1+showAccountOption+showAccountOption) ? '>' : ' ');
-        WHBLogPrint("===============================");
-        WHBLogPrint("\uE000 Button = Select Option");
-        WHBLogPrint("\uE001 Button = Go Back");
-        WHBLogPrint("\uE07E/\uE081 = Change Value");
+        WHBLogFreetypeScreenPrintBottom("===============================");
+        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
+        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Go Back");
+        WHBLogFreetypeScreenPrintBottom("\uE07E/\uE081 = Change Value");
         WHBLogFreetypeDrawScreen();
 
-        OSSleepTicks(OSMillisecondsToTicks(200)); // Cooldown between each button press
+        sleep_for(200ms); // Cooldown between each button press
         updateInputs();
         while(true) {
             updateInputs();
@@ -233,7 +233,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             if (pressedBack()) {
                 return false;
             }
-            OSSleepTicks(OSMillisecondsToTicks(50));
+            sleep_for(50ms);
         }
     }
 }
@@ -242,7 +242,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 // Helper functions
 
 uint8_t showDialogPrompt(const char* message, const char* button1, const char* button2) {
-    OSSleepTicks(OSMillisecondsToTicks(100));
+    sleep_for(100ms);
     uint8_t selectedButton = 0;
     while(true) {
         WHBLogFreetypeStartScreen();
@@ -259,12 +259,12 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
         WHBLogPrintf("%c %s", selectedButton==0 ? '>' : ' ', button1);
         if (button2 != NULL) WHBLogPrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);
         WHBLogPrint("");
-        WHBLogPrint("===============================");
-        WHBLogPrint("\uE000 Button = Select Option");
+        WHBLogFreetypeScreenPrintBottom("===============================");
+        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
         WHBLogFreetypeDrawScreen();
 
         // Input loop
-        OSSleepTicks(OSMillisecondsToTicks(400));
+        sleep_for(400ms);
         updateInputs();
         while (true) {
             updateInputs();
@@ -284,7 +284,7 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
                 return selectedButton;
             }
 
-            OSSleepTicks(OSMillisecondsToTicks(50));
+            sleep_for(50ms);
         }
     }
 }

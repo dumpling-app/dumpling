@@ -6,4 +6,4 @@
 .type mainKernel, %function
 
 _start:
-	b mainKernel
+    b mainKernel

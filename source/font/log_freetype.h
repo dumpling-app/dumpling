@@ -25,7 +25,8 @@ void WHBLogFreetypeClear();
 void WHBLogFreetypeStartScreen();
 void WHBLogFreetypePrintfAtPosition(uint32_t position, const char *fmt, ...);
 void WHBLogFreetypePrintAtPosition(uint32_t position, const char *line);
-void WHBLogFreetypeGetPosition();
+void WHBLogFreetypeScreenPrintBottom(const char *line);
+uint32_t WHBLogFreetypeGetScreenPosition();
 void WHBLogFreetypeDrawScreen();
 
 // Rendering options

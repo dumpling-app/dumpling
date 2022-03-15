@@ -1,7 +1,7 @@
 #include "devoptab_fs.h"
 
-int __wut_fs_statvfs(struct _reent *r, const char *path, struct statvfs *buf) {
-   //TODO: FSGetFileSystemInfo
-   r->_errno = ENOSYS;
-   return -1;
+int32_t __wut_fs_statvfs(struct _reent* r, const char* path, struct statvfs* buf) {
+    //TODO: FSGetFileSystemInfo
+    r->_errno = ENOSYS;
+    return -1;
 }

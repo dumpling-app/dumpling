@@ -1,5 +1,4 @@
 #include "main.h"
-#include "seeprom.h"
 #include "patches.h"
 
 #include "../../ios_mcp/ios_mcp.h"
