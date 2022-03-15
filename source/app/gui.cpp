@@ -22,10 +22,10 @@ bool initializeGUI() {
         usingHBL = true;
     }
 
+    WHBLogFreetypeInit();
+    
     OSEnableHomeButtonMenu(false);
     ProcUIInit(&saveProcessCallback);
-
-    WHBLogFreetypeInit();
     return true;
 }
 
@@ -33,15 +33,7 @@ void shutdownGUI() {
     WHBLogFreetypeFree();
 }
 
-static OSDynLoad_Module coreinitHandle = nullptr;
-static int32_t (*OSShutdown)(int32_t status);
-
 void exitApplication(bool shutdownOnExit) {
-    // Initialize OSShutdown functions
-    OSDynLoad_Acquire("coreinit.rpl", &coreinitHandle);
-    OSDynLoad_FindExport(coreinitHandle, FALSE, "OSShutdown", (void **)&OSShutdown);
-    OSDynLoad_Release(coreinitHandle);
-
     // Loop through ProcUI messages until it says Dumpling should exit
     ProcUIStatus status;
     while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {

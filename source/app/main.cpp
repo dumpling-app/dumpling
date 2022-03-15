@@ -20,7 +20,7 @@ int main() {
     // Start Dumpling
     showLoadingScreen();
     CFWVersion iosuhaxCFW = testIosuhax();
-    if ((iosuhaxCFW == CFWVersion::TIRAMISU_RPX || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+    if (((iosuhaxCFW == TIRAMISU_RPX || iosuhaxCFW == CEMU) || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
@@ -29,7 +29,7 @@ int main() {
     }
 
     WHBLogPrint("");
-    WHBLogPrint(iosuhaxCFW == CFWVersion::TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
+    WHBLogPrint(iosuhaxCFW == TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
     WHBLogFreetypeDraw();
     OSSleepTicks(OSSecondsToTicks(5));
 
@@ -43,5 +43,5 @@ int main() {
     VPADShutdown();
     shutdownGUI();
 
-    exitApplication(iosuhaxCFW != CFWVersion::TIRAMISU_RPX);
+    exitApplication(iosuhaxCFW != TIRAMISU_RPX);
 }

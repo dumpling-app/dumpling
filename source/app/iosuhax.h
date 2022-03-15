@@ -11,6 +11,7 @@ enum CFWVersion {
     HAXCHI,
     HAXCHI_MCP,
     DUMPLING,
+    CEMU,
 };
 
 struct MCPVersion {

@@ -94,7 +94,7 @@ bool isExternalStorageMounted() {
 
 bool isDiscInserted() {
     return false;
-    // if (getCFWVersion() == CFWVersion::TIRAMISU_RPX) {
+    // if (getCFWVersion() == TIRAMISU_RPX) {
     //     // Get the disc key via Tiramisu's CFW
     //     std::array<uint8_t, 16> discKey = {0};
     //     discKey.fill(0);

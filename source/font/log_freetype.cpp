@@ -218,39 +218,36 @@ void WHBLogFreetypeDraw() {
 
 static uint32_t FreetypeProcCallbackAcquired(void *context) {
     if (freetypeHasForeground) return 0;
+    freetypeHasForeground = true;
 
     MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
     if (frameBufferTVSize) {
-        frameBufferTVFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferTVSize, 4);
+        frameBufferTVFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferTVSize, 0x100);
         frameBufferTVBackPtr = (uint8_t*)frameBufferTVFrontPtr + (1*(1280*720*4));
     }
 
     if (frameBufferDRCSize) {
-        frameBufferDRCFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferDRCSize, 4);
+        frameBufferDRCFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferDRCSize, 0x100);
         frameBufferDRCBackPtr = (uint8_t*)frameBufferDRCFrontPtr + (1*(896*480*4));
     }
 
-    freetypeHasForeground = true;
     OSScreenSetBufferEx(SCREEN_TV, frameBufferTVFrontPtr);
     OSScreenSetBufferEx(SCREEN_DRC, frameBufferDRCFrontPtr);
 
     OSScreenPutPixelEx(SCREEN_TV, 0, 0, 0xABCDEFFF);
-    currTVFrameBuffer = (frameBufferTVFrontPtr[0] == 0xABCDEFFF) ? frameBufferTVFrontPtr : frameBufferTVBackPtr;
     OSScreenPutPixelEx(SCREEN_DRC, 0, 0, 0xABCDEFFF);
-    currDRCFrameBuffer = (frameBufferDRCFrontPtr[0] == 0xABCDEFFF) ? frameBufferDRCFrontPtr : frameBufferDRCBackPtr;
-#ifdef CEMU_STUBS
-    // Cemu doesn't like writing to raw buffers unless you flip the order for some reason
-    OSScreenFlipBuffersEx(SCREEN_TV);
-    OSScreenFlipBuffersEx(SCREEN_DRC);
-#endif
+    DCFlushRange(frameBufferTVFrontPtr, frameBufferTVSize);
+    DCFlushRange(frameBufferDRCFrontPtr, frameBufferDRCSize);
+    currTVFrameBuffer = (((uint32_t*)frameBufferTVFrontPtr)[0] == 0xABCDEFFF) ? frameBufferTVFrontPtr : frameBufferTVBackPtr;
+    currDRCFrameBuffer = (((uint32_t*)frameBufferTVFrontPtr)[0] == 0xABCDEFFF) ? frameBufferDRCFrontPtr : frameBufferDRCBackPtr;
     return 0;
 }
 
 static uint32_t FreetypeProcCallbackReleased(void *context) {
     if (!freetypeHasForeground) return 0;
+    freetypeHasForeground = false;
     MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
     MEMFreeByStateToFrmHeap(heap, CONSOLE_FRAME_HEAP_TAG);
-    freetypeHasForeground = false;
     currTVFrameBuffer = NULL;
     frameBufferTVFrontPtr = NULL;
     frameBufferTVBackPtr = NULL;
@@ -267,8 +264,8 @@ bool WHBLogFreetypeInit() {
     frameBufferDRCSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
 
     FreetypeProcCallbackAcquired(NULL);
-    OSScreenEnableEx(SCREEN_TV, 1);
-    OSScreenEnableEx(SCREEN_DRC, 1);
+    OSScreenEnableEx(SCREEN_TV, TRUE);
+    OSScreenEnableEx(SCREEN_DRC, TRUE);
 
     ProcUIRegisterCallback(PROCUI_CALLBACK_ACQUIRE, FreetypeProcCallbackAcquired, NULL, 100);
     ProcUIRegisterCallback(PROCUI_CALLBACK_RELEASE, FreetypeProcCallbackReleased, NULL, 100);

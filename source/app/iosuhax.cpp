@@ -13,7 +13,7 @@ CFWVersion testIosuhax() {
     if (mcpHandle < IOS_ERROR_OK) return CFWVersion::FAILED;
 
     IOSHandle iosuhaxHandle = IOS_Open("/dev/iosuhax", (IOSOpenMode)0);
-    if (iosuhaxHandle >= IOS_ERROR_OK) {
+    if (iosuhaxHandle == IOS_ERROR_OK) {
         // Close iosuhax
         IOS_Close(iosuhaxHandle);
 
@@ -71,6 +71,14 @@ CFWVersion testIosuhax() {
     }
     free(mcpVersion);
 
+    if (IOS_Open("/dev/nonexistent", (IOSOpenMode)0) == 0x1) {
+        WHBLogPrint("Running under Cemu!");
+        WHBLogPrint("Use stubs to immitate CFW...");
+        IOS_Close(mcpHandle);
+        currCFWVersion = CFWVersion::CEMU;
+        return CFWVersion::CEMU;
+    }
+
     WHBLogPrint("No CFW detected!");
     WHBLogPrint("Run Dumpling CFW for iosuhax access...");
     IOS_Close(mcpHandle);
@@ -82,9 +90,7 @@ bool openIosuhax() {
     WHBLogPrint("Preparing iosuhax...");
     WHBLogFreetypeDraw();
 
-#ifdef CEMU_STUBS
-    return true;
-#endif
+    if (getCFWVersion() == CFWVersion::CEMU) return true;
 
     // Connect to iosuhax
     iosuhaxHandle = IOSUHAX_Open(NULL);

@@ -30,7 +30,11 @@ INCLUDES	:=	include
 CFLAGS	:=	-g -Wall -Os -O2 -ffunction-sections -Wno-narrowing \
 			$(MACHDEP)
 
+ifdef CEMU_STUBS
+CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DCEMU_STUBS `freetype-config --cflags`
+else
 CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ `freetype-config --cflags`
+endif
 
 CXXFLAGS	:= $(CFLAGS) -std=c++20
 
@@ -43,7 +47,6 @@ LIBS	:=	-lstdc++ -lwut -lfat -liosuhax `freetype-config --libs`
 # only include stubs when compiling with cemu target
 #-------------------------------------------------------------------------------
 ifdef CEMU_STUBS
-CFLAGS	+=	-DCEMU_STUBS
 SOURCES	+=	source/stub
 endif
 #-------------------------------------------------------------------------------

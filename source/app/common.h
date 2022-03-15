@@ -23,6 +23,14 @@
 #include <coreinit/title.h>
 #include <coreinit/launch.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+    int32_t OSShutdown(int32_t status);
+#ifdef __cplusplus
+}
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
