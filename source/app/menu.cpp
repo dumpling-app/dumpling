@@ -34,12 +34,13 @@ void showMainMenu() {
         WHBLogPrint("");
         WHBLogPrintf("%c Dump files to use Cemu online", selectedOption==2 ? '>' : ' ');
         WHBLogPrintf("%c Dump Wii U applications (e.g. Friend List, eShop etc.)", selectedOption==3 ? '>' : ' ');
-        //WHBLogPrintf("%c Dump Amiibo Files for Cemu", selectedOption==4 ? '>' : ' ');
+        // WHBLogPrintf("%c Dump Amiibo Files for Cemu", selectedOption==4 ? '>' : ' ');
         WHBLogPrint("");
         WHBLogPrintf("%c Dump only Base files of a game", selectedOption==4 ? '>' : ' ');
         WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
         WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
-        WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==7 ? '>' : ' ');
+        WHBLogPrintf("%c Dump only Save files of a game", selectedOption==7 ? '>' : ' ');
+        WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==8 ? '>' : ' ');
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
         WHBLogFreetypeScreenPrintBottom("\uE001 Button = Exit Dumpling");
@@ -81,30 +82,32 @@ void showMainMenu() {
             dumpDisc();
             break;
         case 1:
-            showTitleList("Select all the games you want to dump!", {.filterTypes = dumpTypeFlags::GAME, .dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE), .queue = true});
+            showTitleList("Select all the games you want to dump!", {.filterTypes = dumpTypeFlags::Game, .dumpTypes = (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves), .queue = true});
             break;
         case 2:
             dumpOnlineFiles();
             break;
         case 3:
-            showTitleList("Select all the system applications you want to dump!", {.filterTypes = dumpTypeFlags::SYSTEM_APP, .dumpTypes = dumpTypeFlags::GAME, .queue = true});
+            showTitleList("Select all the system applications you want to dump!", {.filterTypes = dumpTypeFlags::SystemApp, .dumpTypes = dumpTypeFlags::Game, .queue = true});
             break;
         case 4:
-            showTitleList("Select all the games that you want to dump the base game from!", {.filterTypes = dumpTypeFlags::GAME, .dumpTypes = dumpTypeFlags::GAME, .queue = true});
+            showTitleList("Select all the games that you want to dump the base game from!", {.filterTypes = dumpTypeFlags::Game, .dumpTypes = dumpTypeFlags::Game, .queue = true});
             break;
         case 5:
-            showTitleList("Select all the games that you want to dump the update from!", {.filterTypes = dumpTypeFlags::UPDATE, .dumpTypes = dumpTypeFlags::UPDATE, .queue = true});
+            showTitleList("Select all the games that you want to dump the update from!", {.filterTypes = dumpTypeFlags::Update, .dumpTypes = dumpTypeFlags::Update, .queue = true});
             break;
         case 6:
             showTitleList("Select all the games that you want to dump the DLC from!", {.filterTypes = dumpTypeFlags::DLC, .dumpTypes = dumpTypeFlags::DLC, .queue = true});
             break;
         case 7:
-            dumpMLC();
+            showTitleList("Select all the games that you want to dump the save from!", {.filterTypes = dumpTypeFlags::Saves, .dumpTypes = dumpTypeFlags::Saves, .queue = true});
             break;
         case 8:
+            dumpMLC();
             break;
         case 9:
-            //showTitleList("Select all the games that you want to dump the save from!", {.filterTypes = (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE), .dumpTypes = (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE), .queue = true});
+            break;
+        case 10:
             break;
         default:
             break;
@@ -147,7 +150,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     if (!mountSD()) config.location = dumpLocation::USBFat;
 
     // Detect when multiple online files are getting dumped
-    if (showAccountOption && (config.dumpTypes & dumpTypeFlags::CUSTOM) == dumpTypeFlags::CUSTOM && dirExist((getRootFromLocation(config.location)+"/dumpling/Online Files/mlc01/usr/save/system/act/80000001").c_str())) {
+    if (showAccountOption && HAS_FLAG(config.dumpTypes, dumpTypeFlags::Custom) && dirExist((getRootFromLocation(config.location)+"/dumpling/Online Files/mlc01/usr/save/system/act/80000001").c_str())) {
         config.dumpAsDefaultUser = false;
     }
 
@@ -167,7 +170,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogFreetypeScreenPrintBottom("\uE07E/\uE081 = Change Value");
         WHBLogFreetypeDrawScreen();
 
-        sleep_for(200ms); // Cooldown between each button press
+        sleep_for(125ms); // Cooldown between each button press
         updateInputs();
         while(true) {
             updateInputs();
@@ -227,7 +230,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 break;
             }
             if (pressedOk() && selectedOption == (1+showAccountOption+showAccountOption)) {
-                config.accountID = allUsers[selectedAccount].persistentId;
+                config.accountId = allUsers[selectedAccount].persistentId;
                 return true;
             }
             if (pressedBack()) {

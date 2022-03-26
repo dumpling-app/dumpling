@@ -1,9 +1,6 @@
 #include "gui.h"
 #include "../font/log_freetype.h"
 
-#define NUM_LINES (16)
-#define LINE_LENGTH (128)
-
 static bool usingHBL = false;
 
 #define HBL_TITLE_ID (0x0005000013374842)

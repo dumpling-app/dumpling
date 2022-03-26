@@ -42,7 +42,7 @@ bool loadUsers() {
     return !allUsers.empty();
 }
 
-userAccount* getUserByPersistentID(nn::act::PersistentId id) {
+userAccount* getUserByPersistentId(nn::act::PersistentId id) {
     for (auto& user : allUsers) {
         if (user.persistentId == id) return &user;
     }

@@ -19,8 +19,7 @@ int32_t __wut_fs_dirnext(struct _reent* r, DIR_ITER* dirState, char* filename, s
     FSInitCmdBlock(&cmd);
     dir = (__wut_fs_dir_t*)(dirState->dirStruct);
     memset(&dir->entry_data, 0, sizeof(dir->entry_data));
-    status = FSReadDir(data->client, &cmd, dir->fd, &dir->entry_data,
-        FS_ERROR_FLAG_ALL);
+    status = FSReadDir(data->client, &cmd, dir->fd, &dir->entry_data, FS_ERROR_FLAG_ALL);
     if (status < 0) {
         r->_errno = __wut_fs_translate_error(status);
         return -1;

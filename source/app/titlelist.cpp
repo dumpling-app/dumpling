@@ -5,8 +5,6 @@
 #include "navigation.h"
 #include "gui.h"
 
-#define MAX_LIST_SIZE (9)
-
 struct listEntry {
     bool queued;
     std::reference_wrapper<titleEntry> titleEntryRef;
@@ -17,21 +15,21 @@ void showTitleList(const char* message, dumpingConfig config) {
     std::vector<listEntry> printTitles = {};
     for (auto& title : installedTitles) {
         // Check if the type is available
-        if ((config.filterTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && !title.hasBase) continue;
-        else if ((config.filterTypes & dumpTypeFlags::UPDATE) == dumpTypeFlags::UPDATE && !title.hasUpdate) continue;
-        else if ((config.filterTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC && !title.hasDLC) continue;
-        else if ((config.filterTypes & dumpTypeFlags::SYSTEM_APP) == dumpTypeFlags::SYSTEM_APP && !title.hasBase) continue;
-        else if ((config.filterTypes & (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE)) == (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE) && !title.hasBase) continue;
+        if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !title.base) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update) && !title.update) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::DLC) && !title.dlc) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !title.base) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && !title.saves) continue;
 
         // Differentiate between game and system app
-        if ((config.filterTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && !isBase(title.base.type)) continue;
-        if ((config.filterTypes & dumpTypeFlags::SYSTEM_APP) == dumpTypeFlags::SYSTEM_APP && !isSystemApp(title.base.type)) continue;
+        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !isBase(title.base->type)) continue;
+        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !isSystemApp(title.base->type)) continue;
 
         // Prevent the disc copy from showing in the title lists
-        if ((config.filterTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && title.base.location == titleLocation::Disc) continue;
+        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && title.base->location == titleLocation::Disc) continue;
 
-        // Prevent a game that doesn't have save files from showing
-        if ((config.filterTypes & (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE)) == (dumpTypeFlags::SAVE | dumpTypeFlags::COMMONSAVE) && (title.commonSave.path.empty() && title.saves.empty())) continue;
+        // Prevent a game that doesn't have any contents in their common or any user saves
+        if (title.saves && HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && (!title.saves->commonSave || title.saves->userSaves.empty())) continue;
 
         printTitles.emplace_back(listEntry{
             .queued = false,
@@ -42,7 +40,7 @@ void showTitleList(const char* message, dumpingConfig config) {
     // Create a basic draw/input loop
     size_t selectedEntry = 0;
     size_t listOffset = 0;
-    size_t listSize = MAX_LIST_SIZE;
+    size_t listSize = WHBLogFreetypeScreenSize()-6;
     if (listSize > printTitles.size()) listSize = printTitles.size();
 
     bool startQueueDump = false;
@@ -69,7 +67,7 @@ void showTitleList(const char* message, dumpingConfig config) {
         WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
-        sleep_for(250ms);
+        sleep_for(150ms);
         updateInputs();
         while(!startQueueDump) {
             updateInputs();
@@ -98,7 +96,7 @@ void showTitleList(const char* message, dumpingConfig config) {
                 return;
             }
 
-            sleep_for(50ms);
+            sleep_for(20ms);
         }
     }
 
@@ -115,7 +113,7 @@ void showTitleList(const char* message, dumpingConfig config) {
     }
 
     // Show the option screen and give a last chance to stop the update
-    if (!showOptionMenu(config, (config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE)) return;
+    if (!showOptionMenu(config, HAS_FLAG(config.dumpTypes, dumpTypeFlags::Saves))) return;
 
     if (dumpQueue(queuedTitles, config)) showDialogPrompt("Dumping was successful!", "Continue to Main Menu");
 }

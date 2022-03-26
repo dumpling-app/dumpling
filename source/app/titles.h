@@ -4,9 +4,9 @@ extern std::vector<titleEntry> installedTitles;
 
 bool checkForDiscTitles(int32_t mcpHandle);
 bool loadTitles(bool skipDiscs);
-std::reference_wrapper<titleEntry> getTitleWithName(std::string nameOfTitle);
+std::optional<titleEntry> getTitleWithName(std::string& nameOfTitle);
 
-std::string normalizeTitle(std::string& unsafeTitle);
+std::string normalizeFolderName(std::string& unsafeTitle);
 bool isBase(MCPAppType type);
 bool isUpdate(MCPAppType type);
 bool isDLC(MCPAppType type);

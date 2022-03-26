@@ -10,10 +10,16 @@ CFWVersion testIosuhax() {
     WHBLogFreetypeDraw();
 
     IOSHandle mcpHandle = IOS_Open("/dev/mcp", (IOSOpenMode)0);
-    if (mcpHandle < IOS_ERROR_OK) return CFWVersion::FAILED;
+    if (mcpHandle < IOS_ERROR_OK) {
+        WHBLogPrint("Couldn't open MCP!!");
+        WHBLogFreetypeDraw();
+        sleep_for(5s);
+        return CFWVersion::FAILED;
+    }
 
     IOSHandle iosuhaxHandle = IOS_Open("/dev/iosuhax", (IOSOpenMode)0);
-    if (iosuhaxHandle == IOS_ERROR_OK) {
+    // Cemu triggers this
+    if (iosuhaxHandle >= IOS_ERROR_OK) {
         // Close iosuhax
         IOS_Close(iosuhaxHandle);
 
@@ -30,20 +36,23 @@ CFWVersion testIosuhax() {
             WHBLogPrint("Detected Tiramisu CFW...");
             WHBLogPrint("Will use Tiramisu's iosuhax implementation!");
             currCFWVersion = CFWVersion::TIRAMISU_RPX;
-            return CFWVersion::TIRAMISU_RPX;
         }
         else if (returnValue == 2) {
             WHBLogPrint("Detected MochaLite CFW");
             WHBLogPrint("Attempt to replace it with Dumpling CFW...");
             currCFWVersion = CFWVersion::MOCHA_LITE;
-            return CFWVersion::MOCHA_LITE;
+        }
+        else if (returnValue == 3) {
+            WHBLogPrint("Detected Dumpling CFW");
+            WHBLogPrint("Attempt to replace it with Dumpling CFW...");
+            currCFWVersion = CFWVersion::DUMPLING;
         }
         else {
             WHBLogPrint("Detected Mocha CFW");
             WHBLogPrint("Attempt to replace it with Dumpling CFW...");
             currCFWVersion = CFWVersion::MOCHA_NORMAL;
-            return CFWVersion::MOCHA_NORMAL;
         }
+        return currCFWVersion;
     }
 
     // Test if haxchi FW is used with MCP hook

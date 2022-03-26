@@ -35,6 +35,11 @@
 # Visual Studio Code
 .vscode
 
+# Wii U Debugging Tools
+App Sender.jar
+config.properties
+*.lnk
+
 
 # Project specific
 /build

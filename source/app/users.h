@@ -3,4 +3,4 @@
 extern std::vector<userAccount> allUsers;
 
 bool loadUsers();
-userAccount* getUserByPersistentID(nn::act::PersistentId id);
+userAccount* getUserByPersistentId(nn::act::PersistentId id);

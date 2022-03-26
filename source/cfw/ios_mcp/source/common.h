@@ -86,8 +86,7 @@ typedef struct __attribute__((__packed__)) {
    uint8_t unknown[0x30];
 } FSStat;
 
-typedef struct
-{
+typedef struct {
    FSStat info;
    char name[256];
 } FSDirectoryEntry;

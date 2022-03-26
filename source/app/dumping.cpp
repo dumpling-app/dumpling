@@ -16,6 +16,70 @@
 static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
 
+bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, uint64_t* totalBytes) {
+    if (copyBuffer == nullptr) {
+        // Allocate buffer to copy bytes between
+        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        if (copyBuffer == nullptr) {
+            setErrorPrompt("Couldn't allocate the memory to copy files!");
+            return false;
+        }
+    }
+
+    // Create parent folder if doesn't exist yet
+    std::filesystem::path filePath(destPath);
+    createPath(filePath.parent_path().c_str());
+
+    // If totalBytes is set it means that it's scanning for file sizes of openable files
+    if (totalBytes != nullptr) {
+        *totalBytes += bufferSize;
+
+        // Check whether user has cancelled scanning
+        updateInputs();
+        if (pressedBack()) {
+            *totalBytes = 0;
+            cancelledScanning = true;
+            return false;
+        }
+        return true;
+    }
+
+    // Open the destination file
+    FILE* writeHandle = fopen(destPath.c_str(), "wb");
+    if (writeHandle == nullptr) {
+        showDialogPrompt((std::string("Failed to copy file from memory to:")+destPath).c_str(), "Next");
+        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
+        return false;
+    }
+
+    // Loop over input to copy
+    size_t bytesRead = 0;
+    size_t bytesWritten = 0;
+    setFile(filePath.filename().c_str(), bufferSize);
+    
+    bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
+    // Check if the same amounts of bytes are written
+    if (bytesWritten < bytesRead) {
+        setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
+        fclose(writeHandle);
+        return false;
+    }
+    setFileProgress(bytesWritten);
+    showCurrentProgress();
+    // Check whether the inputs break
+    updateInputs();
+    if (pressedBack()) {
+        uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+        if (selectedChoice == 0) {
+            setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+            fclose(writeHandle);
+            return false;
+        }
+    }
+    fclose(writeHandle);
+    return true;
+}
+
 bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Check if file is an actual file first
     struct stat fileStat;
@@ -105,11 +169,11 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     if (totalBytes == nullptr) createPath(destPath.c_str());
 
     // Loop over directory contents
-    struct dirent *dirEntry;
-    while((dirEntry = readdir(dirHandle)) != nullptr) {
+    struct dirent* dirEntry;
+    while ((dirEntry = readdir(dirHandle)) != nullptr) {
         if (dirEntry->d_type == DT_REG) {
             // Copy file
-            if (!copyFile(dirEntry->d_name, srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
+            if (!copyFile(dirEntry->d_name, srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
                 closedir(dirHandle);
                 return false;
             }
@@ -119,39 +183,44 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
             // Copy all the files in this subdirectory
-            if (!copyFolder(srcPath+"/"+dirEntry->d_name, destPath+"/"+dirEntry->d_name, totalBytes)) {
+            if (!copyFolder(srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
                 closedir(dirHandle);
                 return false;
             }
         }
     }
-    
+
     closedir(dirHandle);
     return true;
 }
 
 bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
-    if ((config.dumpTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
+    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Game) && entry.base) {
+        if (!copyFolder(entry.base->path, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes)) return false;
     }
-    if ((config.dumpTypes & dumpTypeFlags::UPDATE) == dumpTypeFlags::UPDATE && entry.hasUpdate) {
-        if (!copyFolder(entry.update.path, getRootFromLocation(config.location)+"/dumpling"+entry.update.outputPath, totalBytes)) return false;
+    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Update) && entry.update) {
+        if (!copyFolder(entry.update->path, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes)) return false;
     }
-    if ((config.dumpTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC && entry.hasDLC) {
-        if (!copyFolder(entry.dlc.path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc.outputPath, totalBytes)) return false;
+    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::DLC) && entry.dlc) {
+        if (!copyFolder(entry.dlc->path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes)) return false;
     }
-    if ((config.dumpTypes & dumpTypeFlags::COMMONSAVE) == dumpTypeFlags::COMMONSAVE && !entry.commonSave.path.empty()) {
-        if (!copyFolder(entry.commonSave.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/common", totalBytes)) return false;
-    }
-    if ((config.dumpTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE && !entry.saves.empty()) {
-        for (auto& save : entry.saves) {
-            if (save.account->persistentId == config.accountID) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.normalizedTitle+"/"+(config.dumpAsDefaultUser?"80000001":save.account->persistentIdString), totalBytes)) return false;
+    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Saves) && entry.saves && (entry.saves->commonSave || !entry.saves->userSaves.empty())) {
+        for (auto& save : entry.saves->userSaves) {
+            if (save.userId == config.accountId) {
+                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/"+(config.dumpAsDefaultUser?"80000001":getUserByPersistentId(save.userId)->persistentIdString), totalBytes)) return false;
             }
         }
+        if (entry.saves->commonSave) {
+            if (!copyFolder(entry.saves->commonSave->path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/common", totalBytes)) return false;
+        }
     }
-    if ((config.dumpTypes & dumpTypeFlags::CUSTOM) == dumpTypeFlags::CUSTOM && entry.hasBase) {
-        if (!copyFolder(entry.base.path, getRootFromLocation(config.location)+"/dumpling"+entry.base.outputPath, totalBytes)) return false;
+    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Custom) && entry.custom) {
+        if (entry.custom->inputPath) {
+            if (!copyFolder(*entry.custom->inputPath, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
+        }
+        if (entry.custom->inputBuffer) {
+            if (!copyMemory(entry.custom->inputBuffer->first, entry.custom->inputBuffer->second, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
+        }
     }
     return true;
 }
@@ -214,11 +283,12 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         std::string status("Currently dumping ");
         status += queue[i].get().shortTitle;
         if (queue.size() > 1) {
-            if ((config.filterTypes & dumpTypeFlags::GAME) == dumpTypeFlags::GAME) status += " (game ";
-            else if ((config.filterTypes & dumpTypeFlags::UPDATE) == dumpTypeFlags::UPDATE) status += " (update ";
-            else if ((config.filterTypes & dumpTypeFlags::DLC) == dumpTypeFlags::DLC) status += " (DLC ";
-            else if ((config.filterTypes & dumpTypeFlags::SAVE) == dumpTypeFlags::SAVE) status += " (save ";
-            else if ((config.filterTypes & dumpTypeFlags::SYSTEM_APP) == dumpTypeFlags::SYSTEM_APP) status += " (app ";
+            if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game)) status += " (game ";
+            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update)) status += " (update ";
+            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::DLC)) status += " (DLC ";
+            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves)) status += " (save ";
+            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp)) status += " (app ";
+            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Custom)) status += " (custom ";
             else status += " (title ";
             status += std::to_string(i+1);
             status += "/";
@@ -238,10 +308,10 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 }
 
 void dumpMLC() {
-    dumpingConfig mlcConfig = {.dumpTypes = dumpTypeFlags::CUSTOM};
-    titleEntry mlcEntry{.hasBase = true, .base = {.path = "storage_mlc01:/", .outputPath = "/MLC Dump"}};
+    dumpingConfig mlcConfig = {.dumpTypes = dumpTypeFlags::Custom};
+    titleEntry mlcEntry{.shortTitle = "MLC Dump", .custom = customPart{.inputPath = "storage_mlc01:/", .outputPath = "/MLC Dump"}};
     
-    uint8_t selectedChoice = showDialogPrompt("Dumping the MLC can take up to 6 hours!\nMake sure that you have enough space available.", "Proceed", "Cancel");
+    uint8_t selectedChoice = showDialogPrompt("Dumping the MLC can take 6-20 hours depending on it's contents!\nMake sure that you have enough space available.", "Proceed", "Cancel");
     if (selectedChoice == 1) return;
 
     // Show the option screen
@@ -310,7 +380,7 @@ bool dumpDisc() {
     // Make a queue from game disc
     std::vector<std::reference_wrapper<titleEntry>> queue;
     for (auto& title : installedTitles) {
-        if (title.hasBase && title.base.location == titleLocation::Disc) {
+        if (title.base && title.base->location == titleLocation::Disc) {
             queue.emplace_back(std::ref(title));
             break;
         }
@@ -318,74 +388,67 @@ bool dumpDisc() {
 
     WHBLogFreetypeClear();
     WHBLogPrint("Currently inserted disc is:");
-    WHBLogPrint(queue.begin()->get().normalizedTitle.c_str());
+    WHBLogPrint(queue.begin()->get().shortTitle.c_str());
     WHBLogPrint("");
     WHBLogPrint("Continuing to next step in 5 seconds...");
     WHBLogFreetypeDraw();
     sleep_for(5s);
 
     // Dump queue
-    dumpingConfig config = {.dumpTypes = (dumpTypeFlags::GAME | dumpTypeFlags::UPDATE | dumpTypeFlags::DLC | dumpTypeFlags::SAVE)};
+    dumpingConfig config = {.dumpTypes = (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves)};
     if (!showOptionMenu(config, true)) return true;
     return dumpQueue(queue, config);
 }
 
 void dumpOnlineFiles() {
     std::vector<std::reference_wrapper<titleEntry>> queue;
-    dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::CUSTOM)};
-    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .hasBase = true, .base = {.path = "storage_mlc01:/usr/save/system/nim/ec/", .outputPath = "/Online Files/mlc01/usr/save/system/nim/ec"}};
-    titleEntry miiEntry{.shortTitle = "Mii Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10056000/content"}};
-    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
-    titleEntry scertsEntry{.shortTitle = "scerts Files", .hasBase = true, .base = {.path = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/mlc01/sys/title/0005001b/10054000/content/scerts"}};
-    titleEntry accountsEntry{.shortTitle = "Selected Account", .hasBase = true, .base = {.path = "", .outputPath = "/Online Files/mlc01/usr/save/system/act/"}};
+    dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::Custom)};
 
     // Loop until a valid account has been chosen
     std::string accountIdStr = "";
+    std::string accountNameStr = "";
     while(accountIdStr.empty()) {
         if (!showOptionMenu(onlineConfig, true)) return;
         
         // Check if the selected user has 
         for (auto& user : allUsers) {
-            if (user.persistentId == onlineConfig.accountID) {
+            if (user.persistentId == onlineConfig.accountId) {
                 if (!user.networkAccount) showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
                 else if (!user.passwordCached) showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
-                else accountIdStr = user.persistentIdString;
+                else {
+                    accountIdStr = user.persistentIdString;
+                    accountNameStr = normalizeFolderName(user.miiName);
+                    trim(accountNameStr);
+                    if (accountNameStr.empty()) accountNameStr = "Non-Ascii User Name ["+accountIdStr+"]";
+                }
             }
         }
     }
 
-    accountsEntry.base.path = "storage_mlc01:/usr/save/system/act/" + accountIdStr;
-    accountsEntry.base.outputPath += onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr;
+    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .custom = customPart{.inputPath = "storage_mlc01:/usr/save/system/nim/ec/", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/nim/ec"}};
+    titleEntry miiEntry{.shortTitle = "Mii Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10056000/content"}};
+    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
+    titleEntry scertsEntry{.shortTitle = "scerts Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/scerts"}};
+    titleEntry accountsEntry{.shortTitle = "Selected Account", .custom = customPart{.inputPath = "storage_mlc01:/usr/save/system/act/"+accountIdStr, .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/act/"+(onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr)}};
 
     // Dump otp.bin and seeprom.bin
-    createPath(std::string(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/").c_str());
-
-    std::ofstream otpFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/otp.bin", std::ofstream::out | std::ofstream::binary);
-    std::ofstream seepromFile(getRootFromLocation(onlineConfig.location)+"/dumpling/Online Files/seeprom.bin", std::ofstream::out | std::ofstream::binary);
-
-    if (otpFile.fail() || seepromFile.fail()) {
-        showDialogPrompt("Failed to create the seeprom.bin and otp.bin...", "OK");
-    }
-
     std::vector<uint8_t> otpBuffer(1024);
     std::vector<uint8_t> seepromBuffer(512);
 
     IOSUHAX_read_otp(otpBuffer.data(), otpBuffer.size());
     IOSUHAX_read_seeprom(seepromBuffer.data(), 0, seepromBuffer.size());
 
-    otpFile.write((char*)otpBuffer.data(), 1024);
-    seepromFile.write((char*)seepromBuffer.data(), 512);
+    titleEntry seepromFile{.shortTitle = "seeprom.bin File", .custom = customPart{.inputBuffer = std::pair(seepromBuffer.data(), seepromBuffer.size()), .outputPath = "/Online Files/seeprom.bin"}};
+    titleEntry otpFile{.shortTitle = "otp.bin File", .custom = customPart{.inputBuffer = std::pair(otpBuffer.data(), otpBuffer.size()), .outputPath = "/Online Files/otp.bin"}};
 
-    if (otpFile.fail() || seepromFile.fail()) {
-        showDialogPrompt("Failed to write the seeprom.bin and otp.bin.\nMake sure that you've got space left.", "OK");
-    }
-
-    // Add (custom) title entries to queue
+    // Add custom title entries to queue
     queue.emplace_back(std::ref(ecAccountInfoEntry));
     queue.emplace_back(std::ref(miiEntry));
     queue.emplace_back(std::ref(ccertsEntry));
     queue.emplace_back(std::ref(scertsEntry));
     queue.emplace_back(std::ref(accountsEntry));
+    queue.emplace_back(std::ref(seepromFile));
+    queue.emplace_back(std::ref(otpFile));
 
     if (dumpQueue(queue, onlineConfig)) showDialogPrompt("Successfully dumped all of the online files!", "OK");
     else showDialogPrompt("Failed to dump the online files...", "OK");

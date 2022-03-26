@@ -4,7 +4,7 @@
 #include FT_FREETYPE_H
 
 #define CONSOLE_FRAME_HEAP_TAG (0x0002B2B)
-#define NUM_LINES (16)
+#define NUM_LINES (18)
 #define LINE_LENGTH (128)
 
 char queueBuffer[NUM_LINES][LINE_LENGTH];
@@ -347,6 +347,10 @@ void WHBLogFreetypeScreenPrintBottom(const char *line) {
     memcpy(queueBuffer[NUM_LINES - 1], line, length);
     queueBuffer[NUM_LINES - 1][length] = '\0';
     if (bottomLines < NUM_LINES-1) bottomLines++;
+}
+
+uint32_t WHBLogFreetypeScreenSize() {
+    return NUM_LINES;
 }
 
 void WHBLogFreetypePrint(const char *line) {

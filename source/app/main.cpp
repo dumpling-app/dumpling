@@ -13,6 +13,7 @@ int main() {
     initializeGUI();
     FSInit();
     nn::act::Initialize();
+    ACPInitialize();
     initializeInputs();
 
     IMDisableAPD(); // Disable auto-shutdown feature
@@ -38,6 +39,7 @@ int main() {
     unmountUSBDrive();
     unmountSystemDrives();
     closeIosuhax();
+    ACPFinalize();
     nn::act::Finalize();
     FSShutdown();
     VPADShutdown();

@@ -92,6 +92,13 @@ bool isExternalStorageMounted() {
     return systemUSBMounted;
 }
 
+bool testStorage(titleLocation location) {
+    if (location == titleLocation::Nand) return dirExist("storage_mlc01:/usr/");
+    if (location == titleLocation::USB) return dirExist("storage_usb01:/usr/");
+    //if (location == titleLocation::Disc) return dirExist("storage_odd01:/usr/");
+    return false;
+}
+
 bool isDiscInserted() {
     return false;
     // if (getCFWVersion() == TIRAMISU_RPX) {
@@ -264,9 +271,16 @@ dumpLocation getLocationFromRoot(std::string rootPath) {
     return dumpLocation::Unknown;
 }
 
-titleLocation deviceToLocation(char* device) {
-    if (memcmp(device, "odd", 3) == 0) return titleLocation::Disc;
-    if (memcmp(device, "usb", 3) == 0) return titleLocation::USB;
+titleLocation deviceToLocation(const char* device) {
     if (memcmp(device, "mlc", 3) == 0) return titleLocation::Nand;
+    if (memcmp(device, "usb", 3) == 0) return titleLocation::USB;
+    if (memcmp(device, "odd", 3) == 0) return titleLocation::Disc;
+    return titleLocation::Unknown;
+}
+
+titleLocation pathToLocation(const char* device) {
+    if (memcmp(device, "storage_mlc01", strlen("storage_mlc01")) == 0) return titleLocation::Nand;
+    if (memcmp(device, "storage_usb01", strlen("storage_usb01")) == 0) return titleLocation::USB;
+    if (memcmp(device, "storage_odd0", strlen("storage_odd0")) == 0) return titleLocation::Disc;
     return titleLocation::Unknown;
 }
