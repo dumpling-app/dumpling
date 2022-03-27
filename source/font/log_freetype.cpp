@@ -353,7 +353,7 @@ uint32_t WHBLogFreetypeScreenSize() {
     return NUM_LINES;
 }
 
-void WHBLogFreetypePrint(const char *line) {
+void WHBLogFreetypePrint(const char* line) {
     FreetypeAddLine(line);
 }
 
@@ -371,9 +371,7 @@ bool WHBLogFreetypeSetFontSize(uint8_t width, uint8_t height) {
     FT_UInt glyph_index = FT_Get_Char_Index(fontFace, '>');
 
     if (FT_Load_Glyph(fontFace, glyph_index, FT_LOAD_DEFAULT)) return true;
-
     if (FT_Render_Glyph(fontFace->glyph, FT_RENDER_MODE_NORMAL)) return true;
-
     cursorSpaceWidth = fontFace->glyph->advance.x;
     return false;
 }

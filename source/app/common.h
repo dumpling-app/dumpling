@@ -62,6 +62,7 @@ extern "C" {
 #include <filesystem>
 
 using namespace std::chrono_literals;
+using namespace std::string_literals;
 using namespace std::this_thread;
 
 
@@ -87,13 +88,13 @@ typename std::enable_if<enable_bitmask_operators<E>::enable, E>::type operator& 
 // String trim functions
 
 static inline void ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char8_t ch) {
         return !std::isspace(ch);
     }));
 }
 
 static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](char8_t ch) {
         return !std::isspace(ch);
     }).base(), s.end());
 }
@@ -101,6 +102,14 @@ static inline void rtrim(std::string &s) {
 static inline void trim(std::string &s) {
     ltrim(s);
     rtrim(s);
+}
+
+static inline void replaceAll(std::string& str, const std::string& oldSubstr, const std::string& newSubstr) {
+    size_t pos = 0;
+    while ((pos = str.find(oldSubstr, pos)) != std::string::npos) {
+        str.replace(pos, oldSubstr.length(), newSubstr);
+        pos += newSubstr.length();
+    }
 }
 
 // Enums and Structs

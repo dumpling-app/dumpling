@@ -29,7 +29,7 @@ void showTitleList(const char* message, dumpingConfig config) {
         if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && title.base->location == titleLocation::Disc) continue;
 
         // Prevent a game that doesn't have any contents in their common or any user saves
-        if (title.saves && HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && (!title.saves->commonSave || title.saves->userSaves.empty())) continue;
+        if (title.saves && HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && (!title.saves->commonSave && title.saves->userSaves.empty())) continue;
 
         printTitles.emplace_back(listEntry{
             .queued = false,
@@ -58,7 +58,7 @@ void showTitleList(const char* message, dumpingConfig config) {
 
         // Print range of titles
         for (size_t i=listOffset; i<listOffset+listSize; i++) {
-            WHBLogPrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "[X]": "[ ]") : "", printTitles[i].titleEntryRef.get().shortTitle.c_str());
+            WHBLogPrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "\u25A0": "\u25A1") : "", printTitles[i].titleEntryRef.get().shortTitle.c_str());
         }
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE045 Button = Start Dumping");
@@ -67,7 +67,7 @@ void showTitleList(const char* message, dumpingConfig config) {
         WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
-        sleep_for(150ms);
+        sleep_for(200ms);
         updateInputs();
         while(!startQueueDump) {
             updateInputs();

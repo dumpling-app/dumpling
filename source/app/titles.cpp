@@ -31,11 +31,13 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
             title.shortTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             trim(title.shortTitle);
+            decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
         else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
             shortTitleJapan = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             trim(shortTitleJapan);
+            decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
         else if (!foundProductCode && line.find("product_code") != std::string::npos) {
@@ -89,11 +91,13 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
             title.shortTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             trim(title.shortTitle);
+            decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
         else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
             shortTitleJapan = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
             trim(shortTitleJapan);
+            decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
         else if (!foundProductCode && line.find("product_code") != std::string::npos) {
@@ -186,7 +190,7 @@ bool getTitleList(bool skipDiscs) {
 }
 
 bool getSaveList(std::string saveDirPath) {
-    WHBLogPrintf("Loading saves from %s...", saveDirPath.c_str());
+    WHBLogPrintf("Loading saves...", saveDirPath.c_str());
     WHBLogFreetypeDraw();
 
     // Loop over high title id folders e.g. storage_mlc01:/usr/save/[iterated]
@@ -235,6 +239,9 @@ bool getSaveList(std::string saveDirPath) {
                 struct dirent* contentDirEntry;
                 while ((contentDirEntry = readdir(contentDirHandle)) != nullptr) {
                     if (contentDirEntry->d_type == DT_DIR || contentDirEntry->d_type == DT_REG) {
+                        // WHBLogPrint((userDirPath + contentDirEntry->d_name).c_str());
+                        // WHBLogFreetypeDraw();
+                        // sleep_for(500ms);
                         hasContents = true;
                         break;
                     }
@@ -497,6 +504,14 @@ std::optional<titleEntry> getTitleWithName(std::string& nameOfTitle) {
 
 // Helper functions
 std::array nonValidFilenames{'\0', '\\', '/', ':', '*', '?', '\"', '<', '>', '|', '.', '%', '$', '#'};
+
+void decodeXMLEscapeLine(std::string& xmlString) {
+    replaceAll(xmlString, "&quot;", "\"");
+    replaceAll(xmlString, "&apos;", "'");
+    replaceAll(xmlString, "&lt;", "<");
+    replaceAll(xmlString, "&gt;", ">");
+    replaceAll(xmlString, "&amp;", "&");
+}
 
 std::string normalizeFolderName(std::string& unsafeTitle) {
     std::string retTitle = "";

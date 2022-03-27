@@ -52,28 +52,33 @@ bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, u
         return false;
     }
 
-    // Loop over input to copy
-    size_t bytesRead = 0;
-    size_t bytesWritten = 0;
     setFile(filePath.filename().c_str(), bufferSize);
-    
-    bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
-    // Check if the same amounts of bytes are written
-    if (bytesWritten < bytesRead) {
-        setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
-        fclose(writeHandle);
-        return false;
-    }
-    setFileProgress(bytesWritten);
-    showCurrentProgress();
-    // Check whether the inputs break
-    updateInputs();
-    if (pressedBack()) {
-        uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-        if (selectedChoice == 0) {
-            setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+
+    // Copy source buffer into aligned copy buffer, then write it in parts
+    // todo: Check if this is done properly regarding edges of source and copy buffer sizes
+    for (uint64_t i=0; i<bufferSize; i+=BUFFER_SIZE) {
+        size_t bytesToWrite = std::min(bufferSize-i, (uint64_t)BUFFER_SIZE);
+        memcpy(copyBuffer, srcBuffer, bytesToWrite);
+        
+        size_t bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesToWrite, writeHandle);
+
+        // Check if the same amounts of bytes are written
+        if (bytesWritten != bytesToWrite) {
+            setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
             fclose(writeHandle);
             return false;
+        }
+        setFileProgress(bytesWritten);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            if (selectedChoice == 0) {
+                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+                fclose(writeHandle);
+                return false;
+            }
         }
     }
     fclose(writeHandle);
@@ -240,7 +245,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogPrint("This might take a few minutes if you selected a lot of titles...");
             WHBLogPrint("Your Wii U isn't frozen in that case!");
             WHBLogPrint("");
-            WHBLogPrintf("Scanning %s... (title %lu/%lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
+            WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
             WHBLogPrint("");
             WHBLogFreetypeScreenPrintBottom("===============================");
             WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
