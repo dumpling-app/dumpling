@@ -48,5 +48,5 @@ For an always up-to-date guide to dump your games for Cemu using Dumpling, see [
 - smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
 
 ## License
-All the Dumpling code is [https://github.com/emiyl/dumpling/blob/master/LICENSE.md](MIT Licensed) except the [/source/stub](/source/stub) folder which uses wut's [GNU GPL v2.0 license](https://github.com/devkitPro/wut/blob/master/LICENSE.md).
+All the Dumpling code is [MIT Licensed](https://github.com/emiyl/dumpling/blob/master/LICENSE.md) except the [/source/stub](/source/stub) folder which uses wut's [GNU GPL v2.0 license](https://github.com/devkitPro/wut/blob/master/LICENSE.md).
 Releases of Dumpling will never be created with this code included since it's only used for personal debugging builds.
