@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "../../shared.h"
+
 #define ARM_B(addr, func)   (0xEA000000 | ((((uint32_t)(func) - (uint32_t)(addr) - 8) >> 2) & 0x00FFFFFF))
 #define ARM_BL(addr, func)  (0xEB000000 | ((((uint32_t)(func) - (uint32_t)(addr) - 8) >> 2) & 0x00FFFFFF))
 #define THUMB_B(addr, func)     ((0xE000 | ((((uint32_t)(func) - (uint32_t)(addr) - 4) >> 1) & 0x7FF)))

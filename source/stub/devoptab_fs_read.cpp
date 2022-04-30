@@ -29,8 +29,7 @@ ssize_t __wut_fs_read(struct _reent* r, void* fd, char* ptr, size_t len) {
     }
 
     if ((((uintptr_t)ptr) & 0x3F) == 0) {
-        status = FSReadFile(data->client, &cmd, (uint8_t*)ptr, 1,
-            len, file->fd, 0, FS_ERROR_FLAG_ALL);
+        status = FSReadFile(data->client, &cmd, (uint8_t*)ptr, 1, len, file->fd, 0, FS_ERROR_FLAG_ALL);
         if (status > 0) {
             bytesRead = (uint32_t)status;
             file->offset += bytesRead;

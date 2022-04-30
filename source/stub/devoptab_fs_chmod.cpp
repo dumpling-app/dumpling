@@ -21,7 +21,7 @@ int32_t __wut_fs_chmod(struct _reent* r, const char* path, mode_t mode) {
     }
 
     FSInitCmdBlock(&cmd);
-    status = FSChangeMode(data->client, &cmd, fixedPath, (FSMode)mode, FS_ERROR_FLAG_ALL);
+    status = FSChangeMode(data->client, &cmd, fixedPath, __wut_fs_convert_mode(mode), (FSMode)0x777, FS_ERROR_FLAG_ALL);
     free(fixedPath);
     if (status < 0) {
         r->_errno = __wut_fs_translate_error(status);

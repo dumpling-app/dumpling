@@ -15,7 +15,7 @@ void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
     WHBLogFreetypeSetFontSize(22, 0);
-    WHBLogPrint("Dumpling V2.3.0");
+    WHBLogPrint("Dumpling V2.4.0");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
@@ -34,7 +34,7 @@ void showMainMenu() {
         WHBLogPrint("");
         WHBLogPrintf("%c Dump files to use Cemu online", selectedOption==2 ? '>' : ' ');
         WHBLogPrintf("%c Dump Wii U applications (e.g. Friend List, eShop etc.)", selectedOption==3 ? '>' : ' ');
-        // WHBLogPrintf("%c Dump Amiibo Files for Cemu", selectedOption==4 ? '>' : ' ');
+        // WHBLogPrintf("%c Dump Amiibo Files", selectedOption==4 ? '>' : ' ');
         WHBLogPrint("");
         WHBLogPrintf("%c Dump only Base files of a game", selectedOption==4 ? '>' : ' ');
         WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
@@ -154,6 +154,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         config.dumpAsDefaultUser = false;
     }
 
+    sleep_for(1s); // Prevent people from accidentally skipping past this menu due to a kept-in button press
     while(true) {
         // Print option menu text
         WHBLogFreetypeStartScreen();
@@ -162,25 +163,30 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogPrintf("%c Dump destination: %s", selectedOption==0 ? '>' : ' ', config.location == dumpLocation::SDFat ? "SD Card" : "USB Drive");
         if (showAccountOption) WHBLogPrintf("%c Account: %s", selectedOption==1 ? '>' : ' ', allUsers[selectedAccount].miiName.c_str());
         if (showAccountOption) WHBLogPrintf("%c Dump Saves/Account For Default Cemu User: %s", selectedOption==2 ? '>' : ' ', config.dumpAsDefaultUser ? "Yes" : "No");
+        WHBLogPrintf("%c Ignore Copy Errors (CAUSES INCOMPLETE DUMPS): %s", selectedOption==3 ? '>' : ' ', config.ignoreCopyErrors ? "Yes" : "No");
         WHBLogPrint("");
-        WHBLogPrintf("%c Start", selectedOption==(1+showAccountOption+showAccountOption) ? '>' : ' ');
+        WHBLogPrintf("%c [Confirm]", selectedOption==4 ? '>' : ' ');
+        WHBLogPrintf("%c [Cancel]", selectedOption==5 ? '>' : ' ');
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
-        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Go Back");
+        WHBLogFreetypeScreenPrintBottom("\uE045 Button = Confirm");
+        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel");
         WHBLogFreetypeScreenPrintBottom("\uE07E/\uE081 = Change Value");
         WHBLogFreetypeDrawScreen();
 
-        sleep_for(125ms); // Cooldown between each button press
+        sleep_for(200ms); // Cooldown between each button press
         updateInputs();
         while(true) {
             updateInputs();
             // Check each button state
             if (navigatedUp() && selectedOption > 0) {
                 selectedOption--;
+                while ((selectedOption == 1 || selectedOption == 2) && !showAccountOption) selectedOption--;
                 break;
             }
-            if (navigatedDown() && selectedOption < (1+showAccountOption+showAccountOption)) {
+            else if (navigatedDown() && selectedOption < 5) {
                 selectedOption++;
+                while ((selectedOption == 1 || selectedOption == 2) && !showAccountOption) selectedOption++;
                 break;
             }
             if (navigatedLeft()) {
@@ -198,11 +204,14 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                     }
                     else showDialogPrompt("Couldn't detect an useable FAT32 USB stick.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
-                if (selectedOption == 1 && showAccountOption && selectedAccount > 0) {
+                if (selectedOption == 1 && selectedAccount > 0) {
                     selectedAccount--;
                 }
-                if (selectedOption == 2 && showAccountOption) {
+                if (selectedOption == 2) {
                     config.dumpAsDefaultUser = !config.dumpAsDefaultUser;
+                }
+                if (selectedOption == 3) {
+                    config.ignoreCopyErrors = !config.ignoreCopyErrors;
                 }
                 break;
             }
@@ -221,19 +230,22 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                     }
                     else showDialogPrompt("Couldn't detect an useable FAT32 USB stick.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
-                if (selectedOption == 1 && showAccountOption && selectedAccount < allUsers.size()-1) {
+                if (selectedOption == 1 && selectedAccount < allUsers.size()-1) {
                     selectedAccount++;
                 }
-                if (selectedOption == 2 && showAccountOption) {
+                if (selectedOption == 2) {
                     config.dumpAsDefaultUser = !config.dumpAsDefaultUser;
+                }
+                if (selectedOption == 3) {
+                    config.ignoreCopyErrors = !config.ignoreCopyErrors;
                 }
                 break;
             }
-            if (pressedOk() && selectedOption == (1+showAccountOption+showAccountOption)) {
+            if (pressedStart() || (pressedOk() && selectedOption == 4)) {
                 config.accountId = allUsers[selectedAccount].persistentId;
                 return true;
             }
-            if (pressedBack()) {
+            if (pressedBack() || (pressedOk() && selectedOption == 5)) {
                 return false;
             }
             sleep_for(50ms);
@@ -303,6 +315,7 @@ void setErrorPrompt(const char* message) {
 
 void showErrorPrompt(const char* button) {
     std::string promptMessage("An error occured:\n");
-    promptMessage += errorMessage;
+    if (errorMessage) promptMessage += errorMessage;
+    else promptMessage += "No error was specified!";
     showDialogPrompt(promptMessage.c_str(), button);
 }

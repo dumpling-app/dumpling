@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
+
+#include "../../shared.h"
 
 typedef struct __attribute__((packed)) {
     uint32_t command;
@@ -54,39 +57,42 @@ typedef struct __attribute__((packed)) {
     uint32_t virt1;
 } IPCMessage;
 
-typedef enum FSMode {
-   FS_MODE_READ_OWNER                   = 0x400,
-   FS_MODE_WRITE_OWNER                  = 0x200,
-   FS_MODE_EXEC_OWNER                   = 0x100,
-
-   FS_MODE_READ_GROUP                   = 0x040,
-   FS_MODE_WRITE_GROUP                  = 0x020,
-   FS_MODE_EXEC_GROUP                   = 0x010,
-
-   FS_MODE_READ_OTHER                   = 0x004,
-   FS_MODE_WRITE_OTHER                  = 0x002,
-   FS_MODE_EXEC_OTHER                   = 0x001,
-} FSMode;
-
-typedef enum FSStatFlags {
-   FS_STAT_DIRECTORY                = 0x80000000,
-} FSStatFlags;
-
-typedef struct __attribute__((__packed__)) {
-   FSStatFlags flags;
-   FSMode mode;
+typedef struct {
+   uint32_t flags;
+   uint32_t mode;
    uint32_t owner;
    uint32_t group;
    uint32_t size;
    uint32_t allocSize;
    uint64_t quotaSize;
    uint32_t entryId;
-   int64_t created;
-   int64_t modified;
-   uint8_t unknown[0x30];
-} FSStat;
+   uint64_t created;
+   uint64_t modified;
+   uint8_t attributes[48];
+} __attribute__((packed)) FSStat;
+static_assert(sizeof(FSStat) == 0x64, "FSStat struct is not 0x64 bytes!");
 
 typedef struct {
    FSStat info;
    char name[256];
 } FSDirectoryEntry;
+static_assert(sizeof(FSDirectoryEntry) == 0x164, "FSDirectoryEntry struct is not 0x164 bytes!");
+
+typedef struct {
+    uint8_t unknown[0x1E];
+} FSFileSystemInfo;
+static_assert(sizeof(FSFileSystemInfo) == 0x1E, "FSFileSystemInfo struct is not 0x1E bytes!");
+
+typedef struct {
+    uint8_t unknown1[0x8];
+    uint64_t deviceSizeInSectors;
+    uint32_t deviceSectorSize;
+    uint8_t unknown2[0x14];
+} __attribute__((packed)) FSDeviceInfo;
+static_assert(sizeof(FSDeviceInfo) == 0x28, "FSDeviceInfo struct is not 0x28 bytes!");
+
+typedef struct {
+    uint64_t blocks_count;
+    uint64_t some_count;
+    uint32_t block_size;
+} FSBlockInfo;

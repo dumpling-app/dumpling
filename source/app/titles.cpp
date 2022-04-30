@@ -3,6 +3,7 @@
 #include "users.h"
 #include "gui.h"
 #include "menu.h"
+#include "iosuhax.h"
 
 std::vector<titleEntry> installedTitles = {};
 std::map<uint32_t, std::vector<MCPTitleListType>> rawTitles = {};
@@ -20,6 +21,11 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
 
     // Read meta.xml
     std::ifstream xmlFile(metaPath);
+    if (xmlFile.bad()) {
+        WHBLogPrint("Couldn't open title xml file stream!");
+        WHBLogPrint(metaPath.c_str());
+        return false;
+    }
     std::string line;
     std::string shortTitleJapan = "";
 
@@ -80,6 +86,11 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
 
     // Read meta.xml
     std::ifstream xmlFile(metaPath);
+    if (xmlFile.bad()) {
+        WHBLogPrint("Couldn't open save xml file stream!");
+        WHBLogPrint(metaPath.c_str());
+        return false;
+    }
     std::string line;
     std::string shortTitleJapan = "";
 
@@ -171,6 +182,11 @@ bool getTitleList(bool skipDiscs) {
             continue;
         }
 
+        // Skip wii games when using Tiramisu for now
+        if (getCFWVersion() == TIRAMISU_RPX && title.appType == MCP_APP_TYPE_GAME_WII) {
+            continue;
+        }
+
         // Check if it's a supported app type
         if (isBase(title.appType) || isUpdate(title.appType) || isDLC(title.appType) || isSystemApp(title.appType)) {
             std::string posixPath = convertToPosixPath(title.path);
@@ -199,7 +215,7 @@ bool getSaveList(std::string saveDirPath) {
 
     struct dirent* highDirEntry;
     while ((highDirEntry = readdir(highDirHandle)) != nullptr) {
-        if (highDirEntry->d_type != DT_DIR) continue;
+        if ((highDirEntry->d_type & DT_DIR) != DT_DIR) continue;
         if (strlen(highDirEntry->d_name) != 8) continue;
 
         uint32_t highTitleId = strtoul((const char*)highDirEntry->d_name, nullptr, 16);
@@ -212,12 +228,12 @@ bool getSaveList(std::string saveDirPath) {
 
         struct dirent* lowDirEntry;
         while ((lowDirEntry = readdir(lowDirHandle)) != nullptr) {
-            if (lowDirEntry->d_type != DT_DIR) continue;
+            if ((lowDirEntry->d_type & DT_DIR) != DT_DIR) continue;
             if (strlen(lowDirEntry->d_name) != 8) continue;
 
             uint32_t lowTitleId = strtoul((const char*)&lowDirEntry->d_name, nullptr, 16);
             if (lowTitleId == 0) continue;
-            std::string lowDirPath = highDirPath + lowDirEntry->d_name + "/";
+            std::string lowDirPath = highDirPath + lowDirEntry->d_name;
 
             const auto& currSavePart = rawSaves.try_emplace(lowTitleId, savePart{.savePath = lowDirPath.c_str(), .titleHighId = highTitleId});
 
@@ -227,9 +243,9 @@ bool getSaveList(std::string saveDirPath) {
 
             struct dirent* userDirEntry;
             while ((userDirEntry = readdir(userDirHandle)) != nullptr) {
-                if (userDirEntry->d_type != DT_DIR) continue;
+                if ((userDirEntry->d_type & DT_DIR) != DT_DIR) continue;
 
-                std::string userDirPath = lowDirPath + "user/" + userDirEntry->d_name + "/";
+                std::string userDirPath = lowDirPath + "user/" + userDirEntry->d_name;
 
                 // Check whether the common or user save has any contents
                 bool hasContents = false;
@@ -238,7 +254,7 @@ bool getSaveList(std::string saveDirPath) {
                 
                 struct dirent* contentDirEntry;
                 while ((contentDirEntry = readdir(contentDirHandle)) != nullptr) {
-                    if (contentDirEntry->d_type == DT_DIR || contentDirEntry->d_type == DT_REG) {
+                    if ((contentDirEntry->d_type & DT_DIR) == DT_DIR || (contentDirEntry->d_type & DT_REG) == DT_REG) {
                         // WHBLogPrint((userDirPath + contentDirEntry->d_name).c_str());
                         // WHBLogFreetypeDraw();
                         // sleep_for(500ms);
@@ -525,7 +541,7 @@ std::string normalizeFolderName(std::string& unsafeTitle) {
 }
 
 bool isBase(MCPAppType type) {
-    return type == MCP_APP_TYPE_GAME;
+    return type == MCP_APP_TYPE_GAME || type == MCP_APP_TYPE_GAME_WII;
 }
 
 bool isUpdate(MCPAppType type) {

@@ -1,21 +1,26 @@
 OUTPUT_ARCH(arm)
 
-MEMORY {
-    RAMX (rx) : ORIGIN = 0x08135000, LENGTH = 0x000B000
-}
-
 SECTIONS {
-    . = 0x08135000;
+    . = (0x08135000);
 
     .text : ALIGN(0x100) {
         build/crt0.o(.init);
-        *(.text);
+        *(.text*);
     }
     .rodata : {
         *(.rodata*);
+    }
+    .data : {
+        *(.data*);
+    }
+    .bss : {
+        *(.bss*);
+        *(COMMON*);
     }
 
     /DISCARD/ : {
         *(*);
     }
 }
+
+ASSERT((SIZEOF(.text) + SIZEOF(.rodata) + SIZEOF(.data) + SIZEOF(.bss)) < 0x4200, "kernel .elf is too big");

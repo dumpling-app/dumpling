@@ -28,8 +28,7 @@ int32_t __wut_fs_rename(struct _reent* r, const char* oldName, const char* newNa
     }
 
     FSInitCmdBlock(&cmd);
-    status = FSRename(data->client, &cmd, fixedOldPath, fixedNewPath,
-        FS_ERROR_FLAG_ALL);
+    status = FSRename(data->client, &cmd, fixedOldPath, fixedNewPath, FS_ERROR_FLAG_ALL);
     free(fixedOldPath);
     free(fixedNewPath);
 

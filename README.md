@@ -4,7 +4,7 @@
   <h3 align="center">Dumpling</h3>
 
   <p align="center">
-    A simple, all-in-one Wii U file dumper! Developed with the intent of making dumping games and other files for Cemu faster and easier.
+    A simple, all-in-one Wii U file dumper! Developed with the intent of making dumping games and other files (for emulators like Cemu) faster and easier.
   </p>
 </p>
 
@@ -30,21 +30,22 @@ For an always up-to-date guide to dump your games for Cemu using Dumpling, see [
 
 
 ## Features
-- Dumps everything related to your games! Game, updates, DLC and saves are all dumpable!
+- Dumps everything related to your games! Game, updates, DLC and saves are all dumped through one simple GUI!
 - Dumps both disc and digital games in an extracted format, making for easy modding and usage with Cemu.
 - Creates 1:1 copies of data with proper meta data.
 - Allows dumping to an SD or USB stick/drive (must be formatted as fat32).
 - Allows you to dump system applications too.
 - Feature to quickly dump everything needed to play online with Cemu, including the otp.bin and seeprom.bin!
 - Also dumps extra compatibility files for Cemu when dumping online files.
-- Has features to dump the base game files, update files and DLC files separately.
+- Has features to dump the base game, update, DLC and save files separately.
+- Now also supports easily dumping vWii games (requires [nfs2iso2nfs](https://github.com/FIX94/nfs2iso2nfs/releases/tag/v0.5.6) for converting vWii games to .iso).
 
 ## Credits
 - [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
 - [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
 - chrissie for testing
 - [wut](https://github.com/devkitpro/wut) for providing the Wii U toolchain that Dumpling is built with
-- FIX94, Maschell and Quarky for making and maintaining homebrew (libraries)
+- FIX94, Maschell, Quarky, GaryOderNichts and koolkdev for making and maintaining homebrew (libraries)
 - smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
 
 ## License

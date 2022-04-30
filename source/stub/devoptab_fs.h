@@ -81,3 +81,4 @@ int32_t     __wut_fs_rmdir(struct _reent* r, const char* name);
 // devoptab_fs_utils.c
 char* __wut_fs_fixpath(struct _reent* r, const char* path);
 int32_t __wut_fs_translate_error(FSStatus error);
+FSMode __wut_fs_convert_mode(mode_t mode);

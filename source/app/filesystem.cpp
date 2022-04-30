@@ -29,13 +29,21 @@ bool mountSystemDrives() {
 }
 
 bool mountSD() {
+#ifdef USE_LIBFAT
     if (fatMountSimple("sdfat", &IOSUHAX_sdio_disc_interface)) SDMounted = true;
+#else
+    SDMounted = true; // initialization of wut's devoptab is done automatically
+#endif
     if (SDMounted) WHBLogPrint("Successfully mounted the SD card!");
     return SDMounted;
 }
 
 bool mountUSBDrive() {
+#ifdef USE_LIBFAT
     if (fatMountSimple("usbfat", &IOSUHAX_usb_disc_interface)) USBMounted = true;
+#else
+    WHBLogPrint("USB sticks aren't supported without libfat!");
+#endif
     if (USBMounted) WHBLogPrint("Successfully mounted an USB stick!");
     return USBMounted;
 }
@@ -58,12 +66,16 @@ bool unmountSystemDrives() {
 }
 
 void unmountSD() {
+#ifdef USE_LIBFAT
     if (SDMounted) fatUnmount("sdfat");
+#endif
     SDMounted = false;
 }
 
 void unmountUSBDrive() {
+#ifdef USE_LIBFAT
     if (USBMounted) fatUnmount("usbfat");
+#endif
     USBMounted = false;
 }
 
@@ -201,7 +213,7 @@ bool isDirEmpty(const char* path) {
 
     struct dirent *dirEntry;
     while((dirEntry = readdir(dirHandle)) != NULL) {
-        if (dirEntry->d_type == DT_DIR && (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0)) continue;
+        if ((dirEntry->d_type & DT_DIR) == DT_DIR && (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0)) continue;
         
         // An entry other then the root and parent directory was found
         closedir(dirHandle);
@@ -216,14 +228,17 @@ bool isDirEmpty(const char* path) {
 void createPath(const char* path) {
     char tmp[PATH_MAX];
     char *p = NULL;
-    size_t len; 
+    size_t len;
     snprintf(tmp, sizeof(tmp), "%s", path);
     len = strlen(tmp);
     if (tmp[len-1] == '/') tmp[len-1] = 0;
     for(p = tmp+1; *p; p++) {
         if (*p == '/') {
             *p = 0;
-            mkdir(tmp, ACCESSPERMS);
+            std::string pathToDir(tmp);
+            if (getRootFromLocation(getLocationFromRoot(pathToDir)) != pathToDir) {
+                mkdir(tmp, ACCESSPERMS);
+		    }
             *p = '/';
         }
     }
@@ -256,7 +271,11 @@ uint64_t getTotalSpace(const char* path) {
 }
 
 std::string getRootFromLocation(dumpLocation location) {
+#ifdef USE_LIBFAT
     if (location == dumpLocation::SDFat) return "sdfat:";
+#else
+    if (location == dumpLocation::SDFat) return "fs:";
+#endif
     else if (location == dumpLocation::USBFat) return "usbfat:";
     else if (location == dumpLocation::USBExFAT) return "usbexfat:";
     else if (location == dumpLocation::USBNTFS) return "usbntfs:";
@@ -264,7 +283,11 @@ std::string getRootFromLocation(dumpLocation location) {
 }
 
 dumpLocation getLocationFromRoot(std::string rootPath) {
+#ifdef USE_LIBFAT
     if (rootPath.compare("sdfat:") == 0) return dumpLocation::SDFat;
+#else
+    if (rootPath.compare("fs:") == 0) return dumpLocation::SDFat;
+#endif
     else if (rootPath.compare("usbfat:") == 0) return dumpLocation::USBFat;
     else if (rootPath.compare("usbexfat:") == 0) return dumpLocation::USBExFAT;
     else if (rootPath.compare("usbntfs:") == 0) return dumpLocation::USBNTFS;

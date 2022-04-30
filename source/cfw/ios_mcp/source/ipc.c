@@ -101,6 +101,7 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             }
             break;
         }
+        // All FSA commands
         case IOCTL_FSA_OPEN: {
             // points to "/dev/fsa" string in mcp data section
             message->ioctl.buffer_io[0] = svcOpen((char*)0x0506963C, 0);
@@ -137,12 +138,34 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_FlushVolume(fd, path);
             break;
         }
-        case IOCTL_FSA_GETDEVICEINFO: {
+        case IOCTL_FSA_ROLLBACKVOLUME: {
+            int32_t fd = message->ioctl.buffer_in[0];
+            char *device_path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_RollbackVolume(fd, device_path);
+            break;
+        }
+        case IOCTL_FSA_GETINFO: {
             int32_t fd = message->ioctl.buffer_in[0];
             char *device_path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
             int32_t type = message->ioctl.buffer_in[2];
 
-            message->ioctl.buffer_io[0] = FSA_GetDeviceInfo(fd, device_path, type, message->ioctl.buffer_io + 1);
+            message->ioctl.buffer_io[0] = FSA_GetInfo(fd, device_path, type, message->ioctl.buffer_io + 1);
+            break;
+        }
+        case IOCTL_FSA_GETSTAT: {
+            int fd            = message->ioctl.buffer_in[0];
+            char *device_path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_GetStat(fd, device_path, (FSStat*)message->ioctl.buffer_io + 1);
+            break;
+        }
+        case IOCTL_FSA_MAKEDIR: {
+            int32_t fd = message->ioctl.buffer_in[0];
+            char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            uint32_t flags = message->ioctl.buffer_in[2];
+
+            message->ioctl.buffer_io[0] = FSA_MakeDir(fd, path, flags);
             break;
         }
         case IOCTL_FSA_OPENDIR: {
@@ -159,6 +182,13 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_ReadDir(fd, handle, (FSDirectoryEntry*)(message->ioctl.buffer_io + 1));
             break;
         }
+        case IOCTL_FSA_REWINDDIR: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            int32_t handle = message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_RewindDir(fd, handle);
+            break;
+        }
         case IOCTL_FSA_CLOSEDIR: {
             int32_t fd = message->ioctl.buffer_in[0];
             int32_t handle = message->ioctl.buffer_in[1];
@@ -166,12 +196,48 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_CloseDir(fd, handle);
             break;
         }
-        case IOCTL_FSA_MAKEDIR: {
-            int32_t fd = message->ioctl.buffer_in[0];
+        case IOCTL_FSA_CHDIR: {
+            int32_t fd            = message->ioctl.buffer_in[0];
             char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
-            uint32_t flags = message->ioctl.buffer_in[2];
 
-            message->ioctl.buffer_io[0] = FSA_MakeDir(fd, path, flags);
+            message->ioctl.buffer_io[0] = FSA_ChangeDir(fd, path);
+            break;
+        }
+        case IOCTL_FSA_GETCWD: {
+            int32_t fd            = message->ioctl.buffer_in[0];
+            int32_t output_size = message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_GetCwd(fd, (char*)(message->ioctl.buffer_io + 1), output_size);
+            break;
+        }
+        case IOCTL_FSA_MAKEQUOTA: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            uint32_t flags  = message->ioctl.buffer_in[2];
+            uint64_t size   = ((uint64_t) message->ioctl.buffer_in[3] << 32ULL) | message->ioctl.buffer_in[4];
+
+            message->ioctl.buffer_io[0] = FSA_MakeQuota(fd, path, flags, size);
+            break;
+        }
+        case IOCTL_FSA_FLUSHQUOTA: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_FlushQuota(fd, path);
+            break;
+        }
+        case IOCTL_FSA_ROLLBACKQUOTA: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_RollbackQuota(fd, path);
+            break;
+        }
+        case IOCTL_FSA_ROLLBACKQUOTAFORCE: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_RollbackQuotaForce(fd, path);
             break;
         }
         case IOCTL_FSA_OPENFILE: {
@@ -180,6 +246,17 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             char *mode = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[2];
 
             message->ioctl.buffer_io[0] = FSA_OpenFile(fd, path, mode, (int32_t*)message->ioctl.buffer_io + 1);
+            break;
+        }
+        case IOCTL_FSA_OPENFILEEX: {
+            int32_t fd = message->ioctl.buffer_in[0];
+            char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            char *mode = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[2];
+            uint32_t createMode = message->ioctl.buffer_in[3];
+            uint32_t flags = message->ioctl.buffer_in[4];
+            uint32_t preallocSize = message->ioctl.buffer_in[5];
+
+            message->ioctl.buffer_io[0] = FSA_OpenFileEx(fd, path, mode, (int32_t*)message->ioctl.buffer_io + 1, createMode, flags, preallocSize);
             break;
         }
         case IOCTL_FSA_READFILE: {
@@ -202,11 +279,52 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_WriteFile(fd, ((uint8_t*)message->ioctl.buffer_in) + 0x40, size, cnt, fileHandle, flags);
             break;
         }
-        case IOCTL_FSA_STATFILE: {
+        case IOCTL_FSA_READFILEWITHPOS: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            uint32_t size       = message->ioctl.buffer_in[1];
+            uint32_t cnt        = message->ioctl.buffer_in[2];
+            uint32_t pos        = message->ioctl.buffer_in[3];
+            int32_t fileHandle = message->ioctl.buffer_in[4];
+            uint32_t flags      = message->ioctl.buffer_in[5];
+
+            message->ioctl.buffer_io[0] = FSA_ReadFileWithPos(fd, ((uint8_t *) message->ioctl.buffer_io) + 0x40, size, cnt, pos, fileHandle, flags);
+            break;
+        }
+        case IOCTL_FSA_WRITEFILEWITHPOS: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            uint32_t size       = message->ioctl.buffer_in[1];
+            uint32_t cnt        = message->ioctl.buffer_in[2];
+            uint32_t pos        = message->ioctl.buffer_in[3];
+            int32_t fileHandle = message->ioctl.buffer_in[4];
+            uint32_t flags      = message->ioctl.buffer_in[5];
+
+            message->ioctl.buffer_io[0] = FSA_WriteFileWithPos(fd, ((uint8_t *) message->ioctl.buffer_in) + 0x40, size, cnt, pos, fileHandle, flags);
+            break;
+        }
+        case IOCTL_FSA_APPENDFILE: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            uint32_t size       = message->ioctl.buffer_in[1];
+            uint32_t cnt        = message->ioctl.buffer_in[2];
+            int32_t fileHandle = message->ioctl.buffer_in[3];
+
+            message->ioctl.buffer_io[0] = FSA_AppendFile(fd, size, cnt, fileHandle);
+            break;
+        }
+        case IOCTL_FSA_APPENDFILEEX: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            uint32_t size       = message->ioctl.buffer_in[1];
+            uint32_t cnt        = message->ioctl.buffer_in[2];
+            int32_t fileHandle = message->ioctl.buffer_in[3];
+            uint32_t flags      = message->ioctl.buffer_in[4];
+
+            message->ioctl.buffer_io[0] = FSA_AppendFileEx(fd, size, cnt, fileHandle, flags);
+            break;
+        }
+        case IOCTL_FSA_GETSTATFILE: {
             int32_t fd = message->ioctl.buffer_in[0];
             int32_t fileHandle = message->ioctl.buffer_in[1];
 
-            message->ioctl.buffer_io[0] = FSA_StatFile(fd, fileHandle, (FSStat*)(message->ioctl.buffer_io + 1));
+            message->ioctl.buffer_io[0] = FSA_GetStatFile(fd, fileHandle, (FSStat*)(message->ioctl.buffer_io + 1));
             break;
         }
         case IOCTL_FSA_CLOSEFILE: {
@@ -216,19 +334,40 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_CloseFile(fd, fileHandle);
             break;
         }
-        case IOCTL_FSA_SETFILEPOS: {
-            int32_t fd = message->ioctl.buffer_in[0];
+        case IOCTL_FSA_FLUSHFILE: {
+            int32_t fd         = message->ioctl.buffer_in[0];
             int32_t fileHandle = message->ioctl.buffer_in[1];
-            uint32_t position = message->ioctl.buffer_in[2];
+
+            message->ioctl.buffer_io[0] = FSA_FlushFile(fd, fileHandle);
+            break;
+        }
+        case IOCTL_FSA_TRUNCATEFILE: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            int32_t fileHandle = message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_TruncateFile(fd, fileHandle);
+            break;
+        }
+        case IOCTL_FSA_GETPOSFILE: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            int32_t fileHandle = message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_GetPosFile(fd, fileHandle, (uint32_t *) message->ioctl.buffer_io + 1);
+            break;
+        }
+        case IOCTL_FSA_SETPOSFILE: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            int32_t fileHandle = message->ioctl.buffer_in[1];
+            uint32_t position   = message->ioctl.buffer_in[2];
 
             message->ioctl.buffer_io[0] = FSA_SetPosFile(fd, fileHandle, position);
             break;
         }
-        case IOCTL_FSA_GETSTAT: {
-            int32_t fd = message->ioctl.buffer_in[0];
-            char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+        case IOCTL_FSA_ISEOF: {
+            int32_t fd         = message->ioctl.buffer_in[0];
+            int32_t fileHandle = message->ioctl.buffer_in[1];
 
-            message->ioctl.buffer_io[0] = FSA_GetStat(fd, path, (FSStat*)(message->ioctl.buffer_io + 1));
+            message->ioctl.buffer_io[0] = FSA_IsEof(fd, fileHandle);
             break;
         }
         case IOCTL_FSA_REMOVE: {
@@ -238,18 +377,38 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             message->ioctl.buffer_io[0] = FSA_Remove(fd, path);
             break;
         }
-        case IOCTL_FSA_REWINDDIR: {
+        case IOCTL_FSA_RENAME: {
             int32_t fd = message->ioctl.buffer_in[0];
-            int32_t dirFd = message->ioctl.buffer_in[1];
+            char *oldPath = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            char *newPath = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[2];
 
-            message->ioctl.buffer_io[0] = FSA_RewindDir(fd, dirFd);
+            message->ioctl.buffer_io[0] = FSA_Rename(fd, oldPath, newPath);
             break;
         }
-        case IOCTL_FSA_CHDIR: {
-            int32_t fd = message->ioctl.buffer_in[0];
-            char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+        case IOCTL_FSA_CHANGEMODE: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            int32_t mode   = message->ioctl.buffer_in[2];
 
-            message->ioctl.buffer_io[0] = FSA_ChangeDir(fd, path);
+            message->ioctl.buffer_io[0] = FSA_ChangeMode(fd, path, mode);
+            break;
+        }
+        case IOCTL_FSA_CHANGEMODEEX: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            int32_t mode   = message->ioctl.buffer_in[2];
+            int32_t mask   = message->ioctl.buffer_in[2];
+
+            message->ioctl.buffer_io[0] = FSA_ChangeModeEx(fd, path, mode, mask);
+            break;
+        }
+        case IOCTL_FSA_CHANGEOWNER: {
+            int32_t fd     = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+            uint32_t owner  = message->ioctl.buffer_in[2];
+            uint32_t group  = message->ioctl.buffer_in[3];
+
+            message->ioctl.buffer_io[0] = FSA_ChangeOwner(fd, path, owner, group);
             break;
         }
         case IOCTL_FSA_RAW_OPEN: {
@@ -284,14 +443,6 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             int32_t deviceHandle = message->ioctl.buffer_in[1];
 
             message->ioctl.buffer_io[0] = FSA_RawClose(fd, deviceHandle);
-            break;
-        }
-        case IOCTL_FSA_CHANGEMODE: {
-            int32_t fd = message->ioctl.buffer_in[0];
-            char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
-            int32_t mode = message->ioctl.buffer_in[2];
-
-            message->ioctl.buffer_io[0] = FSA_ChangeMode(fd, path, mode);
             break;
         }
         case IOCTL_CHECK_IF_IOSUHAX: {

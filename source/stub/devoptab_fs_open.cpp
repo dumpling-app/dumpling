@@ -49,8 +49,7 @@ int32_t __wut_fs_open(struct _reent* r, void* fileStruct, const char* path, int3
 
     // Open the file
     FSInitCmdBlock(&cmd);
-    status = FSOpenFile(data->client, &cmd, fixedPath, fsMode, &fd,
-        FS_ERROR_FLAG_ALL);
+    status = FSOpenFile(data->client, &cmd, fixedPath, fsMode, &fd, FS_ERROR_FLAG_ALL);
     free(fixedPath);
     if (status < 0) {
         r->_errno = __wut_fs_translate_error(status);

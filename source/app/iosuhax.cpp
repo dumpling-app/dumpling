@@ -1,9 +1,37 @@
 #include "iosuhax.h"
 #include "gui.h"
+#include "menu.h"
+#include "navigation.h"
 
 int32_t fsaHandle = -1;
 int32_t iosuhaxHandle = -1;
 CFWVersion currCFWVersion = CFWVersion::NONE;
+
+bool stopTiramisuServer() {
+    WHBLogFreetypeClear();
+    WHBLogPrint("Opening iosuhax to send stop command...");
+    WHBLogFreetypeDraw();
+
+    IOSHandle iosuhaxHandle = IOS_Open("/dev/iosuhax", (IOSOpenMode)0);
+    if (iosuhaxHandle < IOS_ERROR_OK) {
+        WHBLogPrint("Couldn't open /dev/iosuhax to stop Tiramisu?");
+        WHBLogFreetypeDraw();
+        return false;
+    }
+
+    WHBLogPrint("Sending stop command to Tiramisu... ");
+    WHBLogFreetypeDraw();
+    sleep_for(250ms);
+
+    alignas(0x20) int32_t responseBuffer[0x20 >> 2];
+    *responseBuffer = 0;
+    IOS_Ioctl(iosuhaxHandle, 0x03/*IOCTL_KILL_SERVER*/, nullptr, 0, responseBuffer, 4);
+    
+    WHBLogPrint("Waiting for Tiramisu to stop... ");
+    WHBLogFreetypeDraw();
+    sleep_for(2s);
+    return true;
+}
 
 CFWVersion testIosuhax() {
     WHBLogPrint("Detecting prior iosuhax version...");
@@ -11,7 +39,7 @@ CFWVersion testIosuhax() {
 
     IOSHandle mcpHandle = IOS_Open("/dev/mcp", (IOSOpenMode)0);
     if (mcpHandle < IOS_ERROR_OK) {
-        WHBLogPrint("Couldn't open MCP!!");
+        WHBLogPrint("Couldn't open MCP when testing for iosuhax!");
         WHBLogFreetypeDraw();
         sleep_for(5s);
         return CFWVersion::FAILED;
@@ -33,9 +61,36 @@ CFWVersion testIosuhax() {
         IOS_Close(mcpHandle);
 
         if (returnValue == 1) {
-            WHBLogPrint("Detected Tiramisu CFW...");
-            WHBLogPrint("Will use Tiramisu's iosuhax implementation!");
-            currCFWVersion = CFWVersion::TIRAMISU_RPX;
+            uint8_t enableWiiMode = showDialogPrompt("Do you want to enable Wii game dumping support?\n\nIf yes, Tiramisu CFW lacks some stuff required for reading Wii files.\nWhile work is being done to add it, you can still\nenable support but Dumpling has to stop Tiramisu temporarily.", "Enable Wii support", "Just use Tiramisu CFW");
+            if (enableWiiMode == 0) {
+                if (stopTiramisuServer()) {
+                    WHBLogFreetypeClear();
+                    WHBLogPrint("Detected and stopped Tiramisu...");
+                    WHBLogPrint("Attempt to replace it with Dumpling CFW...");
+                    currCFWVersion = CFWVersion::NONE;
+                }
+                else {
+                    WHBLogFreetypeClear();
+                    WHBLogPrint("Failed to stop Tiramisu CFW!");
+                    WHBLogPrint("You can temporarily undo Tiramisu autobooting:");
+                    WHBLogPrint("https://wiiu.hacks.guide/#/uninstall-payloadloader");
+                    WHBLogPrint("Only follow the undo autobooting section!");
+                    WHBLogPrint("");
+                    WHBLogPrint("You can then start Dumpling by going to");
+                    WHBLogPrint("https://dumplingapp.com in the browser");
+                    WHBLogPrint("");
+                    WHBLogPrint("Exiting Dumpling in 10 seconds...");
+                    WHBLogFreetypeDraw();
+                    sleep_for(10s);
+                    currCFWVersion = CFWVersion::FAILED;
+                }
+            }
+            else {
+                WHBLogPrint("Detected Tiramisu CFW...");
+                WHBLogPrint("Will use Tiramisu's iosuhax implementation!");
+                currCFWVersion = CFWVersion::TIRAMISU_RPX;
+            }
+            return currCFWVersion;
         }
         else if (returnValue == 2) {
             WHBLogPrint("Detected MochaLite CFW");

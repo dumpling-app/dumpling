@@ -4,6 +4,7 @@
 #include "menu.h"
 #include "navigation.h"
 #include "gui.h"
+#include "iosuhax.h"
 
 struct listEntry {
     bool queued;

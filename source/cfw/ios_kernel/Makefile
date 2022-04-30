@@ -38,7 +38,7 @@ $(PROJECTNAME).h: $(PROJECTNAME).bin
 
 $(PROJECTNAME).bin: $(PROJECTNAME).elf
 	@echo "Turn payload.elf into payload.bin..."
-	@$(OBJCOPY) -j .text -j .rodata -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
+	@$(OBJCOPY) -j .text -j .rodata -j .data -j .bss -O binary $(PROJECTNAME).elf $(PROJECTNAME).bin
 
 $(PROJECTNAME).elf: $(OFILES)
 	@echo "Linking files for $(PROJECTNAME)..."

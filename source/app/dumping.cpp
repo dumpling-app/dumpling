@@ -11,10 +11,11 @@
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
+#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT * 2)
 
 static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
+static bool ignoreFileErrors = false;
 
 bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, uint64_t* totalBytes) {
     if (copyBuffer == nullptr) {
@@ -47,6 +48,8 @@ bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, u
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == nullptr) {
+        reportFileError();
+        if (ignoreFileErrors) return true;
         showDialogPrompt((std::string("Failed to copy file from memory to:")+destPath).c_str(), "Next");
         setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         return false;
@@ -88,8 +91,15 @@ bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, u
 bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Check if file is an actual file first
     struct stat fileStat;
-    if (stat(srcPath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
-        return true;
+    if (lstat(srcPath.c_str(), &fileStat) == -1) {
+        showDialogPrompt((std::string("Failed retrieve info about this file:\n")+srcPath).c_str(), "Next");
+        setErrorPrompt("Couldn't get the info about a file that should be copied!");
+        return false;
+    }
+    if (!S_ISREG(fileStat.st_mode)) {
+        showDialogPrompt((std::string("Tried to copy file but found it's not a regular file:\n")+srcPath).c_str(), "Next");
+        setErrorPrompt("Tried to copy file but turned out to not be a normal file!");
+        return false;
     }
 
     if (copyBuffer == nullptr) {
@@ -102,10 +112,23 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     }
 
     // Open source file
-    FILE* readHandle = fopen(srcPath.c_str(), "rb");
+    int fileFlags = O_RDONLY;
+    if (srcPath.ends_with(".nfs")) fileFlags |= O_OPEN_ENCRYPTED;
+    int readNormalHandle = open(srcPath.c_str(), fileFlags);
+    if (readNormalHandle == -1) {
+        reportFileError();
+        if (ignoreFileErrors) return true;
+        showDialogPrompt((std::string("Failed to open file to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
+        setErrorPrompt("Couldn't open the file to copy from!");
+        return false;
+    }
+    FILE* readHandle = fdopen(readNormalHandle, "rb");
     if (readHandle == nullptr) {
-        //setErrorPrompt("Couldn't open the file to copy from!");
-        return true; // Ignore file open errors since symlinks cause these to appear. They aren't catched by stat.
+        reportFileError();
+        if (ignoreFileErrors) return true;
+        showDialogPrompt((std::string("Failed to fdopen file to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
+        setErrorPrompt("Couldn't fdopen the file to copy from!");
+        return false;
     }
     
     // If totalBytes is set it means that it's scanning for file sizes of openable files
@@ -126,9 +149,11 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == nullptr) {
-        showDialogPrompt((std::string("Failed to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         fclose(readHandle);
+        reportFileError();
+        if (ignoreFileErrors) return true;
+        showDialogPrompt((std::string("Failed to create a new file on SD/USB:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
+        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
         return false;
     }
 
@@ -168,7 +193,15 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
 bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Open folder
     DIR* dirHandle;
-    if ((dirHandle = opendir(srcPath.c_str())) == nullptr) return true; // Ignore folder opening errors since they also happen when you open the special folders.
+    if ((dirHandle = opendir(srcPath.c_str())) == nullptr) {
+        if (ignoreFileErrors) {
+            reportFileError();
+            return true;
+        }
+        showDialogPrompt((std::string("Couldn't open directory to copy files from:\n")+destPath).c_str(), "OK");
+        setErrorPrompt("Failed to open the directory to read files from");
+        return false;
+    }
 
     // Append slash when last character isn't a slash
     if (totalBytes == nullptr) createPath(destPath.c_str());
@@ -176,7 +209,13 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     // Loop over directory contents
     struct dirent* dirEntry;
     while ((dirEntry = readdir(dirHandle)) != nullptr) {
-        if (dirEntry->d_type == DT_REG) {
+        if (dirEntry->d_type == DT_UNKNOWN) {
+            continue;
+        }
+        else if (dirEntry->d_type == DT_LNK) {
+            continue;
+        }
+        else if (dirEntry->d_type == DT_REG) {
             // Copy file
             if (!copyFile(dirEntry->d_name, srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
                 closedir(dirHandle);
@@ -284,6 +323,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
     // Dump title
     startQueue(totalDumpSize);
+    ignoreFileErrors = config.ignoreCopyErrors;
     for (size_t i=0; i<queue.size(); i++) {
         std::string status("Currently dumping ");
         status += queue[i].get().shortTitle;
@@ -304,11 +344,12 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
         setDumpingStatus(status);
         if (!dumpTitle(queue[i], config, nullptr)) {
+            ignoreFileErrors = false;
             showErrorPrompt("Back to Main Menu");
             return false;
         }
     }
-
+    ignoreFileErrors = false;
     return true;
 }
 

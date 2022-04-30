@@ -50,7 +50,7 @@ CFLAGS		:=	-g -Wall -O2 -ffunction-sections -Wno-narrowing \
 ifdef CEMU_STUBS
 CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DCEMU_STUBS `freetype-config --cflags`
 else
-CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ `freetype-config --cflags`
+CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSE_LIBFAT `freetype-config --cflags`
 endif
 
 CXXFLAGS	:= $(CFLAGS) -std=c++20
@@ -180,7 +180,7 @@ dist:
 	@cp assets/dumpling-banner.png dist/wiiu/apps/dumpling/icon.png
 	@cp $(TARGET).rpx dist/wiiu/apps/dumpling/$(TARGET).rpx
 	@echo Zip up a release zip
-	@rm dist/dumpling.zip
+	@rm -f dist/dumpling.zip
 	@cd dist && zip -q -r ./dumpling.zip ./wiiu && cd ..
 
 #-------------------------------------------------------------------------------

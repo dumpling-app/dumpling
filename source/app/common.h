@@ -14,15 +14,18 @@
 #include <coreinit/memheap.h>
 #include <coreinit/memfrmheap.h>
 #include <coreinit/memory.h>
+#include <coreinit/foreground.h>
+#include <coreinit/title.h>
+#include <coreinit/launch.h>
 
 #include <sysapp/launch.h>
 #include <nn/act.h>
 #include <nn/ac.h>
 #include <whb/log.h>
 #include <proc_ui/procui.h>
-#include <coreinit/foreground.h>
-#include <coreinit/title.h>
-#include <coreinit/launch.h>
+#include <vpad/input.h>
+#include <padscore/wpad.h>
+#include <padscore/kpad.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +44,7 @@ extern "C" {
 #include <dirent.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -152,6 +156,7 @@ struct dumpingConfig {
     nn::act::PersistentId accountId = 0;
     bool dumpAsDefaultUser = true;
     bool queue = false;
+    bool ignoreCopyErrors = false;
     dumpLocation location = dumpLocation::SDFat;
 };
 

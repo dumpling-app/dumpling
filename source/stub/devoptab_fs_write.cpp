@@ -29,8 +29,7 @@ ssize_t __wut_fs_write(struct _reent* r, void* fd, const char* ptr, size_t len) 
     }
 
     if ((((uintptr_t)ptr) & 0x3F) == 0) {
-        status = FSWriteFile(data->client, &cmd, (uint8_t*)ptr,
-            1, len, file->fd, 0, FS_ERROR_FLAG_ALL);
+        status = FSWriteFile(data->client, &cmd, (uint8_t*)ptr, 1, len, file->fd, 0, FS_ERROR_FLAG_ALL);
         if (status > 0) {
             bytesWritten = (uint32_t)status;
             file->offset += bytesWritten;
@@ -52,8 +51,7 @@ ssize_t __wut_fs_write(struct _reent* r, void* fd, const char* ptr, size_t len) 
             memcpy(alignedWriteBuffer, ptr, toWrite);
 
             // Write the data
-            status = FSWriteFile(data->client, &cmd, alignedWriteBuffer,
-                1, toWrite, file->fd, 0, FS_ERROR_FLAG_ALL);
+            status = FSWriteFile(data->client, &cmd, alignedWriteBuffer, 1, toWrite, file->fd, 0, FS_ERROR_FLAG_ALL);
             if (status <= 0) {
                 break;
             }

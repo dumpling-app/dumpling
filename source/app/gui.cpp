@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "../font/log_freetype.h"
+#include "navigation.h"
 
 static bool usingHBL = false;
 

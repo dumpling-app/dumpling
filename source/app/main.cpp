@@ -21,7 +21,7 @@ int main() {
     // Start Dumpling
     showLoadingScreen();
     CFWVersion iosuhaxCFW = testIosuhax();
-    if (((iosuhaxCFW == TIRAMISU_RPX || iosuhaxCFW == CEMU) || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+    if (iosuhaxCFW != FAILED && ((iosuhaxCFW == TIRAMISU_RPX || iosuhaxCFW == CEMU) || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
