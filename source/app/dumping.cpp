@@ -96,11 +96,6 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         setErrorPrompt("Couldn't get the info about a file that should be copied!");
         return false;
     }
-    if (!S_ISREG(fileStat.st_mode)) {
-        showDialogPrompt((std::string("Tried to copy file but found it's not a regular file:\n")+srcPath).c_str(), "Next");
-        setErrorPrompt("Tried to copy file but turned out to not be a normal file!");
-        return false;
-    }
 
     if (copyBuffer == nullptr) {
         // Allocate buffer to copy bytes between
@@ -209,20 +204,29 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     // Loop over directory contents
     struct dirent* dirEntry;
     while ((dirEntry = readdir(dirHandle)) != nullptr) {
-        if (dirEntry->d_type == DT_UNKNOWN) {
+        // Use lstat since readdir returns DT_REG for symlinks
+        struct stat fileStat;
+        if (lstat((srcPath + "/" + dirEntry->d_name).c_str(), &fileStat) != 0) {
+            if (ignoreFileErrors) {
+                reportFileError();
+                continue;
+            }
+            showDialogPrompt((std::string("Couldn't check what type this file/folder was:\n")+srcPath+"/"+dirEntry->d_name).c_str(), "OK");
+            setErrorPrompt("Failed to open the directory to read files from");
+            return false;
+        }
+        
+        if (S_ISLNK(fileStat.st_mode)) {
             continue;
         }
-        else if (dirEntry->d_type == DT_LNK) {
-            continue;
-        }
-        else if (dirEntry->d_type == DT_REG) {
+        else if (S_ISREG(fileStat.st_mode)) {
             // Copy file
             if (!copyFile(dirEntry->d_name, srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
                 closedir(dirHandle);
                 return false;
             }
         }
-        else if (dirEntry->d_type == DT_DIR) {
+        else if (S_ISDIR(fileStat.st_mode)) {
             // Ignore root and parent folder entries
             if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
