@@ -13,11 +13,6 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
     // Check if /meta/meta.xml file exists
     std::string metaPath(part.path);
     metaPath.append("/meta/meta.xml");
-    if (!fileExist(metaPath.c_str())) {
-        WHBLogPrint("The meta.xml file doesn't seem to exist at the given path:");
-        WHBLogPrint(metaPath.c_str());
-        return false;
-    }
 
     // Read meta.xml
     std::ifstream xmlFile(metaPath);
@@ -78,11 +73,6 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
     // Check if /meta/meta.xml file exists
     std::string metaPath(part.savePath);
     metaPath.append("/meta/meta.xml");
-    if (!fileExist(metaPath.c_str())) {
-        WHBLogPrint("The meta.xml file doesn't seem to exist at the given path:");
-        WHBLogPrint(metaPath.c_str());
-        return false;
-    }
 
     // Read meta.xml
     std::ifstream xmlFile(metaPath);
@@ -138,27 +128,9 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
     return false;
 }
 
-bool checkForDiscTitles(int32_t mcpHandle) {
-    int32_t titleCount = MCP_TitleCount(mcpHandle);
-    uint32_t titleByteSize = titleCount * sizeof(MCPTitleListType);
-
-    std::vector<MCPTitleListType> titles(titleCount);
-
-    uint32_t titlesListed = 0;
-    MCP_TitleList(mcpHandle, &titlesListed, titles.data(), titleByteSize);
-
-    for (auto& title : titles) {
-        if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool getTitleList(bool skipDiscs) {
     WHBLogPrint("Loading titles...");
     WHBLogFreetypeDraw();
-    rawTitles.clear();
 
     // Open MCP bridge
     int32_t mcpHandle = MCP_Open();
@@ -287,6 +259,9 @@ bool loadTitles(bool skipDiscs) {
     WHBLogPrint("Searching for games...");
     WHBLogFreetypeDraw();
 
+    rawSaves.clear();
+    rawTitles.clear();
+
     // Get sorted lists
     if (!getTitleList(skipDiscs) || !getSaveList("storage_mlc01:/usr/save/") || !(!testStorage(titleLocation::USB) || getSaveList("storage_usb01:/usr/save/"))) {
         WHBLogPrint("Error while getting the titles/saves, can't continue!");
@@ -320,7 +295,7 @@ bool loadTitles(bool skipDiscs) {
                     title.base.reset();
                     WHBLogPrint("Failed to read meta from game!");
                     WHBLogFreetypeDraw();
-                    sleep_for(10s);
+                    sleep_for(2s);
                 }
             }
             else if (isUpdate(part.appType)) { // TODO: Log cases where maybe two updates are found (one on disc and one later via the title system)
@@ -335,7 +310,7 @@ bool loadTitles(bool skipDiscs) {
                     title.update.reset();
                     WHBLogPrint("Failed to read meta from update!");
                     WHBLogFreetypeDraw();
-                    sleep_for(10s);
+                    sleep_for(2s);
                 }
             }
             else if (isDLC(part.appType)) {
@@ -350,7 +325,7 @@ bool loadTitles(bool skipDiscs) {
                     title.dlc.reset();
                     WHBLogPrint("Failed to read meta from dlc!");
                     WHBLogFreetypeDraw();
-                    sleep_for(10s);
+                    sleep_for(2s);
                 }
             }
         }
@@ -387,6 +362,27 @@ bool loadTitles(bool skipDiscs) {
     rawTitles.clear();
 
     return true;
+}
+
+bool checkForDiscTitles(int32_t mcpHandle) {
+    int32_t titleCount = MCP_TitleCount(mcpHandle);
+    uint32_t titleByteSize = titleCount * sizeof(MCPTitleListType);
+
+    std::vector<MCPTitleListType> titles(titleCount);
+
+    uint32_t titlesListed = 0;
+    MCP_TitleList(mcpHandle, &titlesListed, titles.data(), titleByteSize);
+
+    for (auto& title : titles) {        
+        if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
+            // Skip wii games when using Tiramisu for now
+            if (getCFWVersion() == TIRAMISU_RPX && title.appType == MCP_APP_TYPE_GAME_WII) {
+                continue;
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 /*

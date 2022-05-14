@@ -15,7 +15,7 @@ void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
     WHBLogFreetypeSetFontSize(22, 0);
-    WHBLogPrint("Dumpling V2.4.0");
+    WHBLogPrint("Dumpling V2.4.0b");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
@@ -27,7 +27,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Dumpling V2.4.0");
+        WHBLogPrint("Dumpling V2.4.0b");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');

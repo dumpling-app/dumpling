@@ -12,7 +12,7 @@ extern int32_t mainIPC();
 int _MCP_ioctl100_patch(IPCMessage *msg) {
     // Give some method to detect this ioctl's prescence, even if the other args are bad
     if (msg->ioctl.buffer_io && msg->ioctl.length_io >= sizeof(uint32_t)) {
-        *(uint32_t*)msg->ioctl.buffer_io = 1;
+        *(uint32_t*)msg->ioctl.buffer_io = 3;
     }
 
     FAIL_ON(!msg->ioctl.buffer_in, 0);

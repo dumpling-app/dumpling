@@ -152,7 +152,7 @@ bool isUSBDriveInserted() {
 // Converts a Wii U device path to a posix path
 std::string convertToPosixPath(const char* volPath) {
     std::string posixPath;
-    
+
     // volPath has to start with /vol/
     if (strncmp("/vol/", volPath, 5) != 0) return "";
 
@@ -196,14 +196,22 @@ std::string convertToDevicePath(const char* volPath) {
 }
 
 struct stat existStat;
+bool isRoot(const char* path) {
+    std::string newPath(path);
+    if (newPath.size() >= 2 && newPath.rbegin()[0] == ':') return true;
+    if (newPath.size() >= 3 && newPath.rbegin()[1] == ':' && newPath.rbegin()[0] == '/') return true;
+    return false;
+}
+
 bool fileExist(const char* path) {
-    if (stat(path, &existStat) == 0 && S_ISREG(existStat.st_mode)) return true;
+    if (isRoot(path)) return true;
+    if (lstat(path, &existStat) == 0 && S_ISREG(existStat.st_mode)) return true;
     return false;
 }
 
 bool dirExist(const char* path) {
-    if (strlen(path) >= 2 && path[strlen(path)-1] == ':') return true;
-    if (stat(path, &existStat) == 0 && S_ISDIR(existStat.st_mode)) return true;
+    if (isRoot(path)) return true;
+    if (lstat(path, &existStat) == 0 && S_ISDIR(existStat.st_mode)) return true;
     return false;
 }
 
@@ -235,10 +243,7 @@ void createPath(const char* path) {
     for(p = tmp+1; *p; p++) {
         if (*p == '/') {
             *p = 0;
-            std::string pathToDir(tmp);
-            if (getRootFromLocation(getLocationFromRoot(pathToDir)) != pathToDir) {
-                mkdir(tmp, ACCESSPERMS);
-		    }
+            mkdir(tmp, ACCESSPERMS);
             *p = '/';
         }
     }

@@ -11,7 +11,7 @@
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT * 2)
+#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 
 static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
@@ -108,7 +108,9 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
 
     // Open source file
     int fileFlags = O_RDONLY;
+#ifdef O_OPEN_ENCRYPTED
     if (srcPath.ends_with(".nfs")) fileFlags |= O_OPEN_ENCRYPTED;
+#endif
     int readNormalHandle = open(srcPath.c_str(), fileFlags);
     if (readNormalHandle == -1) {
         reportFileError();
@@ -161,9 +163,12 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
         // Check if the same amounts of bytes are written
         if (bytesWritten < bytesRead) {
-            setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
             fclose(readHandle);
             fclose(writeHandle);
+            reportFileError();
+            showDialogPrompt(("Failed to copy enough bytes to:\n"+srcPath+"\nto:\n"+destPath).c_str(), "Next");
+            if (ignoreFileErrors) return true;
+            setErrorPrompt("Something went wrong: Not all bytes could be copied");
             return false;
         }
         setFileProgress(bytesWritten);
@@ -189,10 +194,8 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     // Open folder
     DIR* dirHandle;
     if ((dirHandle = opendir(srcPath.c_str())) == nullptr) {
-        if (ignoreFileErrors) {
-            reportFileError();
-            return true;
-        }
+        reportFileError();
+        if (ignoreFileErrors) return true;
         showDialogPrompt((std::string("Couldn't open directory to copy files from:\n")+destPath).c_str(), "OK");
         setErrorPrompt("Failed to open the directory to read files from");
         return false;
@@ -204,14 +207,14 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     // Loop over directory contents
     struct dirent* dirEntry;
     while ((dirEntry = readdir(dirHandle)) != nullptr) {
+        std::string entrySrcPath = srcPath + "/" + dirEntry->d_name;
+        std::string entryDstPath = destPath + "/" + dirEntry->d_name;
         // Use lstat since readdir returns DT_REG for symlinks
         struct stat fileStat;
-        if (lstat((srcPath + "/" + dirEntry->d_name).c_str(), &fileStat) != 0) {
-            if (ignoreFileErrors) {
-                reportFileError();
-                continue;
-            }
-            showDialogPrompt((std::string("Couldn't check what type this file/folder was:\n")+srcPath+"/"+dirEntry->d_name).c_str(), "OK");
+        if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
+            reportFileError();
+            if (ignoreFileErrors) continue;
+            showDialogPrompt(("Couldn't check what type this file/folder was:\n"+entrySrcPath).c_str(), "OK");
             setErrorPrompt("Failed to open the directory to read files from");
             return false;
         }
@@ -221,7 +224,7 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
         }
         else if (S_ISREG(fileStat.st_mode)) {
             // Copy file
-            if (!copyFile(dirEntry->d_name, srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
+            if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes)) {
                 closedir(dirHandle);
                 return false;
             }
@@ -231,7 +234,7 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
             // Copy all the files in this subdirectory
-            if (!copyFolder(srcPath + "/" + dirEntry->d_name, destPath + "/" + dirEntry->d_name, totalBytes)) {
+            if (!copyFolder(entrySrcPath, entryDstPath, totalBytes)) {
                 closedir(dirHandle);
                 return false;
             }
@@ -505,9 +508,17 @@ void dumpOnlineFiles() {
 }
 
 void cleanDumpingProcess() {
+    WHBLogPrint("Cleaning up after dumping...");
+    WHBLogFreetypeDraw();
+    sleep_for(200ms);
     if (copyBuffer != nullptr) free(copyBuffer);
     copyBuffer = nullptr;
     unmountUSBDrive();
     unmountSD();
+    if (isDiscMounted() && !loadTitles(true)) {
+        WHBLogPrint("Error while reloading titles after disc dumping...");
+        WHBLogFreetypeDraw();
+        sleep_for(2s);
+    }
     unmountDisc();
 }
