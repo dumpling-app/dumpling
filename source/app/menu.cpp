@@ -15,7 +15,7 @@ void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
     WHBLogFreetypeSetFontSize(22, 0);
-    WHBLogPrint("Dumpling V2.4.0b");
+    WHBLogPrint("Dumpling V2.4.1");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
@@ -27,7 +27,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Dumpling V2.4.0b");
+        WHBLogPrint("Dumpling V2.4.1");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -146,8 +146,14 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         }
     }
 
-    config.location = dumpLocation::SDFat;
-    if (!mountSD()) config.location = dumpLocation::USBFat;
+    if (isSDInserted()) {
+        config.location = dumpLocation::SDFat;
+        mountSD();
+    }
+    else {
+        config.location = dumpLocation::USBFat;
+        mountUSBDrive();
+    }
 
     // Detect when multiple online files are getting dumped
     if (showAccountOption && HAS_FLAG(config.dumpTypes, dumpTypeFlags::Custom) && dirExist((getRootFromLocation(config.location)+"/dumpling/Online Files/mlc01/usr/save/system/act/80000001").c_str())) {
@@ -197,7 +203,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                     }
                     else showDialogPrompt("Couldn't detect an useable FAT32 SD card.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
-                if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
+                else if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
                     if (mountUSBDrive()) {
                         config.location = dumpLocation::USBFat;
                         unmountSD();
@@ -223,7 +229,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                     }
                     else showDialogPrompt("Couldn't detect an useable FAT32 SD card.\nTry reformatting it and make sure it has only one partition.", "OK");
                 }
-                if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
+                else if (selectedOption == 0 && config.location == dumpLocation::SDFat) {
                     if (mountUSBDrive()) {
                         config.location = dumpLocation::USBFat;
                         unmountSD();

@@ -245,7 +245,7 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             char *path = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
             char *mode = ((char *)message->ioctl.buffer_in) + message->ioctl.buffer_in[2];
 
-            message->ioctl.buffer_io[0] = FSA_OpenFile(fd, path, mode, (int32_t*)message->ioctl.buffer_io + 1);
+            message->ioctl.buffer_io[0] = FSA_OpenFile(fd, path, mode, (int32_t*)(message->ioctl.buffer_io + 1));
             break;
         }
         case IOCTL_FSA_OPENFILEEX: {
@@ -256,7 +256,7 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             uint32_t flags = message->ioctl.buffer_in[4];
             uint32_t preallocSize = message->ioctl.buffer_in[5];
 
-            message->ioctl.buffer_io[0] = FSA_OpenFileEx(fd, path, mode, (int32_t*)message->ioctl.buffer_io + 1, createMode, flags, preallocSize);
+            message->ioctl.buffer_io[0] = FSA_OpenFileEx(fd, path, mode, createMode, flags, preallocSize, (int32_t*)(message->ioctl.buffer_io + 1));
             break;
         }
         case IOCTL_FSA_READFILE: {
@@ -352,7 +352,7 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             int32_t fd         = message->ioctl.buffer_in[0];
             int32_t fileHandle = message->ioctl.buffer_in[1];
 
-            message->ioctl.buffer_io[0] = FSA_GetPosFile(fd, fileHandle, (uint32_t *) message->ioctl.buffer_io + 1);
+            message->ioctl.buffer_io[0] = FSA_GetPosFile(fd, fileHandle, (uint32_t *)(message->ioctl.buffer_io + 1));
             break;
         }
         case IOCTL_FSA_SETPOSFILE: {
@@ -397,7 +397,7 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             int32_t fd     = message->ioctl.buffer_in[0];
             char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
             int32_t mode   = message->ioctl.buffer_in[2];
-            int32_t mask   = message->ioctl.buffer_in[2];
+            int32_t mask   = message->ioctl.buffer_in[3];
 
             message->ioctl.buffer_io[0] = FSA_ChangeModeEx(fd, path, mode, mask);
             break;
@@ -443,6 +443,20 @@ static int32_t IPC_ioctl(IPCMessage *message) {
             int32_t deviceHandle = message->ioctl.buffer_in[1];
 
             message->ioctl.buffer_io[0] = FSA_RawClose(fd, deviceHandle);
+            break;
+        }
+        case IOCTL_FSA_REGISTERFLUSHQUOTA: {
+            int32_t fd = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_RegisterFlushQuota(fd, path);
+            break;
+        }
+        case IOCTL_FSA_FLUSHMULTIQUOTA: {
+            int32_t fd = message->ioctl.buffer_in[0];
+            char *path = ((char *) message->ioctl.buffer_in) + message->ioctl.buffer_in[1];
+
+            message->ioctl.buffer_io[0] = FSA_FlushMultiQuota(fd, path);
             break;
         }
         case IOCTL_CHECK_IF_IOSUHAX: {

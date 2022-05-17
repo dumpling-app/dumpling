@@ -69,7 +69,7 @@ typedef struct {
    uint64_t created;
    uint64_t modified;
    uint8_t attributes[48];
-} __attribute__((packed)) FSStat;
+} __attribute__((aligned(4))) __attribute__((packed)) FSStat;
 static_assert(sizeof(FSStat) == 0x64, "FSStat struct is not 0x64 bytes!");
 
 typedef struct {
@@ -95,4 +95,5 @@ typedef struct {
     uint64_t blocks_count;
     uint64_t some_count;
     uint32_t block_size;
-} FSBlockInfo;
+} __attribute__((packed)) FSBlockInfo;
+static_assert(sizeof(FSBlockInfo) == 0x14, "FSBlockInfo struct is not 0x14 bytes!");

@@ -389,7 +389,6 @@ bool dumpDisc() {
     if (!checkForDiscTitles(mcpHandle)) {
         // Loop until a disk is found
         while(true) {
-            // Print menu
             WHBLogFreetypeStartScreen();
             WHBLogPrint("Looking for a game disc...");
             WHBLogPrint("Please insert one if you haven't already!");

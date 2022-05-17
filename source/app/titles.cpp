@@ -272,6 +272,7 @@ bool loadTitles(bool skipDiscs) {
     }
 
     // Parse title meta files and create title entries for each title
+    installedTitles.clear();
     for (auto& sortedTitle : rawTitles) {
         installedTitles.emplace_back(titleEntry{});
         titleEntry& title = installedTitles.back();
@@ -373,7 +374,7 @@ bool checkForDiscTitles(int32_t mcpHandle) {
     uint32_t titlesListed = 0;
     MCP_TitleList(mcpHandle, &titlesListed, titles.data(), titleByteSize);
 
-    for (auto& title : titles) {        
+    for (auto& title : titles) {
         if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
             // Skip wii games when using Tiramisu for now
             if (getCFWVersion() == TIRAMISU_RPX && title.appType == MCP_APP_TYPE_GAME_WII) {

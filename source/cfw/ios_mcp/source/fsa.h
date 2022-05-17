@@ -20,9 +20,11 @@ int32_t FSA_MakeQuota(int32_t fd, char* path, uint32_t flags, uint64_t size);
 int32_t FSA_FlushQuota(int32_t fd, char* quota_path);
 int32_t FSA_RollbackQuota(int32_t fd, char* quota_path);
 int32_t FSA_RollbackQuotaForce(int32_t fd, char* quota_path);
+int32_t FSA_RegisterFlushQuota(int32_t fd, char *quota_path);
+int32_t FSA_FlushMultiQuota(int32_t fd, char *quota_path);
 
 int32_t FSA_OpenFile(int32_t fd, char* path, char* mode, int32_t* outHandle);
-int32_t FSA_OpenFileEx(int32_t fd, char* path, char* mode, int32_t* outHandle, uint32_t createMode, uint32_t flags, uint32_t preallocSize);
+int32_t FSA_OpenFileEx(int32_t fd, char* path, char* mode, uint32_t createMode, uint32_t flags, uint32_t preallocSize, int32_t* outHandle);
 int32_t FSA_ReadFile(int32_t fd, void* data, uint32_t size, uint32_t cnt, int32_t fileHandle, uint32_t flags);
 int32_t FSA_WriteFile(int32_t fd, void* data, uint32_t size, uint32_t cnt, int32_t fileHandle, uint32_t flags);
 int32_t FSA_ReadFileWithPos(int32_t fd, void* data, uint32_t size, uint32_t cnt, uint32_t position, int32_t fileHandle, uint32_t flags);
