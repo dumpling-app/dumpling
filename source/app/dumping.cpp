@@ -14,6 +14,7 @@
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 
 static uint8_t* copyBuffer = nullptr;
+static uint8_t* rpxBuffer = nullptr;
 static bool cancelledScanning = false;
 static bool ignoreFileErrors = false;
 
@@ -106,6 +107,20 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         }
     }
 
+    // Check if rpx file since we want to copy the whole thing at once
+    uint8_t* buffer = copyBuffer;
+    uint32_t bufferSize = BUFFER_SIZE;
+    if (srcPath.ends_with(".rpx") || srcPath.ends_with(".rpl")) {
+        // Allocate buffer to copy bytes between
+        rpxBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, fileStat.st_size+BUFFER_SIZE_ALIGNMENT);
+        if (rpxBuffer == nullptr) {
+            setErrorPrompt("Couldn't allocate the memory to copy rpx files!");
+            return false;
+        }
+        buffer = rpxBuffer;
+        bufferSize = fileStat.st_size;
+    }
+
     // Open source file
     int fileFlags = O_RDONLY;
 #ifdef O_OPEN_ENCRYPTED
@@ -159,8 +174,8 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     size_t bytesWritten = 0;
     setFile(filename, fileStat.st_size);
     
-    while((bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle)) > 0) {
-        bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
+    while((bytesRead = fread(buffer, sizeof(uint8_t), bufferSize, readHandle)) > 0) {
+        bytesWritten = fwrite(buffer, sizeof(uint8_t), bytesRead, writeHandle);
         // Check if the same amounts of bytes are written
         if (bytesWritten < bytesRead) {
             fclose(readHandle);
@@ -512,6 +527,8 @@ void cleanDumpingProcess() {
     sleep_for(200ms);
     if (copyBuffer != nullptr) free(copyBuffer);
     copyBuffer = nullptr;
+    if (rpxBuffer != nullptr) free(rpxBuffer);
+    rpxBuffer = nullptr;
     unmountUSBDrive();
     unmountSD();
     if (isDiscMounted() && !loadTitles(true)) {
