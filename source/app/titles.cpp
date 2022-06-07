@@ -205,7 +205,7 @@ bool getSaveList(std::string saveDirPath) {
 
             uint32_t lowTitleId = strtoul((const char*)&lowDirEntry->d_name, nullptr, 16);
             if (lowTitleId == 0) continue;
-            std::string lowDirPath = highDirPath + lowDirEntry->d_name;
+            std::string lowDirPath = highDirPath + lowDirEntry->d_name + "/";
 
             const auto& currSavePart = rawSaves.try_emplace(lowTitleId, savePart{.savePath = lowDirPath.c_str(), .titleHighId = highTitleId});
 
