@@ -5,16 +5,19 @@
 #include "navigation.h"
 #include "titles.h"
 #include "users.h"
-#include "iosuhax.h"
+#include "cfw.h"
 #include "gui.h"
+
+#include <mocha/mocha.h>
+#include <mocha/otp.h>
 
 // Dumping Functions
 
 #define BUFFER_SIZE_ALIGNMENT 64
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
+static_assert(BUFFER_SIZE % 0x8000 == 0, "Buffer size needs to be multiple of 0x8000 to properly read disc sections");
 
 static uint8_t* copyBuffer = nullptr;
-static uint8_t* rpxBuffer = nullptr;
 static bool cancelledScanning = false;
 static bool ignoreFileErrors = false;
 
@@ -51,8 +54,13 @@ bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, u
     if (writeHandle == nullptr) {
         reportFileError();
         if (ignoreFileErrors) return true;
-        showDialogPrompt((std::string("Failed to copy file from memory to:")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
+        std::string errorMessage = "Couldn't open the file to copy to!\n";
+        errorMessage += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" after creating SD card file:\n";
+        errorMessage += destPath + "\n";
+        errorMessage += "to:\n";
+        errorMessage += destPath;
+        setErrorPrompt(errorMessage);
         return false;
     }
 
@@ -93,60 +101,20 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     // Check if file is an actual file first
     struct stat fileStat;
     if (lstat(srcPath.c_str(), &fileStat) == -1) {
-        showDialogPrompt((std::string("Failed retrieve info about this file:\n")+srcPath).c_str(), "Next");
-        setErrorPrompt("Couldn't get the info about a file that should be copied!");
-        return false;
-    }
-
-    if (copyBuffer == nullptr) {
-        // Allocate buffer to copy bytes between
-        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
-        if (copyBuffer == nullptr) {
-            setErrorPrompt("Couldn't allocate the memory to copy files!");
-            return false;
-        }
-    }
-
-    // Check if rpx file since we want to copy the whole thing at once
-    uint8_t* buffer = copyBuffer;
-    uint32_t bufferSize = BUFFER_SIZE;
-    if (srcPath.ends_with(".rpx") || srcPath.ends_with(".rpl")) {
-        // Allocate buffer to copy bytes between
-        rpxBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, fileStat.st_size+BUFFER_SIZE_ALIGNMENT);
-        if (rpxBuffer == nullptr) {
-            setErrorPrompt("Couldn't allocate the memory to copy rpx files!");
-            return false;
-        }
-        buffer = rpxBuffer;
-        bufferSize = fileStat.st_size;
-    }
-
-    // Open source file
-    int fileFlags = O_RDONLY;
-#ifdef O_OPEN_ENCRYPTED
-    if (srcPath.ends_with(".nfs")) fileFlags |= O_OPEN_ENCRYPTED;
-#endif
-    int readNormalHandle = open(srcPath.c_str(), fileFlags);
-    if (readNormalHandle == -1) {
         reportFileError();
         if (ignoreFileErrors) return true;
-        showDialogPrompt((std::string("Failed to open file to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't open the file to copy from!");
+        std::string errorMessage = "Failed to retrieve info from source file!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+        errorMessage += "\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" when getting stats for:\n";
+        errorMessage += srcPath;
+        setErrorPrompt(errorMessage);
         return false;
     }
-    FILE* readHandle = fdopen(readNormalHandle, "rb");
-    if (readHandle == nullptr) {
-        reportFileError();
-        if (ignoreFileErrors) return true;
-        showDialogPrompt((std::string("Failed to fdopen file to copy from:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't fdopen the file to copy from!");
-        return false;
-    }
-    
+
     // If totalBytes is set it means that it's scanning for file sizes of openable files
     if (totalBytes != nullptr) {
         *totalBytes += fileStat.st_size;
-        fclose(readHandle);
 
         // Check whether user has cancelled scanning
         updateInputs();
@@ -158,14 +126,41 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return true;
     }
 
+    if (copyBuffer == nullptr) {
+        // Allocate buffer to copy bytes between
+        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        if (copyBuffer == nullptr) {
+            setErrorPrompt("Couldn't allocate the memory to copy files!");
+            return false;
+        }
+    }
+
+    FILE* readHandle = fopen(srcPath.c_str(), "rb");
+    if (readHandle == nullptr) {
+        reportFileError();
+        if (ignoreFileErrors) return true;
+        std::string errorMessage = "Couldn't open the file to copy from!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
+        errorMessage += "\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" after opening file!\n";
+        errorMessage += srcPath;
+        setErrorPrompt(errorMessage);
+        return false;
+    }
+
     // Open the destination file
     FILE* writeHandle = fopen(destPath.c_str(), "wb");
     if (writeHandle == nullptr) {
         fclose(readHandle);
         reportFileError();
         if (ignoreFileErrors) return true;
-        showDialogPrompt((std::string("Failed to create a new file on SD/USB:\n")+srcPath+std::string("\nto:\n")+destPath).c_str(), "Next");
-        setErrorPrompt("Couldn't open the file to copy to!\nMake sure that your SD card isn't locked by the SD card's lock switch.");
+        std::string errorMessage = "Couldn't open the file to copy to!\n";
+        errorMessage += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" after creating SD card file:\n";
+        errorMessage += srcPath + "\n";
+        errorMessage += "to:\n";
+        errorMessage += destPath;
+        setErrorPrompt(errorMessage);
         return false;
     }
 
@@ -174,16 +169,37 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     size_t bytesWritten = 0;
     setFile(filename, fileStat.st_size);
     
-    while((bytesRead = fread(buffer, sizeof(uint8_t), bufferSize, readHandle)) > 0) {
-        bytesWritten = fwrite(buffer, sizeof(uint8_t), bytesRead, writeHandle);
-        // Check if the same amounts of bytes are written
-        if (bytesWritten < bytesRead) {
+    while((bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle)) > 0) {
+        int fileError = 0;
+        if (bytesRead != BUFFER_SIZE && (fileError = ferror(readHandle)) != 0) {
             fclose(readHandle);
             fclose(writeHandle);
             reportFileError();
-            showDialogPrompt(("Failed to copy enough bytes to:\n"+srcPath+"\nto:\n"+destPath).c_str(), "Next");
             if (ignoreFileErrors) return true;
-            setErrorPrompt("Something went wrong: Not all bytes could be copied");
+            std::string errorMessage = "Failed to read all data from this file!\n";
+            if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
+            errorMessage += "Error "+std::to_string(errno)+" when reading data from:\n";
+            errorMessage += srcPath;
+            setErrorPrompt(errorMessage);
+            return false;
+        }
+        bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
+        // Check if the same amounts of bytes are written
+        if (bytesWritten != bytesRead) {
+            fileError = ferror(readHandle);
+            fclose(readHandle);
+            fclose(writeHandle);
+            reportFileError();
+            if (ignoreFileErrors) return true;
+            std::string errorMessage = "Failed to write data to dumping device!\n";
+            if (errno == ENOSPC) errorMessage += "There's no space available on the USB/SD card!\n";
+            if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+            errorMessage += "\nDetails:\n";
+            errorMessage += "Error "+std::to_string(errno)+" when writing data from:\n";
+            errorMessage += srcPath + "\n";
+            errorMessage += "to:\n";
+            errorMessage += destPath;
+            setErrorPrompt(errorMessage);
             return false;
         }
         setFileProgress(bytesWritten);
@@ -192,10 +208,15 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         updateInputs();
         if (pressedBack()) {
             uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
             if (selectedChoice == 0) {
-                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
                 fclose(readHandle);
                 fclose(writeHandle);
+                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
                 return false;
             }
         }
@@ -208,10 +229,15 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
 bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Open folder
     DIR* dirHandle;
-    if ((dirHandle = opendir(srcPath.c_str())) == nullptr) {
+    if ((dirHandle = opendir((srcPath+"/").c_str())) == nullptr) {
         reportFileError();
         if (ignoreFileErrors) return true;
-        showDialogPrompt((std::string("Couldn't open directory to copy files from:\n")+destPath).c_str(), "OK");
+        std::string errorMessage = "Failed to open folder to read content from!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+        errorMessage += "\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" while opening folder:\n";
+        errorMessage += srcPath;
+        setErrorPrompt(errorMessage);
         setErrorPrompt("Failed to open the directory to read files from");
         return false;
     }
@@ -220,39 +246,64 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     if (totalBytes == nullptr) createPath(destPath.c_str());
 
     // Loop over directory contents
-    struct dirent* dirEntry;
-    while ((dirEntry = readdir(dirHandle)) != nullptr) {
-        std::string entrySrcPath = srcPath + "/" + dirEntry->d_name;
-        std::string entryDstPath = destPath + "/" + dirEntry->d_name;
-        // Use lstat since readdir returns DT_REG for symlinks
-        struct stat fileStat;
-        if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
+    while (true) {
+        errno = 0;
+        struct dirent* dirEntry = readdir(dirHandle);
+        if (dirEntry != NULL) {
+            std::string entrySrcPath = srcPath + "/" + dirEntry->d_name;
+            std::string entryDstPath = destPath + "/" + dirEntry->d_name;
+            // Use lstat since readdir returns DT_REG for symlinks
+            struct stat fileStat;
+            if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
+                reportFileError();
+                if (ignoreFileErrors) continue;
+                setErrorPrompt("Unknown Error "+std::to_string(errno)+":\nCouldn't check type of file/folder!\n"+entrySrcPath);
+                return false;
+            }
+            
+            if (S_ISLNK(fileStat.st_mode)) {
+                continue;
+            }
+            else if (S_ISREG(fileStat.st_mode)) {
+                // Copy file
+                if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes)) {
+                    closedir(dirHandle);
+                    return false;
+                }
+            }
+            else if (S_ISDIR(fileStat.st_mode)) {
+                // Ignore root and parent folder entries
+                if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
+
+                // Copy all the files in this subdirectory
+                if (!copyFolder(entrySrcPath, entryDstPath, totalBytes)) {
+                    closedir(dirHandle);
+                    return false;
+                }
+            }
+        }
+        else if (dirEntry == NULL && errno == EIO) {
             reportFileError();
-            if (ignoreFileErrors) continue;
-            showDialogPrompt(("Couldn't check what type this file/folder was:\n"+entrySrcPath).c_str(), "OK");
-            setErrorPrompt("Failed to open the directory to read files from");
+            std::string errorMessage = "The Wii U had an issue while reading the disc(?)!\n";
+            errorMessage += "Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+            errorMessage += "Unfortunately, disc requires reinsertion to retry!\nTry restarting Dumpling and trying again.\n\nDetails:\n";
+            errorMessage += "Error "+std::to_string(errno)+" while iterating folder contents:\n";
+            errorMessage += srcPath;
+            setErrorPrompt(errorMessage);
             return false;
         }
-        
-        if (S_ISLNK(fileStat.st_mode)) {
-            continue;
+        else if (dirEntry == NULL && errno != 0) {
+            reportFileError();
+            if (ignoreFileErrors) continue;
+            std::string errorMessage = "Unknown error while reading disc contents!\n";
+            errorMessage += "You might want to restart your console and try again.\n\nDetails:\n";
+            errorMessage += "Error "+std::to_string(errno)+" while iterating folder contents:\n";
+            errorMessage += srcPath;
+            setErrorPrompt(errorMessage);
+            return false;
         }
-        else if (S_ISREG(fileStat.st_mode)) {
-            // Copy file
-            if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes)) {
-                closedir(dirHandle);
-                return false;
-            }
-        }
-        else if (S_ISDIR(fileStat.st_mode)) {
-            // Ignore root and parent folder entries
-            if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
-
-            // Copy all the files in this subdirectory
-            if (!copyFolder(entrySrcPath, entryDstPath, totalBytes)) {
-                closedir(dirHandle);
-                return false;
-            }
+        else {
+            break;
         }
     }
 
@@ -262,13 +313,13 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
 
 bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Game) && entry.base) {
-        if (!copyFolder(entry.base->path, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Update) && entry.update) {
-        if (!copyFolder(entry.update->path, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.update->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::DLC) && entry.dlc) {
-        if (!copyFolder(entry.dlc->path, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.dlc->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Saves) && entry.saves && (entry.saves->commonSave || !entry.saves->userSaves.empty())) {
         for (auto& save : entry.saves->userSaves) {
@@ -377,7 +428,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
 void dumpMLC() {
     dumpingConfig mlcConfig = {.dumpTypes = dumpTypeFlags::Custom};
-    titleEntry mlcEntry{.shortTitle = "MLC Dump", .custom = customPart{.inputPath = "storage_mlc01:/", .outputPath = "/MLC Dump"}};
+    titleEntry mlcEntry{.shortTitle = "MLC Dump", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/"), .outputPath = "/MLC Dump"}};
     
     uint8_t selectedChoice = showDialogPrompt("Dumping the MLC can take 6-20 hours depending on it's contents!\nMake sure that you have enough space available.", "Proceed", "Cancel");
     if (selectedChoice == 1) return;
@@ -464,7 +515,14 @@ bool dumpDisc() {
     // Dump queue
     dumpingConfig config = {.dumpTypes = (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves)};
     if (!showOptionMenu(config, true)) return true;
-    return dumpQueue(queue, config);
+    if (dumpQueue(queue, config)) {
+        showDialogPrompt("Successfully dumped this disc!", "OK");
+        return true;
+    }
+    else {
+        showDialogPrompt("Failed to dump disc files...", "OK");
+        return false;
+    }
 }
 
 void dumpOnlineFiles() {
@@ -492,21 +550,21 @@ void dumpOnlineFiles() {
         }
     }
 
-    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .custom = customPart{.inputPath = "storage_mlc01:/usr/save/system/nim/ec/", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/nim/ec"}};
-    titleEntry miiEntry{.shortTitle = "Mii Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10056000/content", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10056000/content"}};
-    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10054000/content/ccerts", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
-    titleEntry scertsEntry{.shortTitle = "scerts Files", .custom = customPart{.inputPath = "storage_mlc01:/sys/title/0005001b/10054000/content/scerts", .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/scerts"}};
-    titleEntry accountsEntry{.shortTitle = "Selected Account", .custom = customPart{.inputPath = "storage_mlc01:/usr/save/system/act/"+accountIdStr, .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/act/"+(onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr)}};
+    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/usr/save/system/nim/ec/"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/nim/ec"}};
+    titleEntry miiEntry{.shortTitle = "Mii Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10056000/content"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10056000/content"}};
+    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/ccerts"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
+    titleEntry scertsEntry{.shortTitle = "scerts Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/scerts"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/scerts"}};
+    titleEntry accountsEntry{.shortTitle = "Selected Account", .custom = customPart{.inputPath = convertToPosixPath((std::string("/vol/storage_mlc01/usr/save/system/act/")+accountIdStr).c_str()), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/act/"+(onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr)}};
 
     // Dump otp.bin and seeprom.bin
-    std::vector<uint8_t> otpBuffer(1024);
+    WiiUConsoleOTP otpReturn;
     std::vector<uint8_t> seepromBuffer(512);
 
-    IOSUHAX_read_otp(otpBuffer.data(), otpBuffer.size());
-    IOSUHAX_read_seeprom(seepromBuffer.data(), 0, seepromBuffer.size());
+    Mocha_ReadOTP(&otpReturn);
+    Mocha_SEEPROMRead(seepromBuffer.data(), 0, seepromBuffer.size());
 
-    titleEntry seepromFile{.shortTitle = "seeprom.bin File", .custom = customPart{.inputBuffer = std::pair(seepromBuffer.data(), seepromBuffer.size()), .outputPath = "/Online Files/seeprom.bin"}};
-    titleEntry otpFile{.shortTitle = "otp.bin File", .custom = customPart{.inputBuffer = std::pair(otpBuffer.data(), otpBuffer.size()), .outputPath = "/Online Files/otp.bin"}};
+    titleEntry seepromFile{.shortTitle = "seeprom.bin File", .custom = customPart{.inputBuffer = std::pair((uint8_t*)seepromBuffer.data(), seepromBuffer.size()), .outputPath = "/Online Files/seeprom.bin"}};
+    titleEntry otpFile{.shortTitle = "otp.bin File", .custom = customPart{.inputBuffer = std::pair((uint8_t*)&otpReturn, sizeof(otpReturn)), .outputPath = "/Online Files/otp.bin"}};
 
     // Add custom title entries to queue
     queue.emplace_back(std::ref(ecAccountInfoEntry));
@@ -527,8 +585,6 @@ void cleanDumpingProcess() {
     sleep_for(200ms);
     if (copyBuffer != nullptr) free(copyBuffer);
     copyBuffer = nullptr;
-    if (rpxBuffer != nullptr) free(rpxBuffer);
-    rpxBuffer = nullptr;
     unmountUSBDrive();
     unmountSD();
     if (isDiscMounted() && !loadTitles(true)) {

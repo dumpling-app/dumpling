@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "navigation.h"
-#include "iosuhax.h"
+#include "cfw.h"
 #include "filesystem.h"
 #include "exploit.h"
 #include "memory.h"
@@ -20,17 +20,16 @@ int main() {
 
     // Start Dumpling
     showLoadingScreen();
-    CFWVersion iosuhaxCFW = testIosuhax();
-    if (iosuhaxCFW != FAILED && ((iosuhaxCFW == TIRAMISU_RPX || iosuhaxCFW == CEMU) || executeExploit()) && openIosuhax() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+    if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         WHBLogPrint("");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
-        sleep_for(2s);
+        sleep_for(3s);
         showMainMenu();
     }
 
     WHBLogPrint("");
-    WHBLogPrint(iosuhaxCFW == TIRAMISU_RPX ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
+    WHBLogPrint(getCFWVersion() == MOCHA_FSCLIENT ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
     WHBLogFreetypeDraw();
     sleep_for(5s);
 
@@ -38,12 +37,12 @@ int main() {
     unmountSD();
     unmountUSBDrive();
     unmountSystemDrives();
-    closeIosuhax();
+    shutdownCFW();
     ACPFinalize();
     nn::act::Finalize();
     FSShutdown();
     VPADShutdown();
     shutdownGUI();
 
-    exitApplication(iosuhaxCFW != TIRAMISU_RPX);
+    exitApplication(getCFWVersion() != MOCHA_FSCLIENT);
 }

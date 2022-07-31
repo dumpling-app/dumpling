@@ -47,25 +47,19 @@ DRC_SPLASH	:=
 CFLAGS		:=	-g -Wall -O2 -ffunction-sections -Wno-narrowing \
 				$(MACHDEP)
 
-ifdef CEMU_STUBS
-CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DCEMU_STUBS `freetype-config --cflags`
+ifdef USING_CEMU
+CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSING_CEMU `freetype-config --cflags`
 else
-CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSE_LIBFAT `freetype-config --cflags`
+CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSE_LIBFAT -DUSE_LIBMOCHA `freetype-config --cflags`
 endif
 
-CXXFLAGS	:= $(CFLAGS) -std=c++20
+CXXFLAGS	:=	$(CFLAGS) -std=c++20
 
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS		:=	-lstdc++ -lwut -lfat -liosuhax `freetype-config --libs`
+LIBS		:=	-lstdc++ -lwut -lfat -lmocha -liosuhax `freetype-config --libs`
 
-#-------------------------------------------------------------------------------
-# only include stubs when compiling with cemu target
-#-------------------------------------------------------------------------------
-ifdef CEMU_STUBS
-SOURCES	+=	source/stub
-endif
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
 # containing include and lib
@@ -155,19 +149,21 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
 	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
+	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_fs
 	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 cemu:
 	@[ -d $(BUILD) ] || mkdir -p $(BUILD)
-	@$(MAKE) CEMU_STUBS=1 --no-print-directory -f $(CURDIR)/Makefile
+	@$(MAKE) USING_CEMU=1 --no-print-directory -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf
 	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
+	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_fs
 	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
 	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
 

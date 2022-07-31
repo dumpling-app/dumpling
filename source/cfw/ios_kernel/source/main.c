@@ -4,6 +4,7 @@
 #include "../../ios_mcp/ios_mcp.h"
 #include "../../ios_mcp/ios_mcp_syms.h"
 #include "../../ios_usb/ios_usb.h"
+#include "../../ios_fs/ios_fs.h"
 
 static const uint8_t repairData_setFaultBehavior[] = {
     0xE1,0x2F,0xFF,0x1E,0xE9,0x2D,0x40,0x30,0xE5,0x93,0x20,0x00,0xE1,0xA0,0x40,0x00,
@@ -44,13 +45,14 @@ int32_t mainKernel() {
     // Patch kernel_error_handler to exit out immediately when called
     *(int32_t*)0x08129A24 = 0xE12FFF1E; // bx lr
 
-    // Fix memory that the exploit had to corrupt while trying to load this file
+    // Fix memory that the exploit had to corrupt while trying to run our exploit payloads
     kernelMemcpy((void*)0x081298BC, repairData_setFaultBehavior, sizeof(repairData_setFaultBehavior));
     kernelMemcpy((void*)0x081296E4, repairData_setPanicBehavior, sizeof(repairData_setPanicBehavior));
     kernelMemcpy((void*)0x10100174, repairData_USBRootThread, sizeof(repairData_USBRootThread));
 
     // Copy ios_mcp and ios_usb so that they can be run
     kernelMemcpy((void*)0x101312D0, (void*)0x01E50000, sizeof(ios_usb_bin));
+    kernelMemcpy((void*)0x107F8200, (void*)0x01E52500, sizeof(ios_fs_bin));
     kernelMemcpy(KERNEL_RUN_ADDR(_mcp_start), (void*)0x01E70020, *(uint32_t*)0x01E70000);
 
     installPatches();

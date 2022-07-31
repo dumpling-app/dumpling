@@ -22,6 +22,7 @@ uint64_t copiedFileBytes;
 OSTick lastTime;
 uint64_t lastBytesCopied;
 uint64_t bytesCopiedSecond;
+uint32_t filesCopied = 0;
 uint32_t fileErrors = 0;
 
 
@@ -37,41 +38,43 @@ void startSingleDump() {
     copiedQueueBytes = 0;
     totalFileBytes = 0;
     copiedFileBytes = 0;
+    filesCopied = 0;
     fileErrors = 0;
     
-    startTime = OSGetTime();
-    lastTime = startTime;
+    startTime = OSGetTick();
+    lastTime = startTime - (OSTick)OSMillisecondsToTicks(1001);
 }
 
 void showCurrentProgress() {
     // Calculate the bytes per second and print an estimate of the time
     OSTick timeSinceLastPeriod = OSGetTick()-lastTime;
-    if (timeSinceLastPeriod > (OSTick)OSSecondsToTicks(2)) {
+    if (timeSinceLastPeriod > (OSTick)OSSecondsToTicks(1)) {
         lastTime = OSGetTick();
+        
         // This averages the bytes per second
         bytesCopiedSecond = ((SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond)) / OSTicksToSeconds(timeSinceLastPeriod);
         lastBytesCopied = copiedQueueBytes;
-    }
-    
-    // Print general dumping message
-    WHBLogFreetypeStartScreen();
-    WHBLogPrint("Dumping In Progress:");
-    WHBLogPrint("");
-    WHBLogPrint(dumpingMessage.c_str());
-    if (totalQueueBytes != 0) printEstimateTime();
 
-    WHBLogPrint("");
-    WHBLogPrint("Details:");
-    WHBLogPrintf("Current Speed = %fMB/s", (double)bytesCopiedSecond/1000000.0);
-    if (totalQueueBytes != 0) WHBLogPrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
-    else WHBLogPrintf("Overall Progress = %s written", formatByteSize(copiedQueueBytes).c_str());
-    if (fileErrors != 0) WHBLogPrintf("Files Skipped/Errors: %d", fileErrors);
-    WHBLogPrint("");
-    WHBLogPrintf("File Name = %s", currFilename);
-    WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
-    WHBLogFreetypeScreenPrintBottom("===============================");
-    WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
-    WHBLogFreetypeDrawScreen();
+        // Print general dumping message
+        WHBLogFreetypeStartScreen();
+        WHBLogPrint("Dumping In Progress:");
+        WHBLogPrint("");
+        WHBLogPrint(dumpingMessage.c_str());
+        if (totalQueueBytes != 0) printEstimateTime();
+
+        WHBLogPrint("");
+        WHBLogPrint("Details:");
+        WHBLogPrintf("Current Speed = %fMB/s", (double)bytesCopiedSecond/1000000.0);
+        if (totalQueueBytes != 0) WHBLogPrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
+        else WHBLogPrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
+        if (fileErrors != 0) WHBLogPrintf("Files Skipped/Errors: %d", fileErrors);
+        WHBLogPrint("");
+        WHBLogPrintf("File Name = %s", currFilename);
+        WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
+        WHBLogFreetypeScreenPrintBottom("===============================");
+        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
+        WHBLogFreetypeDrawScreen();
+    }
 }
 
 
@@ -85,6 +88,7 @@ void setFile(const char* filename, uint64_t total) {
     currFilename = filename;
     totalFileBytes = total;
     copiedFileBytes = 0;
+    filesCopied++;
 }
 
 void setFileProgress(uint64_t copied) {

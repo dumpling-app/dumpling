@@ -6,7 +6,7 @@
 #include "dumping.h"
 #include "filesystem.h"
 #include "gui.h"
-#include "iosuhax.h"
+#include "cfw.h"
 #include "../font/log_freetype.h"
 
 // Menu screens
@@ -15,7 +15,7 @@ void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
     WHBLogFreetypeSetFontSize(22, 0);
-    WHBLogPrint("Dumpling V2.4.3");
+    WHBLogPrint("Dumpling V2.5.0");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
@@ -27,7 +27,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Dumpling V2.4.3");
+        WHBLogPrint("Dumpling V2.5.0");
         WHBLogPrint("===============================");
         WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
         WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
@@ -65,7 +65,7 @@ void showMainMenu() {
                 break;
             }
             if (pressedBack()) {
-                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == TIRAMISU_RPX ? "Do you really want to exit Dumpling?" : "Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
+                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == MOCHA_FSCLIENT ? "Do you really want to exit Dumpling?" : "Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
                 if (exitSelectedOption == 0) {
                     WHBLogFreetypeClear();
                     return;
@@ -317,6 +317,12 @@ void showDialogPrompt(const char* message, const char* button) {
 const char* errorMessage = nullptr;
 void setErrorPrompt(const char* message) {
     errorMessage = message;
+}
+
+std::string messageCopy = "";
+void setErrorPrompt(std::string message) {
+    messageCopy = message;
+    setErrorPrompt(messageCopy.c_str());
 }
 
 void showErrorPrompt(const char* button) {

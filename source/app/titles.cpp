@@ -3,7 +3,7 @@
 #include "users.h"
 #include "gui.h"
 #include "menu.h"
-#include "iosuhax.h"
+#include "cfw.h"
 
 std::vector<titleEntry> installedTitles = {};
 std::map<uint32_t, std::vector<MCPTitleListType>> rawTitles = {};
@@ -11,7 +11,7 @@ std::map<uint32_t, savePart> rawSaves = {};
 
 bool getTitleMetaXml(titleEntry& title, titlePart& part) {
     // Check if /meta/meta.xml file exists
-    std::string metaPath(part.path);
+    std::string metaPath(part.posixPath);
     metaPath.append("/meta/meta.xml");
 
     // Read meta.xml
@@ -48,6 +48,7 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
         // Stop when all fields are encountered
         if (foundShortTitle && foundJapaneseShortTitle && foundProductCode) break;
     }
+    xmlFile.close();
 
     if ((foundShortTitle || foundJapaneseShortTitle) && foundProductCode) {
         // Finish up information
@@ -154,11 +155,6 @@ bool getTitleList(bool skipDiscs) {
             continue;
         }
 
-        // Skip wii games when using Tiramisu for now
-        if (getCFWVersion() == TIRAMISU_RPX && title.appType == MCP_APP_TYPE_GAME_WII) {
-            continue;
-        }
-
         // Check if it's a supported app type
         if (isBase(title.appType) || isUpdate(title.appType) || isDLC(title.appType) || isSystemApp(title.appType)) {
             std::string posixPath = convertToPosixPath(title.path);
@@ -183,7 +179,7 @@ bool getSaveList(std::string saveDirPath) {
 
     // Loop over high title id folders e.g. storage_mlc01:/usr/save/[iterated]
     DIR* highDirHandle;
-    if ((highDirHandle = opendir(saveDirPath.c_str())) == nullptr) return false;
+    if ((highDirHandle = opendir((saveDirPath+"/").c_str())) == nullptr) return false;
 
     struct dirent* highDirEntry;
     while ((highDirEntry = readdir(highDirHandle)) != nullptr) {
@@ -263,7 +259,7 @@ bool loadTitles(bool skipDiscs) {
     rawTitles.clear();
 
     // Get sorted lists
-    if (!getTitleList(skipDiscs) || !getSaveList("storage_mlc01:/usr/save/") || !(!testStorage(titleLocation::USB) || getSaveList("storage_usb01:/usr/save/"))) {
+    if (!getTitleList(skipDiscs) || !getSaveList(convertToPosixPath("/vol/storage_mlc01/usr/save/")) || !(!testStorage(titleLocation::USB) || getSaveList(convertToPosixPath("/vol/storage_usb01/usr/save/")))) {
         WHBLogPrint("Error while getting the titles/saves, can't continue!");
         WHBLogPrint("Please report the issue on Dumpling's Github!");
         WHBLogFreetypeDraw();
@@ -282,7 +278,7 @@ bool loadTitles(bool skipDiscs) {
         for (MCPTitleListType& part : sortedTitle.second) {
             if (isBase(part.appType) || isSystemApp(part.appType)) {
                 title.base = titlePart{};
-                title.base->path = convertToPosixPath(part.path);
+                title.base->posixPath = convertToPosixPath(part.path);
                 title.base->version = part.titleVersion;
                 title.base->type = part.appType;
                 title.base->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
@@ -301,7 +297,7 @@ bool loadTitles(bool skipDiscs) {
             }
             else if (isUpdate(part.appType)) { // TODO: Log cases where maybe two updates are found (one on disc and one later via the title system)
                 title.update = titlePart{};
-                title.update->path = convertToPosixPath(part.path);
+                title.update->posixPath = convertToPosixPath(part.path);
                 title.update->version = part.titleVersion;
                 title.update->type = part.appType;
                 title.update->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
@@ -316,7 +312,7 @@ bool loadTitles(bool skipDiscs) {
             }
             else if (isDLC(part.appType)) {
                 title.dlc = titlePart{};
-                title.dlc->path = convertToPosixPath(part.path);
+                title.dlc->posixPath = convertToPosixPath(part.path);
                 title.dlc->version = part.titleVersion;
                 title.dlc->type = part.appType;
                 title.dlc->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
@@ -376,10 +372,6 @@ bool checkForDiscTitles(int32_t mcpHandle) {
 
     for (auto& title : titles) {
         if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
-            // Skip wii games when using Tiramisu for now
-            if (getCFWVersion() == TIRAMISU_RPX && title.appType == MCP_APP_TYPE_GAME_WII) {
-                continue;
-            }
             return true;
         }
     }

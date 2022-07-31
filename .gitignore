@@ -34,6 +34,7 @@
 
 # Visual Studio Code
 .vscode
+*.code-workspace
 
 # Wii U Debugging Tools
 App Sender.jar
@@ -48,18 +49,28 @@ dumpling.wuhb
 dumpling.rpx
 dumpling.elf
 
+source/cfw/ios_kernel/build/
 source/cfw/ios_kernel/ios_kernel.bin
 source/cfw/ios_kernel/ios_kernel.elf
 source/cfw/ios_kernel/ios_kernel.s
 source/cfw/ios_kernel/ios_kernel.h
 
+source/cfw/ios_mcp/build/
 source/cfw/ios_mcp/ios_mcp.bin
 source/cfw/ios_mcp/ios_mcp.elf
 source/cfw/ios_mcp/ios_mcp.s
 source/cfw/ios_mcp/ios_mcp.h
 source/cfw/ios_mcp/ios_mcp_syms.h
 
+source/cfw/ios_usb/build/
 source/cfw/ios_usb/ios_usb.bin
 source/cfw/ios_usb/ios_usb.elf
 source/cfw/ios_usb/ios_usb.s
 source/cfw/ios_usb/ios_usb.h
+
+source/cfw/ios_fs/build/
+source/cfw/ios_fs/ios_fs.bin
+source/cfw/ios_fs/ios_fs.elf
+source/cfw/ios_fs/ios_fs.s
+source/cfw/ios_fs/ios_fs.h
+source/cfw/ios_fs/ios_fs_syms.h

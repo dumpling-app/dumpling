@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #define KERNEL_READ32         1
 #define KERNEL_WRITE32        2
 #define KERNEL_MEMCPY         3
@@ -43,7 +45,7 @@
 #define IOCTL_FSA_CLOSE              0x41
 #define IOCTL_FSA_MOUNT              0x42
 #define IOCTL_FSA_UNMOUNT            0x43
-#define IOCTL_FSA_GETINFO            0x44
+#define IOCTL_FSA_GETDEVICEINFO      0x44
 #define IOCTL_FSA_OPENDIR            0x45
 #define IOCTL_FSA_READDIR            0x46
 #define IOCTL_FSA_CLOSEDIR           0x47
@@ -51,9 +53,9 @@
 #define IOCTL_FSA_OPENFILE           0x49
 #define IOCTL_FSA_READFILE           0x4A
 #define IOCTL_FSA_WRITEFILE          0x4B
-#define IOCTL_FSA_GETSTATFILE        0x4C
+#define IOCTL_FSA_STATFILE           0x4C
 #define IOCTL_FSA_CLOSEFILE          0x4D
-#define IOCTL_FSA_SETPOSFILE         0x4E
+#define IOCTL_FSA_SETFILEPOS         0x4E
 #define IOCTL_FSA_GETSTAT            0x4F
 #define IOCTL_FSA_REMOVE             0x50
 #define IOCTL_FSA_REWINDDIR          0x51
@@ -67,27 +69,53 @@
 #define IOCTL_FSA_FLUSHVOLUME        0x59
 #define IOCTL_CHECK_IF_IOSUHAX       0x5B
 
-// Extended mode
-#define IOCTL_FSA_CHANGEOWNER        0x5C
-#define IOCTL_FSA_OPENFILEEX         0x5D
-#define IOCTL_FSA_READFILEWITHPOS    0x5E
-#define IOCTL_FSA_WRITEFILEWITHPOS   0x5F
-#define IOCTL_FSA_APPENDFILE         0x60
-#define IOCTL_FSA_APPENDFILEEX       0x61
-#define IOCTL_FSA_FLUSHFILE          0x62
-#define IOCTL_FSA_TRUNCATEFILE       0x63
-#define IOCTL_FSA_GETPOSFILE         0x64
-#define IOCTL_FSA_ISEOF              0x65
-#define IOCTL_FSA_ROLLBACKVOLUME     0x66
-#define IOCTL_FSA_GETCWD             0x67
-#define IOCTL_FSA_MAKEQUOTA          0x68
-#define IOCTL_FSA_FLUSHQUOTA         0x69
-#define IOCTL_FSA_ROLLBACKQUOTA      0x6A
-#define IOCTL_FSA_ROLLBACKQUOTAFORCE 0x6B
-#define IOCTL_FSA_CHANGEMODEEX       0x6C
-#define IOCTL_FSA_REGISTERFLUSHQUOTA 0x6D
-#define IOCTL_FSA_FLUSHMULTIQUOTA    0x6E
+typedef struct __attribute__((packed)) {
+    uint32_t command;
+    uint32_t result;
+    uint32_t fd;
+    uint32_t flags;
+    uint32_t client_cpu;
+    uint32_t client_pid;
+    uint64_t client_gid;
+    uint32_t server_handle;
 
-// Old bindings that are now renamed
-#define IOCTL_FSA_GETDEVICEINFO      IOCTL_FSA_GETINFO
-#define IOCTL_FSA_SETFILEPOS         IOCTL_FSA_SETPOSFILE
+    union {
+        uint32_t args[5];
+
+        struct {
+            char *device;
+            uint32_t mode;
+            uint32_t resultfd;
+        } open;
+
+        struct {
+            void *data;
+            uint32_t length;
+        } read, write;
+
+        struct {
+            int32_t offset;
+            int32_t origin;
+        } seek;
+
+        struct {
+            uint32_t command;
+            uint32_t *buffer_in;
+            uint32_t length_in;
+            uint32_t *buffer_io;
+            uint32_t length_io;
+        } ioctl;
+
+        struct {
+            uint32_t command;
+            uint32_t num_in;
+            uint32_t num_io;
+            struct _ioctlv *vector;
+        } ioctlv;
+    };
+
+    uint32_t prev_command;
+    uint32_t prev_fd;
+    uint32_t virt0;
+    uint32_t virt1;
+} IPCMessage;

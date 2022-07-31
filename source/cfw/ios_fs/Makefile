@@ -40,12 +40,12 @@ INCLUDES	:= source
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-CFLAGS	:= -Wall -Wextra -std=gnu11 -Os $(MACHDEP) $(INCLUDE) -fno-builtin
+CFLAGS	:= -Wall -std=gnu11 -Os $(MACHDEP) $(INCLUDE) -Wno-array-bounds -fno-builtin
 
 ASFLAGS	:= $(MACHDEP)
 
 LDFLAGS := -nostartfiles -nodefaultlibs -mbig-endian \
-	-Wl,-L $(TOPDIR) -Wl,-Map,$(notdir $*.map),-T $(TOPDIR)/link.ld -flto
+	-Wl,-L $(TOPDIR) -Wl,-Map,$(notdir $*.map),-T $(TOPDIR)/link.ld
 
 LIBS	:= -lgcc
 
@@ -53,7 +53,7 @@ LIBS	:= -lgcc
 # list of directories containing libraries, this must be the top level
 # containing include and lib
 #-------------------------------------------------------------------------------
-LIBDIRS	:= $(DEVKITPRO)/wut/usr
+LIBDIRS	:= 
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -100,7 +100,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo "Cleaning up files from $(TARGET)..."
-	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).bin $(TARGET).bin.h $(TARGET)_syms.h
+	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).bin $(TARGET).h $(TARGET)_syms.h
 
 #---------------------------------------------------------------------------------
 else
@@ -115,15 +115,14 @@ all	:	$(OUTPUT).h $(OUTPUT)_syms.h
 $(OUTPUT).elf	:	$(OFILES)
 
 $(OUTPUT).bin: $(OUTPUT).elf
-	@echo "built ... $(notdir $@)"
+	@echo "Turn payload.elf into payload.bin..."
 	@$(OBJCOPY) -j .text -j .rodata -j .data -O binary $(OUTPUT).elf $@
-	
+
 $(OUTPUT).h: $(OUTPUT).bin
 	@echo "Convert payload.bin to includable header..."
 	@cd $(TOPDIR) && xxd -i $(notdir $(OUTPUT)).bin | sed "s/unsigned/static const unsigned/g" > $(OUTPUT).h && cd $(BUILD)
-	
+
 $(OUTPUT)_syms.h: $(OUTPUT).elf
-	@echo "shit: $(OUTPUT).elf"
 	@echo "#ifndef $(TARGETNAME)_SYMS_H" > $@
 	@echo "#define $(TARGETNAME)_SYMS_H" >> $@
 	@$(OBJDUMP) -EB -t -marm $(OUTPUT).elf | grep 'g     F .text' | grep -v '.hidden' | awk '{print "#define " $$6 " 0x" $$1}' >> $@

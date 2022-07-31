@@ -1,15 +1,22 @@
 #include "filesystem.h"
-#include <iosuhax.h>
-#ifdef CEMU_STUBS
-#include "../stub/devoptab_fs.h"
-#else
-#include <iosuhax_devoptab.h>
+#include "cfw.h"
+
+#include <mocha/disc_interface.h>
+#include <mocha/fsa.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
-#include <iosuhax_disc_interface.h>
-#include <fat.h>
+// Define libfat header methods manually to prevent including any libiosuhax.h header due to collisions
+extern bool fatMountSimple (const char* name, const DISC_INTERFACE* interface);
+extern bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage);
+extern void fatUnmount (const char* name);
+#ifdef __cplusplus
+}
+#endif
+
 #include <sys/statvfs.h>
 #include "gui.h"
-#include "iosuhax.h"
 
 static bool systemMLCMounted = false;
 static bool systemUSBMounted = false;
@@ -19,9 +26,70 @@ static bool USBMounted = false;
 
 int32_t sdHandle = 0;
 
+bool unlockedFSClient = false;
+extern "C" FSClient* __wut_devoptab_fs_client;
+
+bool mountFilesystemCemu(const char* source, const char* target) {
+    FSCmdBlock cmd;
+    FSInitCmdBlock(&cmd);
+
+    FSStatus res = FSBindMount(__wut_devoptab_fs_client, &cmd, source, target, FS_ERROR_FLAG_ALL);
+    if (res != FS_STATUS_OK) {
+        WHBLogPrintf("Couldn't mount %s drive! Error = %X", source, res);
+        WHBLogFreetypeDraw();
+        return false;
+    }
+    return true;
+}
+
+bool unmountFilesystemCemu(const char* target) {
+    FSCmdBlock cmd;
+    FSInitCmdBlock(&cmd);
+
+    FSStatus res = FSBindUnmount(__wut_devoptab_fs_client, &cmd, target, FS_ERROR_FLAG_ALL);
+    if (res != FS_STATUS_OK) {
+        WHBLogPrintf("Couldn't unmount %s drive! Error = %X", target, res);
+        WHBLogFreetypeDraw();
+        return false;
+    }
+    return true;
+}
+
+#define O_OPEN_UNENCRYPTED 0x4000000
+
+typedef int (*devoptab_open)(struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
+
+devoptab_open mlc_open = nullptr;
+
+int hooked_devoptab_open(struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
+    std::string strPath(path);
+    int newFlags = flags;
+    if (strPath.length() >= 10 && strPath.ends_with(".nfs")) {
+        newFlags = newFlags | O_OPEN_UNENCRYPTED;
+    }
+    return mlc_open(r, fileStruct, path, newFlags, mode);
+}
+
+bool installOpenHook(const char* dev_name) {
+    devoptab_t* dev = (devoptab_t*)GetDeviceOpTab(dev_name);
+    if (dev == NULL) return false;
+    mlc_open = dev->open_r;
+    dev->open_r = hooked_devoptab_open;
+    return true;
+}
+
 bool mountSystemDrives() {
-    if (mount_fs("storage_mlc01", getFSAHandle(), NULL, "/vol/storage_mlc01") == 0) systemMLCMounted = true;
-    if (mount_fs("storage_usb01", getFSAHandle(), NULL, "/vol/storage_usb01") == 0) systemUSBMounted = true;
+    WHBLogPrint("Mounting system drives...");
+    WHBLogFreetypeDraw();
+#ifdef USING_CEMU
+    //if (mountFilesystemCemu("/dev/mlc01", "/vol/storage_mlc01")) systemMLCMounted = true;
+    //if (mountFilesystemCemu("/dev/usb01", "/vol/storage_usb01")) systemUSBMounted = true;
+    systemMLCMounted = true;
+    systemUSBMounted = true;
+#else
+    if (Mocha_MountFS("storage_mlc01", nullptr, "/vol/storage_mlc01") == MOCHA_RESULT_SUCCESS && installOpenHook("storage_mlc01:")) systemMLCMounted = true;
+    if (Mocha_MountFS("storage_usb01", nullptr, "/vol/storage_usb01") == MOCHA_RESULT_SUCCESS && installOpenHook("storage_usb01:")) systemUSBMounted = true;
+#endif
     if (systemMLCMounted) WHBLogPrint("Successfully mounted the internal Wii U storage!");
     if (systemUSBMounted) WHBLogPrint("Successfully mounted the external Wii U storage!");
     WHBLogFreetypeDraw();
@@ -30,7 +98,8 @@ bool mountSystemDrives() {
 
 bool mountSD() {
 #ifdef USE_LIBFAT
-    if (fatMountSimple("sdfat", &IOSUHAX_sdio_disc_interface)) SDMounted = true;
+    Mocha_sdio_disc_interface.startup();
+    if (fatMountSimple("sdfat", &Mocha_sdio_disc_interface)) SDMounted = true;
 #else
     SDMounted = true; // initialization of wut's devoptab is done automatically
 #endif
@@ -40,7 +109,8 @@ bool mountSD() {
 
 bool mountUSBDrive() {
 #ifdef USE_LIBFAT
-    if (fatMountSimple("usbfat", &IOSUHAX_usb_disc_interface)) USBMounted = true;
+    Mocha_usb_disc_interface.startup();
+    if (fatMountSimple("usbfat", &Mocha_usb_disc_interface)) USBMounted = true;
 #else
     WHBLogPrint("USB sticks aren't supported without libfat!");
 #endif
@@ -49,19 +119,32 @@ bool mountUSBDrive() {
 }
 
 bool mountDisc() {
-    if (mount_fs("storage_odd01", getFSAHandle(), "/dev/odd01", "/vol/storage_odd_tickets") == 0) discMounted = true; 
-    if (mount_fs("storage_odd02", getFSAHandle(), "/dev/odd02", "/vol/storage_odd_updates") == 0) discMounted = true;
-    if (mount_fs("storage_odd03", getFSAHandle(), "/dev/odd03", "/vol/storage_odd_content") == 0) discMounted = true;
-    if (mount_fs("storage_odd04", getFSAHandle(), "/dev/odd04", "/vol/storage_odd_content2") == 0) discMounted = true;
+#ifdef USE_LIBMOCHA
+    if (Mocha_MountFS("storage_odd01", "/dev/odd01", "/vol/storage_odd_tickets") == MOCHA_RESULT_SUCCESS) discMounted = true;
+    if (Mocha_MountFS("storage_odd02", "/dev/odd02", "/vol/storage_odd_updates") == MOCHA_RESULT_SUCCESS) discMounted = true;
+    if (Mocha_MountFS("storage_odd03", "/dev/odd03", "/vol/storage_odd_content") == MOCHA_RESULT_SUCCESS) discMounted = true;
+    if (Mocha_MountFS("storage_odd04", "/dev/odd04", "/vol/storage_odd_content2") == MOCHA_RESULT_SUCCESS) discMounted = true;
+#else
+    if (mountFilesystemCemu("/dev/odd01", "/vol/storage_odd01")) discMounted = true;
+    if (mountFilesystemCemu("/dev/odd02", "/vol/storage_odd02")) discMounted = true;
+    if (mountFilesystemCemu("/dev/odd03", "/vol/storage_odd03")) discMounted = true;
+    if (mountFilesystemCemu("/dev/odd04", "/vol/storage_odd04")) discMounted = true;
+#endif
     if (discMounted) WHBLogPrint("Successfully mounted the disc!");
     WHBLogFreetypeDraw();
     return discMounted;
 }
 
 bool unmountSystemDrives() {
-    // Unmount all of the devices
-    if (systemMLCMounted && unmount_fs("storage_mlc01") == 0) systemMLCMounted = false;
-    if (systemUSBMounted && unmount_fs("storage_usb01") == 0) systemUSBMounted = false;
+#ifdef USE_LIBMOCHA
+    if (systemMLCMounted && Mocha_UnmountFS("storage_mlc01") == MOCHA_RESULT_SUCCESS) systemMLCMounted = false;
+    if (systemUSBMounted && Mocha_UnmountFS("storage_usb01") == MOCHA_RESULT_SUCCESS) systemUSBMounted = false;
+#else
+    systemMLCMounted = false;
+    systemUSBMounted = false;
+    // if (systemMLCMounted && unmountRootFilesystem("/vol/storage_mlc01")) systemMLCMounted = false;
+    // if (systemUSBMounted && unmountRootFilesystem("/vol/storage_usb01")) systemUSBMounted = false;
+#endif
     return (!systemMLCMounted && !systemUSBMounted);
 }
 
@@ -81,10 +164,17 @@ void unmountUSBDrive() {
 
 bool unmountDisc() {
     if (!discMounted) return false;
-    if (unmount_fs("storage_odd01") == 0) discMounted = false;
-    if (unmount_fs("storage_odd02") == 0) discMounted = false;
-    if (unmount_fs("storage_odd03") == 0) discMounted = false;
-    if (unmount_fs("storage_odd04") == 0) discMounted = false;
+#ifdef USE_LIBMOCHA
+    if (Mocha_UnmountFS("storage_odd01") == MOCHA_RESULT_SUCCESS) discMounted = false;
+    if (Mocha_UnmountFS("storage_odd02") == MOCHA_RESULT_SUCCESS) discMounted = false;
+    if (Mocha_UnmountFS("storage_odd03") == MOCHA_RESULT_SUCCESS) discMounted = false;
+    if (Mocha_UnmountFS("storage_odd04") == MOCHA_RESULT_SUCCESS) discMounted = false;
+#else
+    if (unmountFilesystemCemu("/vol/storage_odd01")) discMounted = false;
+    if (unmountFilesystemCemu("/vol/storage_odd02")) discMounted = false;
+    if (unmountFilesystemCemu("/vol/storage_odd03")) discMounted = false;
+    if (unmountFilesystemCemu("/vol/storage_odd04")) discMounted = false;
+#endif
     return !discMounted;
 }
 
@@ -105,8 +195,8 @@ bool isExternalStorageMounted() {
 }
 
 bool testStorage(titleLocation location) {
-    if (location == titleLocation::Nand) return dirExist("storage_mlc01:/usr/");
-    if (location == titleLocation::USB) return dirExist("storage_usb01:/usr/");
+    if (location == titleLocation::Nand) return dirExist(convertToPosixPath("/vol/storage_mlc01/usr/").c_str());
+    if (location == titleLocation::USB) return dirExist(convertToPosixPath("/vol/storage_usb01/usr/").c_str());
     //if (location == titleLocation::Disc) return dirExist("storage_odd01:/usr/");
     return false;
 }
@@ -148,7 +238,7 @@ bool isUSBDriveInserted() {
 
 // Filesystem Helper Functions
 
-// Wii U libraries will give us paths that use /vol/storage_mlc01/file.txt, but posix uses the mounted drive paths like storage_mlc01:/file.txt
+// Wii U libraries will give us paths that use /vol/storage_mlc01/file.txt, but libiosuhax uses the mounted drive paths like storage_mlc01:/file.txt (and wut uses fs:/vol/sys_mlc01/file.txt)
 // Converts a Wii U device path to a posix path
 std::string convertToPosixPath(const char* volPath) {
     std::string posixPath;
@@ -156,6 +246,7 @@ std::string convertToPosixPath(const char* volPath) {
     // volPath has to start with /vol/
     if (strncmp("/vol/", volPath, 5) != 0) return "";
 
+#ifdef USE_LIBMOCHA
     // Get and append the mount path
     const char* drivePathEnd = strchr(volPath+5, '/');
     if (drivePathEnd == nullptr) {
@@ -170,12 +261,15 @@ std::string convertToPosixPath(const char* volPath) {
         posixPath.append(drivePathEnd+1);
     }
     return posixPath;
+#else
+    return std::string("fs:") + volPath;
+#endif
 }
 
 // Converts a posix path to a Wii U device path
 std::string convertToDevicePath(const char* volPath) {
     std::string devicePath = "/vol/";
-    
+
     const char* drivePath = strchr(volPath, ':');
     const char* pathRemains = strchr(volPath, '/');
     
@@ -196,10 +290,14 @@ std::string convertToDevicePath(const char* volPath) {
 }
 
 struct stat existStat;
+const std::regex rootFilesystem("^fs:\\/vol\\/[^\\/:]+\\/?$");
 bool isRoot(const char* path) {
     std::string newPath(path);
     if (newPath.size() >= 2 && newPath.rbegin()[0] == ':') return true;
     if (newPath.size() >= 3 && newPath.rbegin()[1] == ':' && newPath.rbegin()[0] == '/') return true;
+#ifndef USE_LIBMOCHA
+    if (std::regex_match(newPath, rootFilesystem)) return true;
+#endif
     return false;
 }
 
@@ -243,7 +341,7 @@ void createPath(const char* path) {
     for(p = tmp+1; *p; p++) {
         if (*p == '/') {
             *p = 0;
-            mkdir(tmp, ACCESSPERMS);
+            if (!dirExist(tmp)) mkdir(tmp, ACCESSPERMS);
             *p = '/';
         }
     }
@@ -279,7 +377,7 @@ std::string getRootFromLocation(dumpLocation location) {
 #ifdef USE_LIBFAT
     if (location == dumpLocation::SDFat) return "sdfat:";
 #else
-    if (location == dumpLocation::SDFat) return "fs:";
+    if (location == dumpLocation::SDFat) return "fs:/vol/external01";
 #endif
     else if (location == dumpLocation::USBFat) return "usbfat:";
     else if (location == dumpLocation::USBExFAT) return "usbexfat:";

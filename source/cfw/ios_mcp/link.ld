@@ -2,18 +2,18 @@ OUTPUT_ARCH(arm)
 
 SECTIONS {
     .text 0x05116000 : {
-        _text_start = .;
+        _mcp_text_start = .;
         _mcp_start = .;
         *(.text*)
         *(.rodata*)
     }
-    _text_end = .;
+    _mcp_text_end = .;
 
     .bss 0x050BD000 : {
-        _bss_start = .;
+        _mcp_bss_start = .;
         *(.bss*);
     }
-    _bss_end = .;
+    _mcp_bss_end = .;
 
     /DISCARD/ : {
         *(*);

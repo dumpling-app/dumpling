@@ -43,7 +43,7 @@ void exitApplication(bool shutdownOnExit) {
             continue;
         }
 
-        if (shutdownOnExit) OSShutdown(1);
+        if (shutdownOnExit) OSShutdown();
         else if (usingHBL) SYSRelaunchTitle(0, NULL);
         else SYSLaunchMenu();
     }

@@ -27,15 +27,12 @@
 #include <padscore/wpad.h>
 #include <padscore/kpad.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-    int32_t OSShutdown(int32_t status);
-    ACPResult ACPInitialize();
-    ACPResult ACPFinalize();
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
+// #ifdef __cplusplus
+// }
+// #endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +56,7 @@ extern "C" {
 #include <cctype>
 #include <locale>
 #include <codecvt>
+#include <regex>
 #include <thread>
 #include <chrono>
 #include <optional>
@@ -130,7 +128,7 @@ enum class titleLocation {
     Unknown,
     Nand,
     USB,
-    Disc,
+    Disc
 };
 
 enum class dumpTypeFlags {
@@ -183,7 +181,7 @@ struct titleUserSave {
 };
 
 struct titlePart {
-    std::string path;
+    std::string posixPath;
     std::string outputPath;
     uint16_t version;
     MCPAppType type;
