@@ -15,16 +15,22 @@ Use the Wii U App Store to download and install it in the homebrew launcher. See
 **Method 2:**  
 Download the [latest release from Github](https://github.com/emiyl/dumpling/releases), and extract the `dumpling.zip` file to the root of your SD card.
 
+**Method 3:**  
+Use [dumpingapp.com](https://dumplingapp.com) on your Wii U to launch Dumpling without any setup or SD card.
+
 ## How to use
-Using it just requires you to open up the homebrew launcher and launch the app. No Mocha or Haxchi required!
 
-For an always up-to-date guide to dump your games for Cemu using Dumpling, see [cemu.cfw.guide](https://cemu.cfw.guide/dumping-games)! It also goes through the steps of installing and running homebrew and Dumpling for the first time!
+For an always up-to-date guide to dump your games for Cemu using Dumpling, see [cemu.cfw.guide](https://cemu.cfw.guide/dumping-games)!  
 
+If you want to fully homebrew your Wii U too, we recommend using [wiiu.hacks.guide](https://wiiu.hacks.guide) to install Tiramisu and installing Dumpling using the first two methods mentioned above!
+
+You don't need to run/have Mocha CFW or Haxchi, just launch Dumpling from the Homebrew Launcher.
 
 ## How to compile
 - Install [DevkitPro](https://devkitpro.org/wiki/Getting_Started) for your platform.
-- Install [wut](https://github.com/Crementif/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
-- Compile [libiosuhax](https://github.com/wiiu-env/libiosuhax/tree/fsa_cap).
+- Install [wut](https://github.com/devkitpro/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
+- Compile [libiosuhax](https://github.com/wiiu-env/libiosuhax).
+- Compile [libmocha](https://github.com/wiiu-env/libmocha).
 - Compile [libfat](https://github.com/Crementif/libfat) from source, since it has been fixed to perform MUCH better in certain situations which would normally cripple the classic Dumpling.
 - Then, with all those dependencies installed, you can just run `make` to get the .rpx file that you can run on your Wii U.
 
@@ -49,5 +55,4 @@ For an always up-to-date guide to dump your games for Cemu using Dumpling, see [
 - smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
 
 ## License
-All the Dumpling code is [MIT Licensed](https://github.com/emiyl/dumpling/blob/master/LICENSE.md) except the [/source/stub](/source/stub) folder which uses wut's [GNU GPL v2.0 license](https://github.com/devkitPro/wut/blob/master/LICENSE.md).
-Releases of Dumpling will never be created with this code included since it's only used for personal debugging builds.
+All the Dumpling code is [MIT Licensed](https://github.com/emiyl/dumpling/blob/master/LICENSE.md).
