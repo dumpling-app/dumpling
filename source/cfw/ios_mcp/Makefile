@@ -123,7 +123,6 @@ $(OUTPUT).h: $(OUTPUT).bin
 	@cd $(TOPDIR) && xxd -i $(notdir $(OUTPUT)).bin | sed "s/unsigned/static const unsigned/g" > $(OUTPUT).h && cd $(BUILD)
 	
 $(OUTPUT)_syms.h: $(OUTPUT).elf
-	@echo "shit: $(OUTPUT).elf"
 	@echo "#ifndef $(TARGETNAME)_SYMS_H" > $@
 	@echo "#define $(TARGETNAME)_SYMS_H" >> $@
 	@$(OBJDUMP) -EB -t -marm $(OUTPUT).elf | grep 'g     F .text' | grep -v '.hidden' | awk '{print "#define " $$6 " 0x" $$1}' >> $@

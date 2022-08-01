@@ -44,7 +44,7 @@ DRC_SPLASH	:=
 #-------------------------------------------------------------------------------
 # options for code generation
 #-------------------------------------------------------------------------------
-CFLAGS		:=	-g -Wall -O2 -ffunction-sections -Wno-narrowing \
+CFLAGS		:=	-g -Wall -Os -ffunction-sections -fdata-sections -Wno-narrowing \
 				$(MACHDEP)
 
 ifdef USING_CEMU
