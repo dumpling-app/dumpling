@@ -30,7 +30,6 @@ typedef struct {
 } file_buffer;
 
 static file_buffer buffers[16];
-static char *fileBuf[2];
 static bool buffersInitialized = false;
 
 bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, uint64_t* totalBytes) {
@@ -161,11 +160,6 @@ static bool copyFileThreaded(FILE *srcFile, FILE *dstFile, size_t totalSize) {
         }
         read.push(buffer);
     }
-    if (!buffersInitialized) {
-        fileBuf[0] = static_cast<char *>(aligned_alloc(0x40, BUFFER_SIZE));
-        fileBuf[1] = static_cast<char *>(aligned_alloc(0x40, BUFFER_SIZE));
-    }
-    buffersInitialized = true;
 
     std::future<bool> readFut = std::async(std::launch::async, readThread, srcFile, &read, &write);
     std::future<bool> writeFut = std::async(std::launch::async, writeThread, dstFile, &write, &read, totalSize);
