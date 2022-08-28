@@ -166,8 +166,6 @@ static bool copyFileThreaded(FILE *srcFile, FILE *dstFile, size_t totalSize) {
         fileBuf[1] = static_cast<char *>(aligned_alloc(0x40, BUFFER_SIZE));
     }
     buffersInitialized = true;
-    setvbuf(srcFile, fileBuf[0], _IOFBF, BUFFER_SIZE);
-    setvbuf(dstFile, fileBuf[1], _IOFBF, BUFFER_SIZE);
 
     std::future<bool> readFut = std::async(std::launch::async, readThread, srcFile, &read, &write);
     std::future<bool> writeFut = std::async(std::launch::async, writeThread, dstFile, &write, &read, totalSize);
