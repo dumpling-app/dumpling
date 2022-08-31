@@ -45,6 +45,7 @@ config.properties
 # Project specific
 /build
 /dist
+/cemu
 dumpling.wuhb
 dumpling.rpx
 dumpling.elf
@@ -74,3 +75,4 @@ source/cfw/ios_fs/ios_fs.elf
 source/cfw/ios_fs/ios_fs.s
 source/cfw/ios_fs/ios_fs.h
 source/cfw/ios_fs/ios_fs_syms.h
+

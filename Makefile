@@ -158,6 +158,9 @@ cemu:
 	@[ -d $(BUILD) ] || mkdir -p $(BUILD)
 	@$(MAKE) USING_CEMU=1 --no-print-directory -f $(CURDIR)/Makefile
 
+run_cemu_wsl: cemu
+	@$(shell $(CURDIR)/cemu/Cemu.exe --force-interpreter -g "$(shell wslpath -a -w $(OUTPUT).rpx)")
+
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...
