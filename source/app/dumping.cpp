@@ -7,6 +7,8 @@
 #include "users.h"
 #include "cfw.h"
 #include "gui.h"
+#include "LockingQueue.h"
+#include <future>
 
 #include <mocha/mocha.h>
 #include <mocha/otp.h>
@@ -20,6 +22,15 @@ static_assert(BUFFER_SIZE % 0x8000 == 0, "Buffer size needs to be multiple of 0x
 static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
 static bool ignoreFileErrors = false;
+
+typedef struct {
+    void *buf;
+    size_t len;
+    size_t buf_size;
+} file_buffer;
+
+static file_buffer buffers[16];
+static bool buffersInitialized = false;
 
 bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, uint64_t* totalBytes) {
     if (copyBuffer == nullptr) {
@@ -97,6 +108,65 @@ bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, u
     return true;
 }
 
+static bool readThread(FILE *srcFile, LockingQueue<file_buffer> *ready, LockingQueue<file_buffer> *done) {
+    file_buffer currentBuffer;
+    ready->waitAndPop(currentBuffer);
+    while ((currentBuffer.len = fread(currentBuffer.buf, 1, currentBuffer.buf_size, srcFile)) > 0) {
+        done->push(currentBuffer);
+        ready->waitAndPop(currentBuffer);
+    }
+    done->push(currentBuffer);
+    return ferror(srcFile) == 0;
+}
+
+static bool writeThread(FILE *dstFile, LockingQueue<file_buffer> *ready, LockingQueue<file_buffer> *done, size_t totalSize) {
+    uint bytes_written;
+    size_t total_bytes_written = 0;
+    file_buffer currentBuffer;
+    ready->waitAndPop(currentBuffer);
+    while (currentBuffer.len > 0 && (bytes_written = fwrite(currentBuffer.buf, 1, currentBuffer.len, dstFile)) == currentBuffer.len) {
+        done->push(currentBuffer);
+        ready->waitAndPop(currentBuffer);
+        total_bytes_written += bytes_written;
+        setFileProgress(total_bytes_written);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
+            if (selectedChoice == 0) {
+                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+                return false;
+            }
+        }
+    }
+    done->push(currentBuffer);
+    return ferror(dstFile) == 0;
+}
+
+static bool copyFileThreaded(FILE *srcFile, FILE *dstFile, size_t totalSize) {
+    LockingQueue<file_buffer> read;
+    LockingQueue<file_buffer> write;
+    for (auto &buffer : buffers) {
+        if (!buffersInitialized) {
+            buffer.buf = aligned_alloc(0x40, BUFFER_SIZE);
+            buffer.len = 0;
+            buffer.buf_size = BUFFER_SIZE;
+        }
+        read.push(buffer);
+    }
+
+    std::future<bool> readFut = std::async(std::launch::async, readThread, srcFile, &read, &write);
+    std::future<bool> writeFut = std::async(std::launch::async, writeThread, dstFile, &write, &read, totalSize);
+    bool success = readFut.get() && writeFut.get();
+    return success;
+}
+
 bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
     // Check if file is an actual file first
     struct stat fileStat;
@@ -164,63 +234,11 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return false;
     }
 
-    // Loop over input to copy
-    size_t bytesRead = 0;
-    size_t bytesWritten = 0;
     setFile(filename, fileStat.st_size);
     
-    while((bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle)) > 0) {
-        int fileError = 0;
-        if (bytesRead != BUFFER_SIZE && (fileError = ferror(readHandle)) != 0) {
-            fclose(readHandle);
-            fclose(writeHandle);
-            reportFileError();
-            if (ignoreFileErrors) return true;
-            std::string errorMessage = "Failed to read all data from this file!\n";
-            if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
-            errorMessage += "Error "+std::to_string(errno)+" when reading data from:\n";
-            errorMessage += srcPath;
-            setErrorPrompt(errorMessage);
-            return false;
-        }
-        bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesRead, writeHandle);
-        // Check if the same amounts of bytes are written
-        if (bytesWritten != bytesRead) {
-            fileError = ferror(readHandle);
-            fclose(readHandle);
-            fclose(writeHandle);
-            reportFileError();
-            if (ignoreFileErrors) return true;
-            std::string errorMessage = "Failed to write data to dumping device!\n";
-            if (errno == ENOSPC) errorMessage += "There's no space available on the USB/SD card!\n";
-            if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
-            errorMessage += "\nDetails:\n";
-            errorMessage += "Error "+std::to_string(errno)+" when writing data from:\n";
-            errorMessage += srcPath + "\n";
-            errorMessage += "to:\n";
-            errorMessage += destPath;
-            setErrorPrompt(errorMessage);
-            return false;
-        }
-        setFileProgress(bytesWritten);
-        showCurrentProgress();
-        // Check whether the inputs break
-        updateInputs();
-        if (pressedBack()) {
-            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-            WHBLogFreetypeClear();
-            WHBLogPrint("Quitting dumping process...");
-            WHBLogPrint("The app (likely) isn't frozen!");
-            WHBLogPrint("This should take a minute at most!");
-            WHBLogFreetypeDraw();
-            if (selectedChoice == 0) {
-                fclose(readHandle);
-                fclose(writeHandle);
-                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-                return false;
-            }
-        }
-    }
+    if(!copyFileThreaded(readHandle, writeHandle, fileStat.st_size))
+        return false;
+
     fclose(readHandle);
     fclose(writeHandle);
     return true;
