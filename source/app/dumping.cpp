@@ -531,8 +531,11 @@ bool dumpDisc() {
     sleep_for(5s);
 
     // Dump queue
-    uint8_t dumpOnlyBase = showDialogPrompt("Do you want to dump the update and DLC files?\nIt might be faster to dump these:\n - All updates/DLC at once, without disc swapping!\n - Through methods like Cemu's Online Features, DumpsterU etc.", "Yes", "No");
-    dumpingConfig config = {.dumpTypes = (dumpOnlyBase == 0) ? (dumpTypeFlags::Game | dumpTypeFlags::Saves) : (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves)};
+    uint8_t dumpOnlyBase = showDialogPrompt("Do you want to dump the update and DLC files?\nIt might be faster when you want to:\n - Dump all updates/DLC at once, without disc swapping!\n - Through methods like Cemu's Online Features, DumpsterU etc.", "Yes", "No");
+    dumpingConfig config = {
+        .filterTypes = dumpTypeFlags::Game,
+        .dumpTypes = (dumpOnlyBase == 0) ? (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves) : (dumpTypeFlags::Game | dumpTypeFlags::Saves)
+    };
     if (!showOptionMenu(config, true)) return true;
     if (dumpQueue(queue, config)) {
         showDialogPrompt("Successfully dumped this disc!", "OK");
