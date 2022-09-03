@@ -3,6 +3,8 @@
 #include "./../menu.h"
 #include "./../filesystem.h"
 
+#include <coreinit/debug.h>
+
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 
 // Should only be called from transfer thread
@@ -23,27 +25,28 @@ void Fat32Transfer::closeFileHandle(std::string& path) {
 
 std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
     while(!breakThreadLoop) {
+        OSWaitSemaphore(&this->countSemaphore);
         std::unique_lock<std::mutex> lck(this->mutex);
-        this->condVariable.wait(lck, [this]{ return !this->chunks.empty(); });
 
         if (this->chunks.empty()) {
-            WHBLogPrint("Woken up without chunk!");
+            guiSafeLog("Woken up without chunk!");
             OSMemoryBarrier();
             continue;
         }
+
         TransferCommands chunk = this->chunks.front();
         this->chunks.pop();
         OSMemoryBarrier();
         lck.unlock();
-        this->condVariable.notify_all();
+        OSSignalSemaphore(&this->maxSemaphore);
 
         std::visit(overloaded{
             [this](CommandMakeDir& arg) {
-                WHBLogPrintf("Make directory: path=%s", arg.dirPath.c_str());
+                guiSafeLog("Make directory: path=%s\n", arg.dirPath.c_str());
                 createPath(arg.dirPath.c_str());
             },
             [this](CommandWrite& arg) {
-                WHBLogPrintf("Write File: path=%s size=%zu closeFileAtEnd=%s", arg.filePath.c_str(), arg.chunkSize, arg.closeFileAtEnd == true ? "true" : "false");
+                guiSafeLog("Write File: path=%s closeFileAtEnd=%s\n", arg.filePath.c_str(), arg.closeFileAtEnd == true ? "true" : "false");
 
                 FILE* destFileHandle = this->getFileHandle(arg.filePath);
 
@@ -80,7 +83,7 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                 free(arg.chunkBuffer);
             },
             [this](CommandStopThread& arg) {
-                WHBLogPrintf("Stop Thread: ");
+                guiSafeLog("Stop Thread: \n");
                 this->breakThreadLoop = true;
             }
         }, chunk);

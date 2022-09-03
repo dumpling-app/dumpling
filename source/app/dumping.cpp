@@ -90,25 +90,25 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         bool endOfFile = feof(readHandle) != 0;
         interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile);
 
-        setFileProgress(bytesRead);
-        showCurrentProgress();
-        // Check whether the inputs break
-        updateInputs();
-        if (pressedBack()) {
-            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-            if (selectedChoice != 0) continue;
+        // setFileProgress(bytesRead);
+        // showCurrentProgress();
+        // // Check whether the inputs break
+        // updateInputs();
+        // if (pressedBack()) {
+        //     uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+        //     if (selectedChoice != 0) continue;
 
-            WHBLogFreetypeClear();
-            WHBLogPrint("Quitting dumping process...");
-            WHBLogPrint("The app (likely) isn't frozen!");
-            WHBLogPrint("This should take a minute at most!");
-            WHBLogFreetypeDraw();
-            fclose(readHandle);
+        //     WHBLogFreetypeClear();
+        //     WHBLogPrint("Quitting dumping process...");
+        //     WHBLogPrint("The app (likely) isn't frozen!");
+        //     WHBLogPrint("This should take a minute at most!");
+        //     WHBLogFreetypeDraw();
+        //     fclose(readHandle);
 
 
-            setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-            return false;
-        }
+        //     setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+        //     return false;
+        // }
 
         if (endOfFile) {
             break;

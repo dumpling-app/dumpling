@@ -17,6 +17,7 @@
 #include <coreinit/foreground.h>
 #include <coreinit/title.h>
 #include <coreinit/launch.h>
+#include <coreinit/semaphore.h>
 
 #include <sysapp/launch.h>
 #include <nn/act.h>
@@ -70,6 +71,7 @@
 #include <unordered_set>
 #include <future>
 #include <variant>
+#include <semaphore>
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;

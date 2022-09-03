@@ -30,6 +30,7 @@ public:
     void submitMakeFolder(std::string& dirPath);
     void submitWriteFile(std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd);
     void submitStopThread();
+    const uint32_t maxQueueSize = 50;
     
     bool hasFailed();
     std::string getFailReason();
@@ -43,7 +44,7 @@ protected:
     std::thread transferThread;
 
     std::mutex mutex;
-    std::condition_variable_any condVariable;
-    const uint32_t maxChunks = 10;
+    OSSemaphore countSemaphore;
+    OSSemaphore maxSemaphore;
     std::queue<TransferCommands> chunks;
 };

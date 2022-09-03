@@ -49,6 +49,7 @@ void showCurrentProgress() {
         lastTime = OSGetTick();
         
         // This averages the bytes per second
+        //bytesCopiedSecond = ((SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond)) / OSTicksToSeconds(timeSinceLastPeriod);
         bytesCopiedSecond = (SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond);
         lastBytesCopied = copiedQueueBytes;
 
