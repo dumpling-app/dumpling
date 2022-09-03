@@ -335,10 +335,13 @@ void WHBLogFreetypePrintfAtPosition(uint32_t position, const char *fmt, ...) {
 }
 
 void WHBLogFreetypePrintf(const char *fmt, ...) {
+    char formattedLine[LINE_LENGTH];
+    
     va_list va;
     va_start(va, fmt);
-    WHBLogFreetypePrintfAtPosition(newLines, fmt, va);
+    vsnprintf(formattedLine, LINE_LENGTH, fmt, va);
     va_end(va);
+    FreetypeAddLine(formattedLine);
 }
 
 void WHBLogFreetypePrintAtPosition(uint32_t position, const char *line) {

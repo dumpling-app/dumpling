@@ -54,19 +54,19 @@ void showCurrentProgress() {
 
         // Print general dumping message
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Dumping In Progress:");
-        WHBLogPrint("");
-        WHBLogPrint(dumpingMessage.c_str());
+        WHBLogFreetypePrint("Dumping In Progress:");
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint(dumpingMessage.c_str());
         if (totalQueueBytes != 0) printEstimateTime();
 
-        WHBLogPrint("");
-        WHBLogPrint("Details:");
-        WHBLogPrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0);
-        if (totalQueueBytes != 0) WHBLogPrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
-        else WHBLogPrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
-        WHBLogPrint("");
-        WHBLogPrintf("File Name = %s", currFilename);
-        WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint("Details:");
+        WHBLogFreetypePrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0);
+        if (totalQueueBytes != 0) WHBLogFreetypePrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
+        else WHBLogFreetypePrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrintf("File Name = %s", currFilename);
+        WHBLogFreetypePrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
         WHBLogFreetypeDrawScreen();

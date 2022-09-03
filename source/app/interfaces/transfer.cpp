@@ -1,5 +1,5 @@
 #include "transfer.h"
-#include "./../../font/log_freetype.h"
+#include "./../gui.h"
 #include "./../filesystem.h"
 
 TransferInterface::TransferInterface(dumpingConfig config) {
@@ -17,7 +17,7 @@ TransferInterface::~TransferInterface() {
 template <typename T, typename... Args>
 void TransferInterface::submitCommand(Args&&... args) {
     std::unique_lock<std::mutex> lck(this->mutex);
-    this->condVariable.wait_for(lck, 100ms, [this]{ return this->chunks.size() < this->maxChunks; });
+    this->condVariable.wait(lck, [this]{ return this->chunks.size() < this->maxChunks; });
 
     TransferCommands& command = this->chunks.emplace(std::in_place_type<T>, std::forward<Args>(args)...);
     if constexpr (std::is_same<T, CommandWrite>::value) {

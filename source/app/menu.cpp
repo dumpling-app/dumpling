@@ -7,7 +7,6 @@
 #include "filesystem.h"
 #include "gui.h"
 #include "cfw.h"
-#include "../font/log_freetype.h"
 
 // Menu screens
 
@@ -27,20 +26,20 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Dumpling V2.5.0");
-        WHBLogPrint("===============================");
-        WHBLogPrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
-        WHBLogPrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
-        WHBLogPrint("");
-        WHBLogPrintf("%c Dump files to use Cemu online", selectedOption==2 ? '>' : ' ');
-        WHBLogPrintf("%c Dump Wii U applications (e.g. Friend List, eShop etc.)", selectedOption==3 ? '>' : ' ');
-        // WHBLogPrintf("%c Dump Amiibo Files", selectedOption==4 ? '>' : ' ');
-        WHBLogPrint("");
-        WHBLogPrintf("%c Dump only Base files of a game", selectedOption==4 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
-        WHBLogPrintf("%c Dump only Save files of a game", selectedOption==7 ? '>' : ' ');
-        WHBLogPrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==8 ? '>' : ' ');
+        WHBLogFreetypePrint("Dumpling V2.5.0");
+        WHBLogFreetypePrint("===============================");
+        WHBLogFreetypePrintf("%c Dump a game disc", selectedOption==0 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump digital games", selectedOption==1 ? '>' : ' ');
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrintf("%c Dump files to use Cemu online", selectedOption==2 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump Wii U applications (e.g. Friend List, eShop etc.)", selectedOption==3 ? '>' : ' ');
+        // WHBLogFreetypePrintf("%c Dump Amiibo Files", selectedOption==4 ? '>' : ' ');
+        WHBLogFreetypePrintf("");
+        WHBLogFreetypePrintf("%c Dump only Base files of a game", selectedOption==4 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump only Update files of a game", selectedOption==5 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump only DLC files of a game", selectedOption==6 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump only Save files of a game", selectedOption==7 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c Dump whole MLC (everything stored on internal storage)", selectedOption==8 ? '>' : ' ');
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
         WHBLogFreetypeScreenPrintBottom("\uE001 Button = Exit Dumpling");
@@ -126,16 +125,16 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     while(!(isSDInserted() || isUSBDriveInserted())) {
         WHBLogFreetypeStartScreen();
         WHBLogPrint("Couldn't detect an SD card or USB drive!");
-        WHBLogPrint("");
-        WHBLogPrint("If you do have one inserted, you could try:");
-        WHBLogPrint(" - Reinserting the SD card or USB drive");
-        WHBLogPrint(" - Make sure it's formatted as FAT32");
-        WHBLogPrint(" - It only has one partition (and no hidden ones)");
-        WHBLogPrint(" - Save a Mii picture in Mii Maker to your SD card");
-        WHBLogPrint(" - Try a different SD card (recommended) or USB drive");
-        WHBLogPrint("");
-        WHBLogPrint("If none of those steps worked ask for help on the");
-        WHBLogPrint("Cemu discord or report the issue on the Dumpling github.");
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint("If you do have one inserted, you could try:");
+        WHBLogFreetypePrint(" - Reinserting the SD card or USB drive");
+        WHBLogFreetypePrint(" - Make sure it's formatted as FAT32");
+        WHBLogFreetypePrint(" - It only has one partition (and no hidden ones)");
+        WHBLogFreetypePrint(" - Save a Mii picture in Mii Maker to your SD card");
+        WHBLogFreetypePrint(" - Try a different SD card (recommended) or USB drive");
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint("If none of those steps worked ask for help on the");
+        WHBLogFreetypePrint("Cemu discord or report the issue on the Dumpling github.");
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel");
         WHBLogFreetypeDrawScreen();
@@ -164,15 +163,15 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     while(true) {
         // Print option menu text
         WHBLogFreetypeStartScreen();
-        WHBLogPrint("Change any options for this dump:");
-        WHBLogPrint("===============================");
-        WHBLogPrintf("%c Dump destination: %s", selectedOption==0 ? '>' : ' ', config.location == dumpLocation::SDFat ? "SD Card" : "USB Drive");
-        if (showAccountOption) WHBLogPrintf("%c Account: %s", selectedOption==1 ? '>' : ' ', allUsers[selectedAccount].miiName.c_str());
-        if (showAccountOption) WHBLogPrintf("%c Dump Saves/Account For Default Cemu User: %s", selectedOption==2 ? '>' : ' ', config.dumpAsDefaultUser ? "Yes" : "No");
-        WHBLogPrintf("%c Ignore Copy Errors (CAUSES INCOMPLETE DUMPS): %s", selectedOption==3 ? '>' : ' ', config.ignoreCopyErrors ? "Yes" : "No");
-        WHBLogPrint("");
-        WHBLogPrintf("%c [Confirm]", selectedOption==4 ? '>' : ' ');
-        WHBLogPrintf("%c [Cancel]", selectedOption==5 ? '>' : ' ');
+        WHBLogFreetypePrint("Change any options for this dump:");
+        WHBLogFreetypePrint("===============================");
+        WHBLogFreetypePrintf("%c Dump destination: %s", selectedOption==0 ? '>' : ' ', config.location == dumpLocation::SDFat ? "SD Card" : "USB Drive");
+        if (showAccountOption) WHBLogFreetypePrintf("%c Account: %s", selectedOption==1 ? '>' : ' ', allUsers[selectedAccount].miiName.c_str());
+        if (showAccountOption) WHBLogFreetypePrintf("%c Dump Saves/Account For Default Cemu User: %s", selectedOption==2 ? '>' : ' ', config.dumpAsDefaultUser ? "Yes" : "No");
+        WHBLogFreetypePrintf("%c Ignore Copy Errors (CAUSES INCOMPLETE DUMPS): %s", selectedOption==3 ? '>' : ' ', config.ignoreCopyErrors ? "Yes" : "No");
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrintf("%c [Confirm]", selectedOption==4 ? '>' : ' ');
+        WHBLogFreetypePrintf("%c [Cancel]", selectedOption==5 ? '>' : ' ');
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
         WHBLogFreetypeScreenPrintBottom("\uE045 Button = Confirm");

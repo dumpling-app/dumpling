@@ -245,12 +245,12 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         for (uint64_t i=0; i<queue.size(); i++) {
             // Show message about the scanning process which freezes the game
             WHBLogFreetypeStartScreen();
-            WHBLogPrint("Scanning the dump size!");
-            WHBLogPrint("This might take a few minutes if you selected a lot of titles...");
-            WHBLogPrint("Your Wii U isn't frozen in that case!");
-            WHBLogPrint("");
+            WHBLogFreetypePrint("Scanning the dump size!");
+            WHBLogFreetypePrint("This might take a few minutes if you selected a lot of titles...");
+            WHBLogFreetypePrint("Your Wii U isn't frozen in that case!");
+            WHBLogFreetypePrint("");
             WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
-            WHBLogPrint("");
+            WHBLogFreetypePrint("");
             WHBLogFreetypeScreenPrintBottom("===============================");
             WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
             WHBLogFreetypeDraw();
@@ -280,7 +280,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         else {
             WHBLogFreetypeClear();
             WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
-            WHBLogPrint("Dumping will start in 10 seconds...");
+            WHBLogFreetypePrint("Dumping will start in 10 seconds...");
             WHBLogFreetypeDraw();
             sleep_for(10s);
         }

@@ -34,7 +34,7 @@ TARGET		:=	dumpling
 BUILD		:=	build
 SOURCES		:=	source/app \
 				source/app/interfaces \
-				source/font
+				source/utils
 DATA		:=	data
 INCLUDES	:=	include
 CONTENT		:=

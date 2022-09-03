@@ -1,5 +1,5 @@
 #include "common.h"
-#include "../font/log_freetype.h"
+#include "../utils/log_freetype.h"
 
 bool initializeGUI();
 void shutdownGUI();
