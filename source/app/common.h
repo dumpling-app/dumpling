@@ -22,6 +22,7 @@
 #include <nn/act.h>
 #include <nn/ac.h>
 #include <whb/log.h>
+#include <whb/log_cafe.h>
 #include <proc_ui/procui.h>
 #include <vpad/input.h>
 #include <padscore/wpad.h>
@@ -62,6 +63,13 @@
 #include <optional>
 #include <type_traits>
 #include <filesystem>
+
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <unordered_set>
+#include <future>
+#include <variant>
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;

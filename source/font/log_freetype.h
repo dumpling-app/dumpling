@@ -9,6 +9,8 @@
 #include <coreinit/screen.h>
 #include <proc_ui/procui.h>
 
+#include <mutex>
+
 #include <whb/log.h>
 
 // Initialization functions

@@ -33,6 +33,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 TARGET		:=	dumpling
 BUILD		:=	build
 SOURCES		:=	source/app \
+				source/app/interfaces \
 				source/font
 DATA		:=	data
 INCLUDES	:=	include

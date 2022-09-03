@@ -29,13 +29,25 @@ FT_Face fontFace;
 uint8_t* fontBuffer;
 FT_Pos cursorSpaceWidth = 0;
 
+
+
+#define ENABLE_THREADSAFE TRUE
+#if ENABLE_THREADSAFE
+std::mutex _mutex;
+#define DEBUG_THREADSAFE std::scoped_lock<std::mutex> lck(_mutex);
+#else
+#define DEBUG_THREADSAFE (); 
+#endif
+
 static void FreetypeSetLine(uint32_t position, const char *line) {
+    DEBUG_THREADSAFE;
     uint32_t length = strlen(line);
     memcpy(queueBuffer[newLines - 1], line, length);
     queueBuffer[newLines - 1][length] = '\0';
 }
 
 static void FreetypeAddLine(const char *line) {
+    DEBUG_THREADSAFE;
     uint32_t length = strlen(line);
 
     if (length > LINE_LENGTH) {
@@ -294,6 +306,7 @@ bool WHBLogFreetypeInit() {
 }
 
 void WHBLogFreetypeClear() {
+    DEBUG_THREADSAFE;
     newLines = 0;
     bottomLines = 0;
     memset(queueBuffer, '\0', sizeof(queueBuffer));
@@ -312,6 +325,7 @@ uint32_t WHBLogFreetypeGetScreenPosition() {
 }
 
 void WHBLogFreetypePrintfAtPosition(uint32_t position, const char *fmt, ...) {
+    DEBUG_THREADSAFE;
     if (position < 0 || position > NUM_LINES) return;
 
     va_list va;
@@ -334,6 +348,7 @@ void WHBLogFreetypePrintAtPosition(uint32_t position, const char *line) {
 }
 
 void WHBLogFreetypeScreenPrintBottom(const char *line) {
+    DEBUG_THREADSAFE;
     uint32_t length = strlen(line);
 
     if (length > LINE_LENGTH) {

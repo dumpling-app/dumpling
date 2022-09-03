@@ -7,8 +7,9 @@
 #include "users.h"
 #include "cfw.h"
 #include "gui.h"
-#include "LockingQueue.h"
-#include <future>
+
+#include "interfaces/transfer.h"
+#include "interfaces/fat32.h"
 
 #include <mocha/mocha.h>
 #include <mocha/otp.h>
@@ -19,160 +20,12 @@
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
 static_assert(BUFFER_SIZE % 0x8000 == 0, "Buffer size needs to be multiple of 0x8000 to properly read disc sections");
 
-static uint8_t* copyBuffer = nullptr;
 static bool cancelledScanning = false;
-static bool ignoreFileErrors = false;
 
-typedef struct {
-    void *buf;
-    size_t len;
-    size_t buf_size;
-} file_buffer;
-
-static file_buffer buffers[16];
-static bool buffersInitialized = false;
-
-bool copyMemory(uint8_t* srcBuffer, uint64_t bufferSize, std::string destPath, uint64_t* totalBytes) {
-    if (copyBuffer == nullptr) {
-        // Allocate buffer to copy bytes between
-        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
-        if (copyBuffer == nullptr) {
-            setErrorPrompt("Couldn't allocate the memory to copy files!");
-            return false;
-        }
-    }
-
-    // Create parent folder if doesn't exist yet
-    std::filesystem::path filePath(destPath);
-    createPath(filePath.parent_path().c_str());
-
-    // If totalBytes is set it means that it's scanning for file sizes of openable files
-    if (totalBytes != nullptr) {
-        *totalBytes += bufferSize;
-
-        // Check whether user has cancelled scanning
-        updateInputs();
-        if (pressedBack()) {
-            *totalBytes = 0;
-            cancelledScanning = true;
-            return false;
-        }
-        return true;
-    }
-
-    // Open the destination file
-    FILE* writeHandle = fopen(destPath.c_str(), "wb");
-    if (writeHandle == nullptr) {
-        reportFileError();
-        if (ignoreFileErrors) return true;
-        std::string errorMessage = "Couldn't open the file to copy to!\n";
-        errorMessage += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
-        errorMessage += "Error "+std::to_string(errno)+" after creating SD card file:\n";
-        errorMessage += destPath + "\n";
-        errorMessage += "to:\n";
-        errorMessage += destPath;
-        setErrorPrompt(errorMessage);
-        return false;
-    }
-
-    setFile(filePath.filename().c_str(), bufferSize);
-
-    // Copy source buffer into aligned copy buffer, then write it in parts
-    // todo: Check if this is done properly regarding edges of source and copy buffer sizes
-    for (uint64_t i=0; i<bufferSize; i+=BUFFER_SIZE) {
-        size_t bytesToWrite = std::min(bufferSize-i, (uint64_t)BUFFER_SIZE);
-        memcpy(copyBuffer, srcBuffer, bytesToWrite);
-        
-        size_t bytesWritten = fwrite(copyBuffer, sizeof(uint8_t), bytesToWrite, writeHandle);
-
-        // Check if the same amounts of bytes are written
-        if (bytesWritten != bytesToWrite) {
-            setErrorPrompt("Something went wrong during the fily copy where not all bytes were written!");
-            fclose(writeHandle);
-            return false;
-        }
-        setFileProgress(bytesWritten);
-        showCurrentProgress();
-        // Check whether the inputs break
-        updateInputs();
-        if (pressedBack()) {
-            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-            if (selectedChoice == 0) {
-                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-                fclose(writeHandle);
-                return false;
-            }
-        }
-    }
-    fclose(writeHandle);
-    return true;
-}
-
-static bool readThread(FILE *srcFile, LockingQueue<file_buffer> *ready, LockingQueue<file_buffer> *done) {
-    file_buffer currentBuffer;
-    ready->waitAndPop(currentBuffer);
-    while ((currentBuffer.len = fread(currentBuffer.buf, 1, currentBuffer.buf_size, srcFile)) > 0) {
-        done->push(currentBuffer);
-        ready->waitAndPop(currentBuffer);
-    }
-    done->push(currentBuffer);
-    return ferror(srcFile) == 0;
-}
-
-static bool writeThread(FILE *dstFile, LockingQueue<file_buffer> *ready, LockingQueue<file_buffer> *done, size_t totalSize) {
-    uint bytes_written;
-    size_t total_bytes_written = 0;
-    file_buffer currentBuffer;
-    ready->waitAndPop(currentBuffer);
-    while (currentBuffer.len > 0 && (bytes_written = fwrite(currentBuffer.buf, 1, currentBuffer.len, dstFile)) == currentBuffer.len) {
-        done->push(currentBuffer);
-        ready->waitAndPop(currentBuffer);
-        total_bytes_written += bytes_written;
-        setFileProgress(total_bytes_written);
-        showCurrentProgress();
-        // Check whether the inputs break
-        updateInputs();
-        if (pressedBack()) {
-            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-            WHBLogFreetypeClear();
-            WHBLogPrint("Quitting dumping process...");
-            WHBLogPrint("The app (likely) isn't frozen!");
-            WHBLogPrint("This should take a minute at most!");
-            WHBLogFreetypeDraw();
-            if (selectedChoice == 0) {
-                setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-                return false;
-            }
-        }
-    }
-    done->push(currentBuffer);
-    return ferror(dstFile) == 0;
-}
-
-static bool copyFileThreaded(FILE *srcFile, FILE *dstFile, size_t totalSize) {
-    LockingQueue<file_buffer> read;
-    LockingQueue<file_buffer> write;
-    for (auto &buffer : buffers) {
-        if (!buffersInitialized) {
-            buffer.buf = aligned_alloc(0x40, BUFFER_SIZE);
-            buffer.len = 0;
-            buffer.buf_size = BUFFER_SIZE;
-        }
-        read.push(buffer);
-    }
-
-    std::future<bool> readFut = std::async(std::launch::async, readThread, srcFile, &read, &write);
-    std::future<bool> writeFut = std::async(std::launch::async, writeThread, dstFile, &write, &read, totalSize);
-    bool success = readFut.get() && writeFut.get();
-    return success;
-}
-
-bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes) {
+bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
     // Check if file is an actual file first
     struct stat fileStat;
     if (lstat(srcPath.c_str(), &fileStat) == -1) {
-        reportFileError();
-        if (ignoreFileErrors) return true;
         std::string errorMessage = "Failed to retrieve info from source file!\n";
         if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
         errorMessage += "\nDetails:\n";
@@ -196,19 +49,8 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return true;
     }
 
-    if (copyBuffer == nullptr) {
-        // Allocate buffer to copy bytes between
-        copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
-        if (copyBuffer == nullptr) {
-            setErrorPrompt("Couldn't allocate the memory to copy files!");
-            return false;
-        }
-    }
-
     FILE* readHandle = fopen(srcPath.c_str(), "rb");
     if (readHandle == nullptr) {
-        reportFileError();
-        if (ignoreFileErrors) return true;
         std::string errorMessage = "Couldn't open the file to copy from!\n";
         if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
         errorMessage += "\nDetails:\n";
@@ -218,38 +60,69 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return false;
     }
 
-    // Open the destination file
-    FILE* writeHandle = fopen(destPath.c_str(), "wb");
-    if (writeHandle == nullptr) {
-        fclose(readHandle);
-        reportFileError();
-        if (ignoreFileErrors) return true;
-        std::string errorMessage = "Couldn't open the file to copy to!\n";
-        errorMessage += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
-        errorMessage += "Error "+std::to_string(errno)+" after creating SD card file:\n";
-        errorMessage += srcPath + "\n";
-        errorMessage += "to:\n";
-        errorMessage += destPath;
-        setErrorPrompt(errorMessage);
-        return false;
+    setFile(filename, fileStat.st_size);
+
+    while(true) {
+        size_t bytesRead = 0;
+        uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+
+        if (bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle); bytesRead != BUFFER_SIZE) {
+            if (int fileError = ferror(readHandle); fileError != 0) {
+                fclose(readHandle);
+                free(copyBuffer);
+                std::string errorMessage = "Failed to read all data from this file!\n";
+                if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
+                errorMessage += "Error "+std::to_string(errno)+" when reading data from:\n";
+                errorMessage += srcPath;
+                setErrorPrompt(errorMessage);
+                return false;
+            }
+        }
+
+        // Check if the writing interface thread has failed
+        if (interface->hasFailed()) {
+            fclose(readHandle);
+            free(copyBuffer);
+            setErrorPrompt(interface->getFailReason());
+            return false;
+        }
+
+        bool endOfFile = feof(readHandle) != 0;
+        interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile);
+
+        setFileProgress(bytesRead);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            if (selectedChoice != 0) continue;
+
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
+            fclose(readHandle);
+
+
+            setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+            return false;
+        }
+
+        if (endOfFile) {
+            break;
+        }
     }
 
-    setFile(filename, fileStat.st_size);
-    
-    if(!copyFileThreaded(readHandle, writeHandle, fileStat.st_size))
-        return false;
-
     fclose(readHandle);
-    fclose(writeHandle);
     return true;
 }
 
-bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes) {
+bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
     // Open folder
     DIR* dirHandle;
     if ((dirHandle = opendir((srcPath+"/").c_str())) == nullptr) {
-        reportFileError();
-        if (ignoreFileErrors) return true;
         std::string errorMessage = "Failed to open folder to read content from!\n";
         if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
         errorMessage += "\nDetails:\n";
@@ -261,7 +134,13 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     }
 
     // Append slash when last character isn't a slash
-    if (totalBytes == nullptr) createPath(destPath.c_str());
+    if (totalBytes == nullptr) {
+        if (interface->hasFailed()) {
+            setErrorPrompt(interface->getFailReason());
+            return false;
+        }
+        interface->submitMakeFolder(destPath);
+    }
 
     // Loop over directory contents
     while (true) {
@@ -273,8 +152,6 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             // Use lstat since readdir returns DT_REG for symlinks
             struct stat fileStat;
             if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
-                reportFileError();
-                if (ignoreFileErrors) continue;
                 setErrorPrompt("Unknown Error "+std::to_string(errno)+":\nCouldn't check type of file/folder!\n"+entrySrcPath);
                 return false;
             }
@@ -284,7 +161,7 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             }
             else if (S_ISREG(fileStat.st_mode)) {
                 // Copy file
-                if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes)) {
+                if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes, interface)) {
                     closedir(dirHandle);
                     return false;
                 }
@@ -294,14 +171,13 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
                 if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
                 // Copy all the files in this subdirectory
-                if (!copyFolder(entrySrcPath, entryDstPath, totalBytes)) {
+                if (!copyFolder(entrySrcPath, entryDstPath, totalBytes, interface)) {
                     closedir(dirHandle);
                     return false;
                 }
             }
         }
         else if (dirEntry == NULL && errno == EIO) {
-            reportFileError();
             std::string errorMessage = "The Wii U had an issue while reading the disc(?)!\n";
             errorMessage += "Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
             errorMessage += "Unfortunately, disc requires reinsertion to retry!\nTry restarting Dumpling and trying again.\n\nDetails:\n";
@@ -311,8 +187,6 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
             return false;
         }
         else if (dirEntry == NULL && errno != 0) {
-            reportFileError();
-            if (ignoreFileErrors) continue;
             std::string errorMessage = "Unknown error while reading disc contents!\n";
             errorMessage += "You might want to restart your console and try again.\n\nDetails:\n";
             errorMessage += "Error "+std::to_string(errno)+" while iterating folder contents:\n";
@@ -329,32 +203,32 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes)
     return true;
 }
 
-bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes) {
+bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes, TransferInterface* interface) {
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Game) && entry.base) {
-        if (!copyFolder(entry.base->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.base->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes, interface)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Update) && entry.update) {
-        if (!copyFolder(entry.update->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.update->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes, interface)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::DLC) && entry.dlc) {
-        if (!copyFolder(entry.dlc->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes)) return false;
+        if (!copyFolder(entry.dlc->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes, interface)) return false;
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Saves) && entry.saves && (entry.saves->commonSave || !entry.saves->userSaves.empty())) {
         for (auto& save : entry.saves->userSaves) {
             if (save.userId == config.accountId) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/"+(config.dumpAsDefaultUser?"80000001":getUserByPersistentId(save.userId)->persistentIdString), totalBytes)) return false;
+                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/"+(config.dumpAsDefaultUser?"80000001":getUserByPersistentId(save.userId)->persistentIdString), totalBytes, interface)) return false;
             }
         }
         if (entry.saves->commonSave) {
-            if (!copyFolder(entry.saves->commonSave->path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/common", totalBytes)) return false;
+            if (!copyFolder(entry.saves->commonSave->path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/common", totalBytes, interface)) return false;
         }
     }
     if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Custom) && entry.custom) {
         if (entry.custom->inputPath) {
-            if (!copyFolder(*entry.custom->inputPath, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
+            if (!copyFolder(*entry.custom->inputPath, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes, interface)) return false;
         }
         if (entry.custom->inputBuffer) {
-            if (!copyMemory(entry.custom->inputBuffer->first, entry.custom->inputBuffer->second, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
+            //if (!copyMemory(entry.custom->inputBuffer->first, entry.custom->inputBuffer->second, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
         }
     }
     return true;
@@ -380,7 +254,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogFreetypeScreenPrintBottom("===============================");
             WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
             WHBLogFreetypeDraw();
-            if (!dumpTitle(queue[i], config, &totalDumpSize) && !cancelledScanning) {
+            if (!dumpTitle(queue[i], config, &totalDumpSize, nullptr) && !cancelledScanning) {
                 showErrorPrompt("Exit to Main Menu");
                 showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
                 return false;
@@ -414,7 +288,9 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
     // Dump title
     startQueue(totalDumpSize);
-    ignoreFileErrors = config.ignoreCopyErrors;
+
+    Fat32Transfer interface{config};
+
     for (size_t i=0; i<queue.size(); i++) {
         std::string status("Currently dumping ");
         status += queue[i].get().shortTitle;
@@ -434,13 +310,11 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         status += "...";
 
         setDumpingStatus(status);
-        if (!dumpTitle(queue[i], config, nullptr)) {
-            ignoreFileErrors = false;
+        if (!dumpTitle(queue[i], config, nullptr, &interface)) {
             showErrorPrompt("Back to Main Menu");
             return false;
         }
     }
-    ignoreFileErrors = false;
     return true;
 }
 
@@ -456,8 +330,10 @@ void dumpMLC() {
         return;
     }
 
+    Fat32Transfer interface{mlcConfig};
+
     setDumpingStatus("Currently dumping the whole MLC...");
-    if (!dumpTitle(mlcEntry, mlcConfig, nullptr)) {
+    if (!dumpTitle(mlcEntry, mlcConfig, nullptr, &interface)) {
         showErrorPrompt("Back to Main Menu");
         return;
     }
@@ -605,8 +481,6 @@ void cleanDumpingProcess() {
     WHBLogPrint("Cleaning up after dumping...");
     WHBLogFreetypeDraw();
     sleep_for(200ms);
-    if (copyBuffer != nullptr) free(copyBuffer);
-    copyBuffer = nullptr;
     unmountUSBDrive();
     unmountSD();
     if (isDiscMounted() && !loadTitles(true)) {

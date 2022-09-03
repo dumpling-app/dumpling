@@ -4,7 +4,7 @@
 #include "gui.h"
 
 // TODO: Fix smoothing so it doesn't show a radically different speed
-#define SMOOTHING_FACTOR 1.0
+#define SMOOTHING_FACTOR 0.8
 
 // Current Dumping Context
 
@@ -23,8 +23,6 @@ OSTick lastTime;
 uint64_t lastBytesCopied;
 uint64_t bytesCopiedSecond;
 uint32_t filesCopied = 0;
-uint32_t fileErrors = 0;
-
 
 // Show Progress Functions
 
@@ -39,7 +37,6 @@ void startSingleDump() {
     totalFileBytes = 0;
     copiedFileBytes = 0;
     filesCopied = 0;
-    fileErrors = 0;
     
     startTime = OSGetTick();
     lastTime = startTime - (OSTick)OSMillisecondsToTicks(1001);
@@ -52,7 +49,7 @@ void showCurrentProgress() {
         lastTime = OSGetTick();
         
         // This averages the bytes per second
-        bytesCopiedSecond = ((SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond)) / OSTicksToSeconds(timeSinceLastPeriod);
+        bytesCopiedSecond = (SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond);
         lastBytesCopied = copiedQueueBytes;
 
         // Print general dumping message
@@ -64,10 +61,9 @@ void showCurrentProgress() {
 
         WHBLogPrint("");
         WHBLogPrint("Details:");
-        WHBLogPrintf("Current Speed = %fMB/s", (double)bytesCopiedSecond/1000000.0);
+        WHBLogPrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0);
         if (totalQueueBytes != 0) WHBLogPrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
         else WHBLogPrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
-        if (fileErrors != 0) WHBLogPrintf("Files Skipped/Errors: %d", fileErrors);
         WHBLogPrint("");
         WHBLogPrintf("File Name = %s", currFilename);
         WHBLogPrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
@@ -94,10 +90,6 @@ void setFile(const char* filename, uint64_t total) {
 void setFileProgress(uint64_t copied) {
     copiedFileBytes += copied;
     copiedQueueBytes += copied;
-}
-
-void reportFileError() {
-    fileErrors++;
 }
 
 

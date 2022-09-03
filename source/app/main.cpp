@@ -25,6 +25,10 @@ int main() {
 
     IMDisableAPD(); // Disable auto-shutdown feature
 
+#ifdef USING_CEMU
+    WHBLogCafeInit();
+#endif
+
     // Start Dumpling
     showLoadingScreen();
     if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
@@ -51,5 +55,5 @@ int main() {
     VPADShutdown();
     shutdownGUI();
 
-    exitApplication(getCFWVersion() != MOCHA_FSCLIENT);
+    exitApplication(getCFWVersion() != MOCHA_FSCLIENT && false);
 }

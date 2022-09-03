@@ -350,7 +350,7 @@ bool loadTitles(bool skipDiscs) {
                 installedTitles.back().saves.reset();
                 WHBLogPrint("Failed to read meta from saves!");
                 WHBLogFreetypeDraw();
-                sleep_for(10s);
+                sleep_for(250ms);
             }
         }
     }
