@@ -29,14 +29,12 @@ FT_Face fontFace;
 uint8_t* fontBuffer;
 FT_Pos cursorSpaceWidth = 0;
 
-
-
-#define ENABLE_THREADSAFE TRUE
+#define ENABLE_THREADSAFE FALSE
 #if ENABLE_THREADSAFE
 std::mutex _mutex;
 #define DEBUG_THREADSAFE std::scoped_lock<std::mutex> lck(_mutex);
 #else
-#define DEBUG_THREADSAFE (); 
+#define DEBUG_THREADSAFE do {} while(0)
 #endif
 
 static void FreetypeSetLine(uint32_t position, const char *line) {

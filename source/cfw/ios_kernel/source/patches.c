@@ -78,6 +78,12 @@ void installPatches() {
     // Give PPC permission to bsp::ee:read permission to be able to read seeprom
     *(volatile uint32_t*)(0xe6044db0 - 0xe6042000 + 0x13d02000) = 0x000001F0;
 
+    // Patch FS to syslog everything
+    *(volatile uint32_t*)(0x107F5720) = ARM_B(0x107F5720, 0x107F0C84);
+
+    // Patch MCP to syslog everything
+    *(volatile uint32_t*)KERNEL_RUN_ADDR(0x05055438) = ARM_B(0x05055438, 0x0503dcf8);
+
     // Zero out the MCP payload's .bss data area
     kernelMemset(KERNEL_SRC_ADDR(_mcp_bss_start), 0, _mcp_bss_end - _mcp_bss_start);
 

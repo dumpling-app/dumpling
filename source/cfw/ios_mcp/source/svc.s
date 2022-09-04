@@ -68,6 +68,18 @@ svcClose:
     .word 0xE7F034F0
     bx lr
 
+.global svcSuspend
+.type svcSuspend, %function
+svcSuspend:
+    .word 0xe7f044f0
+    bx lr
+
+.global svcResume
+.type svcResume, %function
+svcResume:
+    .word 0xe7f043f0
+    bx lr
+
 .global svcIoctl
 .type svcIoctl, %function
 svcIoctl:

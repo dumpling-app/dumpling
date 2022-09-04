@@ -63,20 +63,22 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     setFile(filename, fileStat.st_size);
 
     while(true) {
+        // size_t bytesRead = 0;
+        // uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        // if (copyBuffer == nullptr) {
+        //     fclose(readHandle);
+        //     std::string errorMessage = "Failed to allocate memory for chunk buffer!";
+        //     setErrorPrompt(errorMessage);
+        //     return false;
+        // }
+
+        alignas(BUFFER_SIZE_ALIGNMENT) std::array<uint8_t, BUFFER_SIZE*BUFFER_DEBUG_MULTIPLIER> copyBuffer;
+
         size_t bytesRead = 0;
-        uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
-
-        if (copyBuffer == nullptr) {
-            fclose(readHandle);
-            std::string errorMessage = "Failed to allocate memory for chunk buffer!";
-            setErrorPrompt(errorMessage);
-            return false;
-        }
-
-        if (bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle); bytesRead != BUFFER_SIZE) {
+        if (bytesRead = fread(copyBuffer.data(), sizeof(uint8_t), BUFFER_SIZE, readHandle); bytesRead != BUFFER_SIZE) {
             if (int fileError = ferror(readHandle); fileError != 0) {
                 fclose(readHandle);
-                free(copyBuffer);
+                //free(copyBuffer);
                 std::string errorMessage = "Failed to read all data from this file!\n";
                 if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
                 errorMessage += "Error "+std::to_string(errno)+" when reading data from:\n";
@@ -89,7 +91,7 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         // Check if the writing interface thread has failed
         if (interface->hasFailed()) {
             fclose(readHandle);
-            free(copyBuffer);
+            //free(copyBuffer);
             setErrorPrompt(interface->getFailReason());
             return false;
         }
@@ -97,25 +99,24 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         bool endOfFile = feof(readHandle) != 0;
         interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile);
 
-        // setFileProgress(bytesRead);
-        // showCurrentProgress();
-        // // Check whether the inputs break
-        // updateInputs();
-        // if (pressedBack()) {
-        //     uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-        //     if (selectedChoice != 0) continue;
+        setFileProgress(bytesRead);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            if (selectedChoice != 0) continue;
 
-        //     WHBLogFreetypeClear();
-        //     WHBLogPrint("Quitting dumping process...");
-        //     WHBLogPrint("The app (likely) isn't frozen!");
-        //     WHBLogPrint("This should take a minute at most!");
-        //     WHBLogFreetypeDraw();
-        //     fclose(readHandle);
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
+            fclose(readHandle);
 
-
-        //     setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-        //     return false;
-        // }
+            setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
+            return false;
+        }
 
         if (endOfFile) {
             break;

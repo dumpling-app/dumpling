@@ -21,6 +21,9 @@ void Fat32Transfer::closeFileHandle(std::string& path) {
     FILE* fileHandle = this->getFileHandle(path);
     this->fileHandles.erase(path);
     fclose(fileHandle);
+
+    uint32_t handlesRemaining = this->fileHandles.size();
+    OSReport("File handles remaining %u!\n", handlesRemaining);
 }
 
 std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
@@ -29,7 +32,7 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
         std::unique_lock<std::mutex> lck(this->mutex);
 
         if (this->chunks.empty()) {
-            WHBLogPrint("Woken up without chunk!");
+            //WHBLogPrint("Woken up without chunk!");
             OSMemoryBarrier();
             continue;
         }
@@ -39,20 +42,32 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
         OSMemoryBarrier();
         lck.unlock();
         OSSignalSemaphore(&this->maxSemaphore);
+        OSMemoryBarrier();
 
         std::visit(overloaded{
             [this](CommandMakeDir& arg) {
-                WHBLogPrintf("Make directory: path=%s", arg.dirPath.c_str());
+                OSReport("Make directory: path=%s\n", arg.dirPath.c_str());
                 createPath(arg.dirPath.c_str());
             },
             [this](CommandWrite& arg) {
-                WHBLogPrintf("Write File: path=%s size=%zu closeFileAtEnd=%s", arg.filePath.c_str(), arg.chunkSize, arg.closeFileAtEnd == true ? "true" : "false");
+
+                // for (uint8_t* i=arg.chunkBuffer.begin()+BUFFER_SIZE; i<arg.chunkBuffer.end(); i++) {
+                //     if (*i != 0) {
+                //         OSReport("chunkBuffer[0x%X]\n", i);
+                //     }
+                // }
+
+                std::string limitedFilename = arg.filePath;
+                if (limitedFilename.length() >= 60) {
+                    limitedFilename = limitedFilename.substr(0, 60)+"\n";
+                }
+                OSReport("Write File: path=%.25s size=%u closeFileAtEnd=%s\n", limitedFilename.c_str(), (uint32_t)arg.chunkSize, arg.closeFileAtEnd == true ? "true" : "false");
 
                 FILE* destFileHandle = this->getFileHandle(arg.filePath);
 
                 if (destFileHandle == nullptr) {
                     this->closeFileHandle(arg.filePath);
-                    free(arg.chunkBuffer);
+                    //free(arg.chunkBuffer);
 
                     this->error += "Couldn't open the file to copy to!\n";
                     this->error += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
@@ -62,9 +77,9 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                     return;
                 }
                 
-                if (uint32_t bytesWritten = fwrite(arg.chunkBuffer, sizeof(uint8_t), arg.chunkSize, destFileHandle); bytesWritten != arg.chunkSize) {
+                if (uint32_t bytesWritten = fwrite(arg.chunkBuffer.data(), sizeof(uint8_t), arg.chunkSize, destFileHandle); bytesWritten != arg.chunkSize) {
                     this->closeFileHandle(arg.filePath);
-                    free(arg.chunkBuffer);
+                    //free(arg.chunkBuffer);
 
                     error += "Failed to write data to dumping device!\n";
                     if (errno == ENOSPC) error += "There's no space available on the USB/SD card!\n";
@@ -80,17 +95,17 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                 if (arg.closeFileAtEnd)
                     this->closeFileHandle(arg.filePath);
 
-                free(arg.chunkBuffer);
+                //free(arg.chunkBuffer);
             },
             [this](CommandStopThread& arg) {
-                WHBLogPrintf("Stop Thread");
+                OSReport("Stop Thread\n");
                 this->breakThreadLoop = true;
             }
         }, chunk);
     }
 
-    WHBLogPrint("Cleaning up the thread...");
-    WHBLogFreetypeDraw();
+    //WHBLogPrint("Cleaning up the thread...");
+    //WHBLogFreetypeDraw();
 
     // Finish queue and close all file handles that are still left
     auto openHandleIt = this->fileHandles.begin();

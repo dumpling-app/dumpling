@@ -14,6 +14,4 @@ protected:
     bool breakThreadLoop = false;
     std::string error = "";
     std::unordered_map<std::string, FILE*> fileHandles;
-
-    const uint32_t maxQueueSize = 25;
 };

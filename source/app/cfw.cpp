@@ -121,7 +121,7 @@ bool initCFW() {
 }
 
 void shutdownCFW() {
-    Mocha_DeinitLibrary();
+    Mocha_DeInitLibrary();
     sleep_for(1s);
 }
 

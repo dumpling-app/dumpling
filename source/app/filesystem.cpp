@@ -387,13 +387,13 @@ std::string getRootFromLocation(dumpLocation location) {
 
 dumpLocation getLocationFromRoot(std::string rootPath) {
 #ifdef USE_LIBFAT
-    if (rootPath.compare("sdfat:") == 0) return dumpLocation::SDFat;
+    if (rootPath == "sdfat:") return dumpLocation::SDFat;
 #else
-    if (rootPath.compare("fs:") == 0) return dumpLocation::SDFat;
+    if (rootPath  == "fs:") return dumpLocation::SDFat;
 #endif
-    else if (rootPath.compare("usbfat:") == 0) return dumpLocation::USBFat;
-    else if (rootPath.compare("usbexfat:") == 0) return dumpLocation::USBExFAT;
-    else if (rootPath.compare("usbntfs:") == 0) return dumpLocation::USBNTFS;
+    else if (rootPath == "usbfat:") return dumpLocation::USBFat;
+    else if (rootPath == "usbexfat:") return dumpLocation::USBExFAT;
+    else if (rootPath == "usbntfs:") return dumpLocation::USBNTFS;
     return dumpLocation::Unknown;
 }
 

@@ -1,9 +1,6 @@
 #include "gui.h"
 #include "navigation.h"
-
-#include <whb/log.h>
-#include <coreinit/debug.h>
-#include <cstdarg>
+#include "cfw.h"
 
 static bool usingHBL = false;
 
@@ -34,21 +31,50 @@ void shutdownGUI() {
     WHBLogFreetypeFree();
 }
 
-void exitApplication(bool shutdownOnExit) {
-    // Loop through ProcUI messages until it says Dumpling should exit
-    ProcUIStatus status;
-    while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {
-        if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+bool stillRunning() {
+    switch (ProcUIProcessMessages(true)) {
+        case PROCUI_STATUS_EXITING: {
+            return false;
+        }
+        case PROCUI_STATUS_RELEASE_FOREGROUND: {
             ProcUIDrawDoneRelease();
+            break;
         }
-
-        if (status != PROCUI_STATUS_IN_FOREGROUND) {
-            continue;
+        case PROCUI_STATUS_IN_FOREGROUND: {
+            break;
         }
-
-        if (shutdownOnExit) OSShutdown();
-        else if (usingHBL) SYSRelaunchTitle(0, NULL);
-        else SYSLaunchMenu();
+        case PROCUI_STATUS_IN_BACKGROUND:
+        default:
+            break;
     }
+    return true;
+}
+
+void exitApplication(bool shutdownOnExit) {
+    OSEnableHomeButtonMenu(true);
+    // Loop through ProcUI messages until it says Dumpling should exit
+    if (getCFWVersion() == MOCHA_FSCLIENT) {
+        SYSLaunchMenu();
+
+        while(stillRunning()) {
+            sleep_for(100ms);
+        }
+    }
+    else {
+        ProcUIStatus status;
+        while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {
+            if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+                ProcUIDrawDoneRelease();
+            }
+
+            if (status != PROCUI_STATUS_IN_FOREGROUND) {
+                continue;
+            }
+
+            if (shutdownOnExit) OSShutdown();
+            else if (usingHBL) SYSRelaunchTitle(0, NULL);
+        }
+    }
+    OSEnableHomeButtonMenu(true);
     ProcUIShutdown();
 }

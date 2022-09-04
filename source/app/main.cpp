@@ -55,5 +55,5 @@ int main() {
     VPADShutdown();
     shutdownGUI();
 
-    exitApplication(getCFWVersion() != MOCHA_FSCLIENT && false);
+    exitApplication(getCFWVersion() != MOCHA_FSCLIENT);
 }
