@@ -66,6 +66,13 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         size_t bytesRead = 0;
         uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
 
+        if (copyBuffer == nullptr) {
+            fclose(readHandle);
+            std::string errorMessage = "Failed to allocate memory for chunk buffer!";
+            setErrorPrompt(errorMessage);
+            return false;
+        }
+
         if (bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle); bytesRead != BUFFER_SIZE) {
             if (int fileError = ferror(readHandle); fileError != 0) {
                 fclose(readHandle);
@@ -403,8 +410,8 @@ bool dumpDisc() {
     WHBLogFreetypeClear();
     WHBLogPrint("Currently inserted disc is:");
     WHBLogPrint(queue.begin()->get()->shortTitle.c_str());
-    WHBLogPrint("");
-    WHBLogPrint("Continuing to next step in 5 seconds...");
+    WHBLogFreetypePrint("");
+    WHBLogFreetypePrint("Continuing to next step in 5 seconds...");
     WHBLogFreetypeDraw();
     sleep_for(5s);
 

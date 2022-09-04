@@ -52,18 +52,3 @@ void exitApplication(bool shutdownOnExit) {
     }
     ProcUIShutdown();
 }
-
-
-std::mutex _logMutex;
-void guiSafeLog(const char* fmt, ...) {
-    std::scoped_lock<std::mutex> lck(_logMutex);
-    
-    char formattedLine[1024];
-
-    va_list va;
-    va_start(va, fmt);
-    vsnprintf(formattedLine, 1024, fmt, va);
-    va_end(va);
-
-    OSConsoleWrite(formattedLine, strlen(formattedLine));
-}

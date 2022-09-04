@@ -25,7 +25,7 @@ void TransferInterface::submitCommand(Args&&... args) {
 
     TransferCommands& command = this->chunks.emplace(std::in_place_type<T>, std::forward<Args>(args)...);
     if constexpr (std::is_same<T, CommandWrite>::value) {
-        guiSafeLog("Send File [idx=]: path=%s closeFileAtEnd=%s\n", std::get<CommandWrite>(command).filePath.c_str(), std::get<CommandWrite>(command).closeFileAtEnd == true ? "true" : "false");
+        WHBLogPrintf("Send File [idx=%zu]: path=%s size=%zu closeFileAtEnd=%s", this->chunks.size(), std::get<CommandWrite>(command).filePath.c_str(), std::get<CommandWrite>(command).chunkSize, std::get<CommandWrite>(command).closeFileAtEnd == true ? "true" : "false");
     }
     OSMemoryBarrier();
     lck.unlock();

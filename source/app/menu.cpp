@@ -275,10 +275,10 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
             WHBLogPrint(line.c_str());
         }
 
-        WHBLogPrint("");
-        WHBLogPrintf("%c %s", selectedButton==0 ? '>' : ' ', button1);
-        if (button2 != NULL) WHBLogPrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);
-        WHBLogPrint("");
+        WHBLogFreetypePrint("");
+        WHBLogFreetypePrintf("%c %s", selectedButton==0 ? '>' : ' ', button1);
+        if (button2 != NULL) WHBLogFreetypePrintf("%c %s", selectedButton==1 ? '>' : ' ', button2);
+        WHBLogFreetypePrint("");
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
         WHBLogFreetypeDrawScreen();

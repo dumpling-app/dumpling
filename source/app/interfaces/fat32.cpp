@@ -29,7 +29,7 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
         std::unique_lock<std::mutex> lck(this->mutex);
 
         if (this->chunks.empty()) {
-            guiSafeLog("Woken up without chunk!");
+            WHBLogPrint("Woken up without chunk!");
             OSMemoryBarrier();
             continue;
         }
@@ -42,11 +42,11 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
 
         std::visit(overloaded{
             [this](CommandMakeDir& arg) {
-                guiSafeLog("Make directory: path=%s\n", arg.dirPath.c_str());
+                WHBLogPrintf("Make directory: path=%s", arg.dirPath.c_str());
                 createPath(arg.dirPath.c_str());
             },
             [this](CommandWrite& arg) {
-                guiSafeLog("Write File: path=%s closeFileAtEnd=%s\n", arg.filePath.c_str(), arg.closeFileAtEnd == true ? "true" : "false");
+                WHBLogPrintf("Write File: path=%s size=%zu closeFileAtEnd=%s", arg.filePath.c_str(), arg.chunkSize, arg.closeFileAtEnd == true ? "true" : "false");
 
                 FILE* destFileHandle = this->getFileHandle(arg.filePath);
 
@@ -83,7 +83,7 @@ std::string Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                 free(arg.chunkBuffer);
             },
             [this](CommandStopThread& arg) {
-                guiSafeLog("Stop Thread: \n");
+                WHBLogPrintf("Stop Thread");
                 this->breakThreadLoop = true;
             }
         }, chunk);
