@@ -8,7 +8,7 @@
 
 struct listEntry {
     bool queued;
-    std::reference_wrapper<titleEntry> titleEntryRef;
+    std::shared_ptr<titleEntry> listedEntry;
 };
 
 void showTitleList(const char* message, dumpingConfig config) {
@@ -16,25 +16,25 @@ void showTitleList(const char* message, dumpingConfig config) {
     std::vector<listEntry> printTitles = {};
     for (auto& title : installedTitles) {
         // Check if the type is available
-        if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !title.base) continue;
-        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update) && !title.update) continue;
-        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::DLC) && !title.dlc) continue;
-        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !title.base) continue;
-        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && !title.saves) continue;
+        if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !title->base) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update) && !title->update) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::DLC) && !title->dlc) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !title->base) continue;
+        else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && !title->saves) continue;
 
         // Differentiate between game and system app
-        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !isBase(title.base->type)) continue;
-        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !isSystemApp(title.base->type)) continue;
+        if (title->base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && !isBase(title->base->type)) continue;
+        if (title->base && HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp) && !isSystemApp(title->base->type)) continue;
 
         // Prevent the disc copy from showing in the title lists
-        if (title.base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && title.base->location == titleLocation::Disc) continue;
+        if (title->base && HAS_FLAG(config.filterTypes, dumpTypeFlags::Game) && title->base->location == titleLocation::Disc) continue;
 
         // Prevent a game that doesn't have any contents in their common or any user saves
-        if (title.saves && HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && (!title.saves->commonSave && title.saves->userSaves.empty())) continue;
+        if (title->saves && HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves) && (!title->saves->commonSave && title->saves->userSaves.empty())) continue;
 
         printTitles.emplace_back(listEntry{
             .queued = false,
-            .titleEntryRef = std::ref(title)
+            .listedEntry = title
         });
     }
 
@@ -59,7 +59,7 @@ void showTitleList(const char* message, dumpingConfig config) {
 
         // Print range of titles
         for (size_t i=listOffset; i<listOffset+listSize; i++) {
-            WHBLogPrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "\u25A0": "\u25A1") : "", printTitles[i].titleEntryRef.get().shortTitle.c_str());
+            WHBLogPrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "\u25A0": "\u25A1") : "", printTitles[i].listedEntry->shortTitle.c_str());
         }
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE045 Button = Start Dumping");
@@ -102,9 +102,9 @@ void showTitleList(const char* message, dumpingConfig config) {
     }
 
     // Create dumping queue
-    std::vector<std::reference_wrapper<titleEntry>> queuedTitles = {};
+    std::vector<std::shared_ptr<titleEntry>> queuedTitles = {};
     for (auto& title : printTitles) {
-        if (title.queued) queuedTitles.emplace_back(title.titleEntryRef.get());
+        if (title.queued) queuedTitles.emplace_back(title.listedEntry);
     }
 
     if (queuedTitles.empty()) {

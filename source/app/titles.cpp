@@ -5,7 +5,7 @@
 #include "menu.h"
 #include "cfw.h"
 
-std::vector<titleEntry> installedTitles = {};
+std::vector<std::shared_ptr<titleEntry>> installedTitles = {};
 std::map<uint32_t, std::vector<MCPTitleListType>> rawTitles = {};
 std::map<uint32_t, savePart> rawSaves = {};
 
@@ -270,56 +270,55 @@ bool loadTitles(bool skipDiscs) {
     // Parse title meta files and create title entries for each title
     installedTitles.clear();
     for (auto& sortedTitle : rawTitles) {
-        installedTitles.emplace_back(titleEntry{});
-        titleEntry& title = installedTitles.back();
-        title.titleLowId = sortedTitle.first;
+        std::shared_ptr<titleEntry>& title = installedTitles.emplace_back(std::make_shared<titleEntry>());
+        title->titleLowId = sortedTitle.first;
 
         // Loop over each part of a title
         for (MCPTitleListType& part : sortedTitle.second) {
             if (isBase(part.appType) || isSystemApp(part.appType)) {
-                title.base = titlePart{};
-                title.base->posixPath = convertToPosixPath(part.path);
-                title.base->version = part.titleVersion;
-                title.base->type = part.appType;
-                title.base->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.base->location = deviceToLocation(part.indexedDevice);
+                title->base = titlePart{};
+                title->base->posixPath = convertToPosixPath(part.path);
+                title->base->version = part.titleVersion;
+                title->base->type = part.appType;
+                title->base->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->base->location = deviceToLocation(part.indexedDevice);
                 
                 // Change the output path
-                if (isBase(part.appType)) title.base->outputPath = "/Games/";
-                if (isSystemApp(part.appType)) title.base->outputPath = "/System Applications/";
+                if (isBase(part.appType)) title->base->outputPath = "/Games/";
+                if (isSystemApp(part.appType)) title->base->outputPath = "/System Applications/";
                 
-                if (!getTitleMetaXml(title, *title.base)) {
-                    title.base.reset();
+                if (!getTitleMetaXml(*title, *title->base)) {
+                    title->base.reset();
                     WHBLogPrint("Failed to read meta from game!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
                 }
             }
             else if (isUpdate(part.appType)) { // TODO: Log cases where maybe two updates are found (one on disc and one later via the title system)
-                title.update = titlePart{};
-                title.update->posixPath = convertToPosixPath(part.path);
-                title.update->version = part.titleVersion;
-                title.update->type = part.appType;
-                title.update->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.update->location = deviceToLocation(part.indexedDevice);
-                title.update->outputPath = "/Updates/";
-                if (!getTitleMetaXml(title, *title.update)) {
-                    title.update.reset();
+                title->update = titlePart{};
+                title->update->posixPath = convertToPosixPath(part.path);
+                title->update->version = part.titleVersion;
+                title->update->type = part.appType;
+                title->update->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->update->location = deviceToLocation(part.indexedDevice);
+                title->update->outputPath = "/Updates/";
+                if (!getTitleMetaXml(*title, *title->update)) {
+                    title->update.reset();
                     WHBLogPrint("Failed to read meta from update!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
                 }
             }
             else if (isDLC(part.appType)) {
-                title.dlc = titlePart{};
-                title.dlc->posixPath = convertToPosixPath(part.path);
-                title.dlc->version = part.titleVersion;
-                title.dlc->type = part.appType;
-                title.dlc->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.dlc->location = deviceToLocation(part.indexedDevice);
-                title.dlc->outputPath = "/DLCs/";
-                if (!getTitleMetaXml(title, *title.dlc)) {
-                    title.dlc.reset();
+                title->dlc = titlePart{};
+                title->dlc->posixPath = convertToPosixPath(part.path);
+                title->dlc->version = part.titleVersion;
+                title->dlc->type = part.appType;
+                title->dlc->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->dlc->location = deviceToLocation(part.indexedDevice);
+                title->dlc->outputPath = "/DLCs/";
+                if (!getTitleMetaXml(*title, *title->dlc)) {
+                    title->dlc.reset();
                     WHBLogPrint("Failed to read meta from dlc!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
@@ -328,7 +327,7 @@ bool loadTitles(bool skipDiscs) {
         }
 
         // Remove element from list again if it contains nothing
-        if (!(title.base || title.update || title.dlc)) {
+        if (!(title->base || title->update || title->dlc)) {
             installedTitles.pop_back();
         }
     }
@@ -336,18 +335,18 @@ bool loadTitles(bool skipDiscs) {
     // Try to append or create new title entries from save list data
     for (auto& sortedSave : rawSaves) {
         uint32_t saveTitleId = sortedSave.first;
-        const auto& existingEntry = std::find_if(installedTitles.begin(), installedTitles.end(), [saveTitleId](titleEntry& entry){ return entry.titleLowId == saveTitleId; });
+        const auto& existingEntry = std::find_if(installedTitles.begin(), installedTitles.end(), [saveTitleId](std::shared_ptr<titleEntry>& entry){ return entry->titleLowId == saveTitleId; });
         if (existingEntry != installedTitles.end()) {
-            existingEntry->saves = sortedSave.second;
+            (*existingEntry)->saves = sortedSave.second;
         }
         else {
-            installedTitles.emplace_back(titleEntry{
+            auto& newEntry = installedTitles.emplace_back(std::make_shared<titleEntry>(titleEntry{
                 .titleLowId = sortedSave.first,
                 .saves = sortedSave.second
-            });
+            }));
             
-            if (!getSaveMetaXml(installedTitles.back(), *installedTitles.back().saves)) {
-                installedTitles.back().saves.reset();
+            if (!getSaveMetaXml(*newEntry, *newEntry->saves)) {
+                newEntry->saves.reset();
                 WHBLogPrint("Failed to read meta from saves!");
                 WHBLogFreetypeDraw();
                 sleep_for(250ms);
@@ -500,9 +499,9 @@ bool getSaveListThroughACP(bool skipDiscs) {
 }
 */
 
-std::optional<titleEntry> getTitleWithName(std::string& nameOfTitle) {
+std::optional<std::shared_ptr<titleEntry>> getTitleWithName(std::string& nameOfTitle) {
     for (auto& title : installedTitles) {
-        if (title.shortTitle == nameOfTitle) return title;
+        if (title->shortTitle == nameOfTitle) return title;
     }
     return std::nullopt;
 }

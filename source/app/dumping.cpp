@@ -234,7 +234,7 @@ bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes, T
     return true;
 }
 
-bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingConfig& config) {
+bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config) {
     // Ask user whether it wants to do an initial scan
     uint8_t scanChoice = showDialogPrompt("Run an initial scan to determine the dump size?\nThis might take some minutes but adds:\n - Progress while dumping\n - Check if enough storage is available\n - Give a rough time estimate", "Yes, check size", "No, just dump");
     
@@ -249,12 +249,13 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
             WHBLogFreetypePrint("This might take a few minutes if you selected a lot of titles...");
             WHBLogFreetypePrint("Your Wii U isn't frozen in that case!");
             WHBLogFreetypePrint("");
-            WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
+            WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i]->shortTitle.c_str(), i+1, queue.size());
             WHBLogFreetypePrint("");
             WHBLogFreetypeScreenPrintBottom("===============================");
             WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
             WHBLogFreetypeDraw();
-            if (!dumpTitle(queue[i], config, &totalDumpSize, nullptr) && !cancelledScanning) {
+            titleEntry& queueEntry = *queue[i];
+            if (!dumpTitle(queueEntry, config, &totalDumpSize, nullptr) && !cancelledScanning) {
                 showErrorPrompt("Exit to Main Menu");
                 showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
                 return false;
@@ -293,7 +294,8 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 
     for (size_t i=0; i<queue.size(); i++) {
         std::string status("Currently dumping ");
-        status += queue[i].get().shortTitle;
+        titleEntry& queueEntry = *queue[i];
+        status += queueEntry.shortTitle;
         if (queue.size() > 1) {
             if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game)) status += " (game ";
             else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update)) status += " (update ";
@@ -310,7 +312,7 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
         status += "...";
 
         setDumpingStatus(status);
-        if (!dumpTitle(queue[i], config, nullptr, &interface)) {
+        if (!dumpTitle(queueEntry, config, nullptr, &interface)) {
             showErrorPrompt("Back to Main Menu");
             return false;
         }
@@ -390,9 +392,9 @@ bool dumpDisc() {
     }
 
     // Make a queue from game disc
-    std::vector<std::reference_wrapper<titleEntry>> queue;
+    std::vector<std::shared_ptr<titleEntry>> queue;
     for (auto& title : installedTitles) {
-        if (title.base && title.base->location == titleLocation::Disc) {
+        if (title->base && title->base->location == titleLocation::Disc) {
             queue.emplace_back(std::ref(title));
             break;
         }
@@ -400,7 +402,7 @@ bool dumpDisc() {
 
     WHBLogFreetypeClear();
     WHBLogPrint("Currently inserted disc is:");
-    WHBLogPrint(queue.begin()->get().shortTitle.c_str());
+    WHBLogPrint(queue.begin()->get()->shortTitle.c_str());
     WHBLogPrint("");
     WHBLogPrint("Continuing to next step in 5 seconds...");
     WHBLogFreetypeDraw();
@@ -424,7 +426,7 @@ bool dumpDisc() {
 }
 
 void dumpOnlineFiles() {
-    std::vector<std::reference_wrapper<titleEntry>> queue;
+    std::vector<std::shared_ptr<titleEntry>> queue;
     dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::Custom)};
 
     // Loop until a valid account has been chosen
@@ -465,13 +467,13 @@ void dumpOnlineFiles() {
     titleEntry otpFile{.shortTitle = "otp.bin File", .custom = customPart{.inputBuffer = std::pair((uint8_t*)&otpReturn, sizeof(otpReturn)), .outputPath = "/Online Files/otp.bin"}};
 
     // Add custom title entries to queue
-    queue.emplace_back(std::ref(ecAccountInfoEntry));
-    queue.emplace_back(std::ref(miiEntry));
-    queue.emplace_back(std::ref(ccertsEntry));
-    queue.emplace_back(std::ref(scertsEntry));
-    queue.emplace_back(std::ref(accountsEntry));
-    queue.emplace_back(std::ref(seepromFile));
-    queue.emplace_back(std::ref(otpFile));
+    queue.emplace_back(std::make_shared<titleEntry>(ecAccountInfoEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(miiEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(ccertsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(scertsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(accountsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(seepromFile));
+    queue.emplace_back(std::make_shared<titleEntry>(otpFile));
 
     if (dumpQueue(queue, onlineConfig)) showDialogPrompt("Successfully dumped all of the online files!", "OK");
     else showDialogPrompt("Failed to dump the online files...", "OK");

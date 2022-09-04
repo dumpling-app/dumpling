@@ -160,6 +160,9 @@ cemu:
 	@$(MAKE) USING_CEMU=1 --no-print-directory -f $(CURDIR)/Makefile
 
 run_cemu_wsl: cemu
+	@$(shell $(CURDIR)/cemu/Cemu.exe -g "$(shell wslpath -a -w $(OUTPUT).rpx)")
+
+run_cemu_wsl_interpreter: cemu
 	@$(shell $(CURDIR)/cemu/Cemu.exe --force-interpreter -g "$(shell wslpath -a -w $(OUTPUT).rpx)")
 
 #-------------------------------------------------------------------------------
