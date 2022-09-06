@@ -1,4 +1,5 @@
 #include "log_freetype.h"
+#include "../app/stub_asan.h"
 
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
@@ -230,14 +231,13 @@ static uint32_t FreetypeProcCallbackAcquired(void *context) {
     if (freetypeHasForeground) return 0;
     freetypeHasForeground = true;
 
-    MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
     if (frameBufferTVSize) {
-        frameBufferTVFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferTVSize, 0x100);
+        frameBufferTVFrontPtr = (uint8_t*)MEM2_alloc(frameBufferTVSize, 0x100);
         frameBufferTVBackPtr = (uint8_t*)frameBufferTVFrontPtr + (1*(1280*720*4));
     }
 
     if (frameBufferDRCSize) {
-        frameBufferDRCFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferDRCSize, 0x100);
+        frameBufferDRCFrontPtr = (uint8_t*)MEM2_alloc(frameBufferDRCSize, 0x100);
         frameBufferDRCBackPtr = (uint8_t*)frameBufferDRCFrontPtr + (1*(896*480*4));
     }
 

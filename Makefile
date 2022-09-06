@@ -45,7 +45,7 @@ DRC_SPLASH	:=
 #-------------------------------------------------------------------------------
 # options for code generation
 #-------------------------------------------------------------------------------
-CFLAGS		:=	-g -Wall -Os -ffunction-sections -fdata-sections -Wno-narrowing \
+CFLAGS		:=	-g -Wall -O1 -fsanitize=kernel-address -ffunction-sections -fdata-sections -Wno-narrowing \
 				$(MACHDEP)
 
 ifdef USING_CEMU
@@ -57,7 +57,7 @@ endif
 CXXFLAGS	:=	$(CFLAGS) -std=c++20
 
 ASFLAGS		:=	-g $(ARCH)
-LDFLAGS		=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
+LDFLAGS		=	-g $(ARCH) $(RPXSPECS) -fsanitize=kernel-address -Wl,-Map,$(notdir $*.map)
 
 LIBS		:=	-lstdc++ -lwut -lfat -lmocha -liosuhax `freetype-config --libs`
 

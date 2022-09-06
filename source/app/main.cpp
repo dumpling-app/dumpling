@@ -8,12 +8,15 @@
 #include "users.h"
 #include "gui.h"
 
+#include "stub_asan.h"
+
 extern "C" void __init_wut_malloc();
 
 // Initialize correct heaps for CustomRPXLoader
-extern "C" void __preinit_user(MEMHeapHandle *outMem1, MEMHeapHandle *outFG, MEMHeapHandle *outMem2) {
-    __init_wut_malloc();
-}
+// extern "C" void __preinit_user(MEMHeapHandle *outMem1, MEMHeapHandle *outFG, MEMHeapHandle *outMem2) {
+//     //__init_wut_malloc();
+//     memoryInitialize();
+// }
 
 int main() {
     // Initialize libraries
