@@ -25,7 +25,7 @@ protected:
     static size_t filePtrAlignment;
     FILPtr* currFileHandle = nullptr;
     std::string currFilePath;
-    uint8_t openFile(const std::string& path);
+    uint8_t openFile(const std::string &path, size_t prepareSize);
     uint8_t closeFile(const std::string& path);
 
     struct FATFSPtr;

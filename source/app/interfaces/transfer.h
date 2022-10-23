@@ -11,9 +11,10 @@ struct CommandMakeDir {
 
 struct CommandWrite {
     const std::string filePath;
+    size_t fileSize;
     uint8_t* chunkBuffer;
-    size_t chunkSize = 0;
-    bool closeFileAtEnd = false;
+    uint32_t chunkSize;
+    bool closeFileAtEnd;
 };
 
 struct CommandStopThread {
@@ -29,7 +30,7 @@ public:
 
     bool submitSwitchFolder(const std::string& dirPath);
     bool submitWriteFolder(const std::string& dirPath);
-    bool submitWriteFile(const std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd);
+    bool submitWriteFile(const std::string& filePath, size_t fileSize, uint8_t* buffer, uint32_t bufferSize, bool closeFileAtEnd);
     bool submitStopThread();
 
     const uint32_t maxQueueSize = 64;

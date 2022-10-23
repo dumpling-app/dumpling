@@ -45,8 +45,8 @@ bool TransferInterface::submitWriteFolder(const std::string& dirPath) {
     return this->submitCommand<CommandMakeDir>(dirPath);
 }
 
-bool TransferInterface::submitWriteFile(const std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd) {
-    return this->submitCommand<CommandWrite>(filePath, buffer, size, closeFileAtEnd);
+bool TransferInterface::submitWriteFile(const std::string& filePath, size_t fileSize, uint8_t* buffer, uint32_t bufferSize, bool closeFileAtEnd) {
+    return this->submitCommand<CommandWrite>(filePath, fileSize, buffer, bufferSize, closeFileAtEnd);
 }
 
 bool TransferInterface::submitStopThread() {

@@ -40,8 +40,8 @@ std::vector<std::pair<std::string, std::string>> Fat32Transfer::getDrives() {
         if (i == DEV_SD_REF) volumeName = "SD";
         else if (i == DEV_USB01_REF) volumeName = "USB 1";
         else if (i == DEV_USB02_REF) volumeName = "USB 2";
-        if (volumeLabel[0]) volumeName += std::string(": ") + volumeLabel;
-        else volumeName += ": No Name";
+        if (volumeLabel[0]) volumeName += std::string(" - ") + volumeLabel;
+        else volumeName += " - Not Named";
 
         targets.emplace_back(std::make_pair((driveIdPath+Fat32Transfer::targetDirectoryName).c_str(), volumeName));
     }
@@ -237,7 +237,7 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
             [this](CommandWrite& arg) {
                 DEBUG_OSReport("Write File: path=%.75s size=%u closeFileAtEnd=%s", arg.filePath.c_str(), (uint32_t)arg.chunkSize, arg.closeFileAtEnd ? "true" : "false");
 
-                if (FRESULT res = (FRESULT)this->openFile(this->fatTarget + arg.filePath); res != FR_OK) {
+                if (FRESULT res = (FRESULT) this->openFile(this->fatTarget + arg.filePath, arg.fileSize); res != FR_OK) {
                     free(arg.chunkBuffer);
                     this->closeFile(this->fatTarget + arg.filePath);
                     this->error += "Couldn't open the file to copy to!\n";
@@ -298,7 +298,7 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
 
 
 // Should only be called from transfer thread
-uint8_t Fat32Transfer::openFile(const std::string& path) {
+uint8_t Fat32Transfer::openFile(const std::string &path, size_t prepareSize) {
     if (this->currFilePath == path)
         return FR_OK;
     else if (this->currFileHandle != nullptr) {
@@ -314,11 +314,18 @@ uint8_t Fat32Transfer::openFile(const std::string& path) {
     }
     DEBUG_profile_startSegment(total);
     std::string filename = path.substr(0, 2)+std::filesystem::path(path).filename().string();
-    FRESULT res = f_open(this->currFileHandle, filename.c_str(), FA_CREATE_ALWAYS | FA_WRITE);
+    if (FRESULT res = f_open(this->currFileHandle, filename.c_str(), FA_CREATE_ALWAYS | FA_WRITE); res != FR_OK) {
+        DEBUG_profile_endSegment(total);
+        OSReport("[fat32] Error %d occurred while opening %s!\n", res, path.c_str());
+        free(((uint8_t*)this->currFileHandle)-filePtrAlignment);
+        return res;
+    }
     DEBUG_profile_endSegment(total);
     DEBUG_profile_incrementCounter(files);
-    if (res != FR_OK) {
-        OSReport("[fat32] Error %d occurred while opening %s!\n", res, path.c_str());
+
+    if (FRESULT res = f_expand(this->currFileHandle, prepareSize, 1); res != FR_OK && res != FR_DENIED) {
+        OSReport("[fat32] Error %d occurred while allocating %s!\n", res, path.c_str());
+        f_close(this->currFileHandle);
         free(((uint8_t*)this->currFileHandle)-filePtrAlignment);
         return res;
     }

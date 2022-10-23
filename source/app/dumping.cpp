@@ -107,7 +107,7 @@ bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, con
         }
 
         bool endOfFile = feof(readHandle) != 0;
-        if (!interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile)) {
+        if (!interface->submitWriteFile(destPath, fileStat.st_size, copyBuffer, bytesRead, endOfFile)) {
             free(copyBuffer);
             fclose(readHandle);
             setErrorPrompt(*interface->getStopError());
@@ -157,7 +157,7 @@ bool callback_copyBuffer(TransferInterface* interface, bool& cancelledDumping, c
         bool endOfBuffer = uncopiedBytes <= BUFFER_SIZE;
         memcpy(copyBuffer, srcBuffer, toCopyBytes);
 
-        if (!interface->submitWriteFile(destPath, copyBuffer, toCopyBytes, endOfBuffer)) {
+        if (!interface->submitWriteFile(destPath, bufferSize, copyBuffer, toCopyBytes, endOfBuffer)) {
             free(copyBuffer);
             setErrorPrompt(*interface->getStopError());
             return false;
