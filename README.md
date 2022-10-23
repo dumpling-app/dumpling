@@ -23,32 +23,32 @@ If you want to fully homebrew your Wii U too, we recommend using [wiiu.hacks.gui
 You don't need to run/have Mocha CFW or Haxchi, just launch Dumpling from the Homebrew Launcher.
 
 ## How to compile
-- Install [DevkitPro](https://devkitpro.org/wiki/Getting_Started) for your platform.
-- Install [wut](https://github.com/devkitpro/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
-- Compile [libiosuhax](https://github.com/wiiu-env/libiosuhax).
-- Compile [libmocha](https://github.com/wiiu-env/libmocha).
-- Compile [libfat](https://github.com/Crementif/libfat) from source, since it has been fixed to perform MUCH better in certain situations which would normally cripple the classic Dumpling.
-- Then, with all those dependencies installed, you can just run `make` to get the .rpx file that you can run on your Wii U.
+ - Install [DevkitPro](https://devkitpro.org/wiki/Getting_Started) for your platform.
+ - Install freetype2 using DevkitPro's pacman (e.g. `(dkp-)pacman -Sy ppc-pkg-config ppc-freetype`).
+ - Install [wut](https://github.com/devkitpro/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
+ - Compile [libmocha](https://github.com/wiiu-env/libmocha).
+ - Then, with all those dependencies installed, you can just run `make` to get the .rpx file that you can run on your Wii U.
 
 
 ## Features
-- Dumps everything related to your games! Game, updates, DLC and saves are all dumped through one simple GUI!
-- Dumps both disc and digital games in an extracted format, making for easy modding and usage with Cemu.
-- Creates 1:1 copies of data with proper meta data.
-- Allows dumping to an SD or USB stick/drive (must be formatted as fat32).
-- Allows you to dump system applications too.
-- Feature to quickly dump everything needed to play online with Cemu, including the otp.bin and seeprom.bin!
-- Also dumps extra compatibility files for Cemu when dumping online files.
-- Has features to dump the base game, update, DLC and save files separately.
-- Now also supports easily dumping vWii games (requires [nfs2iso2nfs](https://github.com/FIX94/nfs2iso2nfs/releases/tag/v0.5.6) for converting vWii games to .iso).
+ - Dumps everything related to your games! Game, updates, DLC and saves are all dumped through one simple GUI!
+ - Dumps both disc and digital games in an extracted format, making for easy modding and usage with Cemu.
+ - Creates 1:1 copies of data with proper meta data.
+ - Allows dumping to an SD or USB stick/drive (must be formatted as fat32).
+ - Allows you to dump system applications too.
+ - Feature to quickly dump everything needed to play online with Cemu, including the otp.bin and seeprom.bin!
+ - Also dumps extra compatibility files for Cemu when dumping online files.
+ - Has features to dump the base game, update, DLC and save files separately.
+ - Now also supports easily dumping vWii games (requires [nfs2iso2nfs](https://github.com/FIX94/nfs2iso2nfs/releases/tag/v0.5.6) for converting vWii games to .iso).
 
 ## Credits
-- [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
-- [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
-- chrissie for testing
-- [wut](https://github.com/devkitpro/wut) for providing the Wii U toolchain that Dumpling is built with
-- FIX94, Maschell, Quarky, GaryOderNichts and koolkdev for making and maintaining homebrew (libraries)
-- smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
+ - [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
+ - [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
+ - chriz, Tomk007 and Jaimie for testing
+ - [wut](https://github.com/devkitpro/wut) for providing the Wii U toolchain that Dumpling is built with
+ - FIX94, Maschell, Quarky, GaryOderNichts and koolkdev for making and maintaining homebrew (libraries)
+ - smea, plutoo, yellows8, naehrwert, derrek, dimok and kanye_west for making the exploits and CFW possible
 
 ## License
-All the Dumpling code is [MIT Licensed](https://github.com/emiyl/dumpling/blob/master/LICENSE.md).
+Dumpling is licensed under [MIT](https://github.com/emiyl/dumpling/blob/master/LICENSE.md).  
+Dumpling uses [fatfs](http://elm-chan.org/fsw/ff/00index_e.html), see its BSD-styled license [here](https://github.com/emiyl/dumpling/blob/master/source/utils/fatfs/LICENSE.txt).
