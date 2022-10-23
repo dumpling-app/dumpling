@@ -3,17 +3,31 @@
 
 class Fat32Transfer : public TransferInterface {
 public:
-    Fat32Transfer(dumpingConfig config) : TransferInterface(config) {}
-    
+    explicit Fat32Transfer(const dumpingConfig& config);
+
+    ~Fat32Transfer() override;
+
+    static std::vector<std::pair<std::string, std::string>> getDrives();
+    static uint64_t getDriveSpace(const std::string& drivePath);
+    static bool deletePath(const std::string &path, const std::function<void()>& callback_updateGUI);
 protected:
-    std::string transferThreadLoop(dumpingConfig config) override;
+    void transferThreadLoop(dumpingConfig config) override;
 
-    FILE* getFileHandle(std::string& path);
-    void closeFileHandle(std::string& path);
+    static constexpr const char* targetDirectoryName = "Dumpling";
+    std::string fatTarget;
 
-    bool breakThreadLoop = false;
-    std::string error = "";
-    std::unordered_map<std::string, FILE*> fileHandles;
+    std::string error;
 
-    const uint32_t maxQueueSize = 25;
+    struct DIRPtr;
+    std::unique_ptr<DIRPtr> currDir;
+
+    struct FILPtr;
+    static size_t filePtrAlignment;
+    FILPtr* currFileHandle = nullptr;
+    std::string currFilePath;
+    uint8_t openFile(const std::string& path);
+    uint8_t closeFile(const std::string& path);
+
+    struct FATFSPtr;
+    FATFSPtr* fs{};
 };

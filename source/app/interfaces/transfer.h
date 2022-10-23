@@ -1,50 +1,55 @@
 #pragma once
 #include "../common.h"
 
-#define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
+struct CommandSwitchDir {
+    const std::string dirPath;
+};
 
 struct CommandMakeDir {
-    std::string dirPath;
+    const std::string dirPath;
 };
 
 struct CommandWrite {
-    std::string filePath;
-    uint8_t* chunkBuffer = nullptr;
+    const std::string filePath;
+    uint8_t* chunkBuffer;
     size_t chunkSize = 0;
     bool closeFileAtEnd = false;
 };
 
 struct CommandStopThread {
-    uint32_t __placeholder = 0;
+    uint32_t placeholder = 0;
 };
 
-using TransferCommands = std::variant<CommandMakeDir, CommandWrite, CommandStopThread>;
-using ChunkFile = void;
+using TransferCommands = std::variant<CommandSwitchDir, CommandMakeDir, CommandWrite, CommandStopThread>;
 
 class TransferInterface {
 public:
-    TransferInterface(dumpingConfig config);
+    explicit TransferInterface(const dumpingConfig& config);
     virtual ~TransferInterface();
 
-    void submitMakeFolder(std::string& dirPath);
-    void submitWriteFile(std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd);
-    void submitStopThread();
-    const uint32_t maxQueueSize = 50;
-    
-    bool hasFailed();
-    std::string getFailReason();
+    bool submitSwitchFolder(const std::string& dirPath);
+    bool submitWriteFolder(const std::string& dirPath);
+    bool submitWriteFile(const std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd);
+    bool submitStopThread();
+
+    const uint32_t maxQueueSize = 64;
+
+    bool hasStopped();
+    std::optional<std::string> getStopError();
 protected:
-    virtual std::string transferThreadLoop(dumpingConfig config) = 0;
+    virtual void transferThreadLoop(dumpingConfig config) = 0;
 
     template <typename T, typename... Args>
-    void submitCommand(Args&&... args);
+    bool submitCommand(Args&&... args);
 
-    std::future<std::string> transferError;
+    bool runThreadLoop = true;
+    std::atomic<bool> threadStopped = false;
+    std::optional<std::string> threadStoppedError;
+
     std::thread transferThread;
 
     std::mutex mutex;
-    OSSemaphore countSemaphore;
-    OSSemaphore maxSemaphore;
+    OSSemaphore countSemaphore{};
+    OSSemaphore maxSemaphore{};
     std::queue<TransferCommands> chunks;
 };

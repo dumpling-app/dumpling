@@ -1,6 +1,3 @@
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
 
 #include <coreinit/memheap.h>
 #include <coreinit/cache.h>
@@ -8,10 +5,6 @@
 #include <coreinit/memory.h>
 #include <coreinit/screen.h>
 #include <proc_ui/procui.h>
-
-#include <mutex>
-
-#include <whb/log.h>
 
 // Initialization functions
 bool WHBLogFreetypeInit();

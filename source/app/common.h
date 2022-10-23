@@ -3,7 +3,6 @@
 #include <coreinit/screen.h>
 #include <coreinit/energysaver.h>
 #include <coreinit/mcp.h>
-#include <nn/acp.h>
 #include <coreinit/filesystem.h>
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
@@ -18,31 +17,34 @@
 #include <coreinit/title.h>
 #include <coreinit/launch.h>
 #include <coreinit/semaphore.h>
+#include <coreinit/debug.h>
 
 #include <sysapp/launch.h>
+#include <nn/acp.h>
 #include <nn/act.h>
 #include <nn/ac.h>
 #include <whb/log.h>
 #include <whb/log_cafe.h>
+#include <whb/log_module.h>
 #include <proc_ui/procui.h>
 #include <vpad/input.h>
 #include <padscore/wpad.h>
 #include <padscore/kpad.h>
 
-// #ifdef __cplusplus
-// extern "C" {
-// #endif
-// #ifdef __cplusplus
-// }
-// #endif
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+    int32_t OSGetSystemMode();
+ #ifdef __cplusplus
+ }
+ #endif
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <malloc.h>
-#include <limits.h>
-#include <dirent.h>
-#include <libgen.h>
+#include <climits>
 #include <sys/stat.h>
+#include <libgen.h>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
@@ -99,23 +101,27 @@ typename std::enable_if<enable_bitmask_operators<E>::enable, E>::type operator& 
 
 // String trim functions
 
+[[maybe_unused]]
 static inline void ltrim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char8_t ch) {
         return !std::isspace(ch);
     }));
 }
 
+[[maybe_unused]]
 static inline void rtrim(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](char8_t ch) {
         return !std::isspace(ch);
     }).base(), s.end());
 }
 
+[[maybe_unused]]
 static inline void trim(std::string &s) {
     ltrim(s);
     rtrim(s);
 }
 
+[[maybe_unused]]
 static inline void replaceAll(std::string& str, const std::string& oldSubstr, const std::string& newSubstr) {
     size_t pos = 0;
     while ((pos = str.find(oldSubstr, pos)) != std::string::npos) {
@@ -126,46 +132,49 @@ static inline void replaceAll(std::string& str, const std::string& oldSubstr, co
 
 // Enums and Structs
 
-enum class dumpLocation {
-    Unknown,
-    SDFat,
-    USBFat,
-    USBExFAT, // TODO: Add exFAT support
-    USBNTFS, // TODO: Add NTFS support
+enum class DUMP_METHOD {
+    FAT,
+    NTFS // TODO: Add NTFS support
 };
 
-enum class titleLocation {
-    Unknown,
-    Nand,
+enum class TITLE_LOCATION {
+    UNKNOWN,
+    NAND,
     USB,
-    Disc
+    DISC
 };
 
-enum class dumpTypeFlags {
-    Game = 1 << 0,
-    Update = 1 << 1,
+enum class DUMP_TYPE_FLAGS {
+    NONE = 0 << 0,
+    GAME = 1 << 0,
+    UPDATE = 1 << 1,
     DLC = 1 << 2,
-    SystemApp = 1 << 3,
-    Saves = 1 << 4,
-    Custom = 1 << 5
+    SYSTEM_APP = 1 << 3,
+    SAVES = 1 << 4,
+    CUSTOM = 1 << 5
 };
 
 template<>
-struct enable_bitmask_operators<dumpTypeFlags> {
+struct enable_bitmask_operators<DUMP_TYPE_FLAGS> {
     static constexpr bool enable = true;
 };
 
 template <typename T1, typename T2>
 constexpr bool HAS_FLAG(T1 flags, T2 test_flag) { return (flags & (T1)test_flag) == (T1)test_flag; }
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 struct dumpingConfig {
-    dumpTypeFlags filterTypes;
-    dumpTypeFlags dumpTypes;
+    DUMP_TYPE_FLAGS filterTypes = DUMP_TYPE_FLAGS::NONE;
+    DUMP_TYPE_FLAGS dumpTypes = DUMP_TYPE_FLAGS::NONE;
     nn::act::PersistentId accountId = 0;
+    bool scanTitleSize = USE_DEBUG_STUBS == 0;
     bool dumpAsDefaultUser = true;
     bool queue = false;
-    bool ignoreCopyErrors = false;
-    dumpLocation location = dumpLocation::SDFat;
+    DUMP_METHOD dumpMethod = DUMP_METHOD::FAT;
+    std::string dumpTarget;
+    uint32_t debugCacheSize = 1024*4;
 };
 
 struct userAccount {
@@ -181,13 +190,13 @@ struct userAccount {
 
 struct titleCommonSave {
     std::string path;
-    titleLocation location;
+    TITLE_LOCATION location;
 };
 
 struct titleUserSave {
     nn::act::PersistentId userId;
     std::string path;
-    titleLocation location;
+    TITLE_LOCATION location;
 };
 
 struct titlePart {
@@ -196,32 +205,52 @@ struct titlePart {
     uint16_t version;
     MCPAppType type;
     uint32_t titleHighId;
-    titleLocation location;
+    TITLE_LOCATION location;
 };
 
 struct savePart {
     std::vector<titleUserSave> userSaves;
     std::optional<titleCommonSave> commonSave;
     std::string savePath;
+    std::string outputSuffix;
+    std::string outputPath;
     uint32_t titleHighId;
 };
 
-struct customPart {
-    std::optional<std::string> inputPath;
-    std::optional<std::pair<uint8_t*, uint64_t>> inputBuffer;
+struct folderPart {
+    std::string inputPath;
     std::string outputPath;
-    titleLocation location;
+    TITLE_LOCATION location;
+};
+
+struct filePart {
+    uint8_t* srcBuffer;
+    uint64_t srcBufferSize;
+    std::string outputFolder;
+    std::string outputFile;
+    TITLE_LOCATION location;
 };
 
 struct titleEntry {
     uint32_t titleLowId;
-    std::string shortTitle = "";
-    std::string productCode = "";
-    std::string folderName = "";
+    std::string shortTitle;
+    std::string productCode;
+    std::string folderName;
     
     std::optional<titlePart> base;
     std::optional<titlePart> update;
     std::optional<titlePart> dlc;
     std::optional<savePart> saves;
-    std::optional<customPart> custom;
+    std::optional<folderPart> customFolder;
+    std::optional<filePart> customFile;
 };
+
+#if USE_DEBUG_STUBS
+#define IS_CEMU_PRESENT() (OSGetSystemMode() == 0)
+#define USE_WUT_DEVOPTAB() (IS_CEMU_PRESENT() && USE_RAMDISK == 0)
+#define USE_LIBMOCHA() (!IS_CEMU_PRESENT())
+#else
+#define IS_CEMU_PRESENT() false
+#define USE_WUT_DEVOPTAB() (IS_CEMU_PRESENT())
+#define USE_LIBMOCHA() (!IS_CEMU_PRESENT())
+#endif

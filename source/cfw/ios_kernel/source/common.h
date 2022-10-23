@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-
 #include "../../shared.h"
 
 #define ARM_B(addr, func)   (0xEA000000 | ((((uint32_t)(func) - (uint32_t)(addr) - 8) >> 2) & 0x00FFFFFF))
@@ -10,8 +7,8 @@
 #define THUMB_B(addr, func)     ((0xE000 | ((((uint32_t)(func) - (uint32_t)(addr) - 4) >> 1) & 0x7FF)))
 #define THUMB_BL(addr, func)    ((0xF000F800 | ((((uint32_t)(func) - (uint32_t)(addr) - 4) >> 1) & 0x0FFF)) | ((((uint32_t)(func) - (uint32_t)(addr) - 4) << 4) & 0x7FFF000))
 
-#define KERNEL_RUN_ADDR(addr) (void*)(addr - 0x05100000 + 0x13D80000)
-#define KERNEL_SRC_ADDR(addr) (void*)(addr - 0x05000000 + 0x081C0000)
+#define KERNEL_RUN_ADDR(addr) (void*)((addr) - 0x05100000 + 0x13D80000)
+#define KERNEL_SRC_ADDR(addr) (void*)((addr) - 0x05000000 + 0x081C0000)
 
 typedef struct ThreadContext {
     uint32_t cspr;

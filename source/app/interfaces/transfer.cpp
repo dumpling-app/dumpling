@@ -2,52 +2,61 @@
 #include "./../gui.h"
 #include "./../filesystem.h"
 
-#include <coreinit/debug.h>
-
-TransferInterface::TransferInterface(dumpingConfig config) {
-    this->chunks = std::queue<TransferCommands>();
-    std::packaged_task<std::string(dumpingConfig)> threadTask(std::bind(&TransferInterface::transferThreadLoop, this, config));
-    this->transferError = threadTask.get_future();
-    this->transferThread = std::thread(std::move(threadTask), config);
+TransferInterface::TransferInterface(const dumpingConfig& config) {
     OSInitSemaphore(&this->countSemaphore, 0);
-    OSInitSemaphore(&this->maxSemaphore, this->maxQueueSize);
+    OSInitSemaphore(&this->maxSemaphore, (int32_t)this->maxQueueSize);
+    this->chunks = std::queue<TransferCommands>();
+    OSMemoryBarrier();
+    this->transferThread = std::thread([this, config]() {
+        this->transferThreadLoop(config);
+    });
 }
 
-TransferInterface::~TransferInterface() {
-    this->submitStopThread();
-    this->transferThread.join();
-}
+TransferInterface::~TransferInterface() = default;
 
-template <typename T, typename... Args>
-void TransferInterface::submitCommand(Args&&... args) {
-    OSWaitSemaphore(&this->maxSemaphore);
+
+template <class T, class... Args>
+bool TransferInterface::submitCommand(Args&&... args) {
+    while (true) {
+        if (this->hasStopped())
+            return false;
+
+        int32_t obtainedLock = OSTryWaitSemaphore(&this->maxSemaphore);
+        if (obtainedLock > 0)
+            break;
+
+        sleep_for(1ms);
+    }
+    OSMemoryBarrier();
     std::unique_lock<std::mutex> lck(this->mutex);
 
-    TransferCommands& command = this->chunks.emplace(std::in_place_type<T>, std::forward<Args>(args)...);
-    if constexpr (std::is_same<T, CommandWrite>::value) {
-        guiSafeLog("Send File [idx=]: path=%s closeFileAtEnd=%s\n", std::get<CommandWrite>(command).filePath.c_str(), std::get<CommandWrite>(command).closeFileAtEnd == true ? "true" : "false");
-    }
+    this->chunks.emplace(std::in_place_type<T>, std::forward<Args>(args)...);
     OSMemoryBarrier();
     lck.unlock();
     OSSignalSemaphore(&this->countSemaphore);
+    return true;
 }
 
-bool TransferInterface::hasFailed() {
-    return this->transferError.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+bool TransferInterface::submitSwitchFolder(const std::string& dirPath) {
+    return this->submitCommand<CommandSwitchDir>(dirPath);
 }
 
-void TransferInterface::submitMakeFolder(std::string& dirPath) {
-    this->submitCommand<CommandMakeDir>(dirPath);
+bool TransferInterface::submitWriteFolder(const std::string& dirPath) {
+    return this->submitCommand<CommandMakeDir>(dirPath);
 }
 
-void TransferInterface::submitWriteFile(std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd) {
-    this->submitCommand<CommandWrite>(filePath, buffer, size, closeFileAtEnd);
+bool TransferInterface::submitWriteFile(const std::string& filePath, uint8_t* buffer, size_t size, bool closeFileAtEnd) {
+    return this->submitCommand<CommandWrite>(filePath, buffer, size, closeFileAtEnd);
 }
 
-void TransferInterface::submitStopThread() {
-    this->submitCommand<CommandStopThread>();
+bool TransferInterface::submitStopThread() {
+    return this->submitCommand<CommandStopThread>();
 }
 
-std::string TransferInterface::getFailReason() {
-    return this->transferError.get();
+bool TransferInterface::hasStopped() {
+    return this->threadStopped;
+}
+
+std::optional<std::string> TransferInterface::getStopError() {
+    return !this->threadStopped ? std::nullopt : this->threadStoppedError;
 }

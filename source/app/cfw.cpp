@@ -5,7 +5,6 @@
 
 #include <mocha/mocha.h>
 
-int32_t fsaHandle = -1;
 CFWVersion currCFWVersion = CFWVersion::NONE;
 
 bool stopTiramisuServer() {
@@ -38,13 +37,14 @@ CFWVersion testCFW() {
     WHBLogPrint("Detecting prior iosuhax version...");
     WHBLogFreetypeDraw();
 
-#ifdef USING_CEMU
-    WHBLogPrint("Compiled to be ran on Cemu!");
-    WHBLogFreetypeDraw();
-    sleep_for(2s);
-    currCFWVersion = CFWVersion::CEMU;
-    return currCFWVersion;
-#endif
+    if (IS_CEMU_PRESENT()) {
+        WHBLogPrint("Detected that Cemu is being used to run Dumpling...");
+        WHBLogPrint("Skip exploits since they aren't required.");
+        WHBLogFreetypeDraw();
+        sleep_for(2s);
+        currCFWVersion = CFWVersion::CEMU;
+        return currCFWVersion;
+    }
 
     uint32_t mochaVersion = 0;
     MochaUtilsStatus ret = Mocha_CheckAPIVersion(&mochaVersion);
@@ -57,7 +57,7 @@ CFWVersion testCFW() {
         }
         else {
             WHBLogPrint("Detected MochaPayload with FSClient support...");
-            WHBLogPrint("Will use that for it's dumping support.");
+            WHBLogPrint("Will use that for its dumping support.");
             WHBLogFreetypeDraw();
             currCFWVersion = CFWVersion::MOCHA_FSCLIENT;
         }
@@ -121,7 +121,7 @@ bool initCFW() {
 }
 
 void shutdownCFW() {
-    Mocha_DeinitLibrary();
+    Mocha_DeInitLibrary();
     sleep_for(1s);
 }
 

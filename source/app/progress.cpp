@@ -1,15 +1,15 @@
 #include "progress.h"
+
+#include <utility>
 #include "menu.h"
 #include "filesystem.h"
 #include "gui.h"
 
-// TODO: Fix smoothing so it doesn't show a radically different speed
-#define SMOOTHING_FACTOR 0.8
+#define SMOOTHING_FACTOR 0.2
 
 // Current Dumping Context
 
 OSTime startTime;
-bool isQueueDump;
 
 std::string dumpingMessage;
 const char* currFilename;
@@ -36,11 +36,15 @@ void startSingleDump() {
     copiedQueueBytes = 0;
     totalFileBytes = 0;
     copiedFileBytes = 0;
+    lastBytesCopied = 0;
+    bytesCopiedSecond = 0;
     filesCopied = 0;
-    
+
     startTime = OSGetTick();
-    lastTime = startTime - (OSTick)OSMillisecondsToTicks(1001);
+    lastTime = (OSTick)startTime - (OSTick)OSMillisecondsToTicks(1001);
 }
+
+extern "C" double profile_getSegment(const char* segmentName);
 
 void showCurrentProgress() {
     // Calculate the bytes per second and print an estimate of the time
@@ -49,8 +53,7 @@ void showCurrentProgress() {
         lastTime = OSGetTick();
         
         // This averages the bytes per second
-        //bytesCopiedSecond = ((SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond)) / OSTicksToSeconds(timeSinceLastPeriod);
-        bytesCopiedSecond = (SMOOTHING_FACTOR*(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*bytesCopiedSecond);
+        bytesCopiedSecond = (uint64_t)(((SMOOTHING_FACTOR*(double)(copiedQueueBytes-lastBytesCopied)) + ((1-SMOOTHING_FACTOR)*(double)bytesCopiedSecond))*(((double)OSSecondsToTicks(1))/((double)timeSinceLastPeriod)));
         lastBytesCopied = copiedQueueBytes;
 
         // Print general dumping message
@@ -62,12 +65,21 @@ void showCurrentProgress() {
 
         WHBLogFreetypePrint("");
         WHBLogFreetypePrint("Details:");
-        WHBLogFreetypePrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0);
-        if (totalQueueBytes != 0) WHBLogFreetypePrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(totalQueueBytes, copiedQueueBytes).c_str());
+        WHBLogFreetypePrintf("File Name = %s", currFilename);
+        WHBLogFreetypePrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0, formatByteSizes(copiedFileBytes, totalFileBytes).c_str());
+        if (totalQueueBytes != 0) WHBLogFreetypePrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(copiedQueueBytes, totalQueueBytes).c_str());
         else WHBLogFreetypePrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
         WHBLogFreetypePrint("");
-        WHBLogFreetypePrintf("File Name = %s", currFilename);
-        WHBLogFreetypePrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(totalFileBytes, copiedFileBytes).c_str());
+        WHBLogFreetypePrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(copiedFileBytes, totalFileBytes).c_str());
+
+        /*WHBLogFreetypePrintf("Total Fat32 Time Spent on %.0f files: %.0f ms", profile_getSegment("files"), profile_getSegment("total"));
+        WHBLogFreetypePrintf(" - follow_path: %.0f ms", profile_getSegment("follow_path"));
+        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("followfinds"));
+        WHBLogFreetypePrintf(" - dir_register: %.0f ms", profile_getSegment("dir_register"));
+        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("registerfinds"));
+        WHBLogFreetypePrintf("   - dir_alloc: %.0f ms", profile_getSegment("dir_alloc"));*/
+
+        WHBLogFreetypePrint("");
         WHBLogFreetypeScreenPrintBottom("===============================");
         WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
         WHBLogFreetypeDrawScreen();
@@ -76,8 +88,7 @@ void showCurrentProgress() {
 
 
 // Set Progress Functions
-
-void setDumpingStatus(std::string message) {
+void setDumpingStatus(const std::string& message) {
     dumpingMessage = message;
 }
 
@@ -128,4 +139,58 @@ void printEstimateTime() {
         estimatedTimeStr += "Unknown";
     }
     WHBLogPrint(estimatedTimeStr.c_str());
+}
+
+constexpr const char *suffix[] = {"Bytes", "KB", "MB", "GB"};
+std::string formatByteSize(uint64_t bytes) {
+    constexpr uint8_t length = sizeof(suffix)/sizeof(suffix[0]);
+
+    uint32_t i = 0;
+    double dblBytes = (double)bytes;
+    if (bytes > 1024) {
+        for (i = 0; (bytes/1024) > 0 && i<length-1; i++, bytes /= 1024) {
+            dblBytes = ((double)bytes)/1024.0;
+        }
+    }
+
+    char output[50];
+    sprintf(output, "%.01lf %s", dblBytes, suffix[i]);
+    return output;
+}
+
+std::string formatByteSizes(uint64_t firstBytes, uint64_t secondBytes) {
+    constexpr uint8_t length = sizeof(suffix)/sizeof(suffix[0]);
+
+    uint32_t i = 0;
+    double dblDominant = (double)secondBytes;
+    double dblOther = (double)firstBytes;
+    if (secondBytes > 1024) {
+        for (i = 0; (secondBytes/1024) > 0 && i<length-1; i++, firstBytes /= 1024, secondBytes /= 1024) {
+            dblDominant = ((double)secondBytes)/1024.0;
+            dblOther = ((double)firstBytes)/1024.0;
+        }
+    }
+
+    char output[50];
+    sprintf(output, "%.01lf/%.01lf %s", dblOther, dblDominant, suffix[i]);
+    return output;
+}
+
+std::string formatElapsedTime(std::chrono::seconds elapsedSeconds) {
+    std::stringstream fmtTime;
+    auto hr = std::chrono::duration_cast<std::chrono::hours>(elapsedSeconds);
+    if (hr.count() != 0) {
+        elapsedSeconds -= hr;
+        fmtTime << hr.count() << ((hr.count() == 1) ? " hour, " : " hours, ");
+    }
+
+    auto min = std::chrono::duration_cast<std::chrono::minutes>(elapsedSeconds);
+    if (!(hr.count() == 0 && min.count() == 0)) {
+        elapsedSeconds -= min;
+        fmtTime << min.count() << ((min.count() == 1) ? " minute and " : " minutes and ");
+    }
+
+    auto sec = std::chrono::duration_cast<std::chrono::seconds>(elapsedSeconds);
+    fmtTime << sec.count() << ((sec.count() == 1) ? " second" : " seconds");
+    return fmtTime.str();
 }

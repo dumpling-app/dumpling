@@ -5,7 +5,9 @@
 #include "menu.h"
 #include "cfw.h"
 
-std::vector<titleEntry> installedTitles = {};
+#include <dirent.h>
+
+std::vector<std::shared_ptr<titleEntry>> installedTitles = {};
 std::map<uint32_t, std::vector<MCPTitleListType>> rawTitles = {};
 std::map<uint32_t, savePart> rawSaves = {};
 
@@ -22,7 +24,7 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
         return false;
     }
     std::string line;
-    std::string shortTitleJapan = "";
+    std::string shortTitleJapan;
 
     // Parse data from it using string matching
     bool foundShortTitle = !title.shortTitle.empty();
@@ -30,19 +32,19 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
     bool foundProductCode = !title.productCode.empty();
     while(getline(xmlFile, line)) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
-            title.shortTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            title.shortTitle = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             trim(title.shortTitle);
             decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
         else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
-            shortTitleJapan = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            shortTitleJapan = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             trim(shortTitleJapan);
             decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
         else if (!foundProductCode && line.find("product_code") != std::string::npos) {
-            title.productCode = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            title.productCode = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             foundProductCode = true;
         }
         // Stop when all fields are encountered
@@ -83,7 +85,7 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
         return false;
     }
     std::string line;
-    std::string shortTitleJapan = "";
+    std::string shortTitleJapan;
 
     // Parse data from it using string matching
     bool foundShortTitle = !title.shortTitle.empty();
@@ -91,19 +93,19 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
     bool foundProductCode = !title.productCode.empty();
     while(getline(xmlFile, line)) {
         if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
-            title.shortTitle = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            title.shortTitle = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             trim(title.shortTitle);
             decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
         else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
-            shortTitleJapan = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            shortTitleJapan = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             trim(shortTitleJapan);
             decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
         else if (!foundProductCode && line.find("product_code") != std::string::npos) {
-            title.productCode = line.substr(line.find(">")+1, (line.find_last_of("<"))-(line.find_first_of(">")+1));
+            title.productCode = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
             foundProductCode = true;
         }
         // Stop when all fields are encountered
@@ -116,6 +118,7 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
             title.shortTitle = shortTitleJapan;
         }
         title.folderName = normalizeFolderName(title.shortTitle);
+        part.outputPath = "/Saves/" + title.folderName + "/" + part.outputPath;
         return true;
     }
 
@@ -151,7 +154,7 @@ bool getTitleList(bool skipDiscs) {
     // Queue and group parts of each title
     for (auto& title : unparsedTitleList) {
         // Skip discs whenever there's an initial scan
-        if (skipDiscs && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
+        if (skipDiscs && deviceToLocation(title.indexedDevice) == TITLE_LOCATION::DISC) {
             continue;
         }
 
@@ -173,8 +176,8 @@ bool getTitleList(bool skipDiscs) {
     return true;
 }
 
-bool getSaveList(std::string saveDirPath) {
-    WHBLogPrintf("Loading saves...", saveDirPath.c_str());
+bool getSaveList(const std::string& saveDirPath) {
+    WHBLogPrintf("Loading saves from %s...", saveDirPath.c_str());
     WHBLogFreetypeDraw();
 
     // Loop over high title id folders e.g. storage_mlc01:/usr/save/[iterated]
@@ -203,7 +206,7 @@ bool getSaveList(std::string saveDirPath) {
             if (lowTitleId == 0) continue;
             std::string lowDirPath = highDirPath + lowDirEntry->d_name + "/";
 
-            const auto& currSavePart = rawSaves.try_emplace(lowTitleId, savePart{.savePath = lowDirPath.c_str(), .titleHighId = highTitleId});
+            const auto& currSavePart = rawSaves.try_emplace(lowTitleId, savePart{.savePath = lowDirPath, .outputPath = std::string(highDirEntry->d_name)+"/"+lowDirEntry->d_name+"/user", .titleHighId = highTitleId});
 
             // Loop over user saves folders e.g. storage_mlc01:/usr/save/00050000/101b0500/user/[iterated]
             DIR* userDirHandle;
@@ -259,7 +262,7 @@ bool loadTitles(bool skipDiscs) {
     rawTitles.clear();
 
     // Get sorted lists
-    if (!getTitleList(skipDiscs) || !getSaveList(convertToPosixPath("/vol/storage_mlc01/usr/save/")) || !(!testStorage(titleLocation::USB) || getSaveList(convertToPosixPath("/vol/storage_usb01/usr/save/")))) {
+    if (!getTitleList(skipDiscs) || !getSaveList(convertToPosixPath("/vol/storage_mlc01/usr/save/")) || !(!testStorage(TITLE_LOCATION::USB) || getSaveList(convertToPosixPath("/vol/storage_usb01/usr/save/")))) {
         WHBLogPrint("Error while getting the titles/saves, can't continue!");
         WHBLogPrint("Please report the issue on Dumpling's Github!");
         WHBLogFreetypeDraw();
@@ -270,56 +273,55 @@ bool loadTitles(bool skipDiscs) {
     // Parse title meta files and create title entries for each title
     installedTitles.clear();
     for (auto& sortedTitle : rawTitles) {
-        installedTitles.emplace_back(titleEntry{});
-        titleEntry& title = installedTitles.back();
-        title.titleLowId = sortedTitle.first;
+        std::shared_ptr<titleEntry>& title = installedTitles.emplace_back(std::make_shared<titleEntry>());
+        title->titleLowId = sortedTitle.first;
 
         // Loop over each part of a title
         for (MCPTitleListType& part : sortedTitle.second) {
             if (isBase(part.appType) || isSystemApp(part.appType)) {
-                title.base = titlePart{};
-                title.base->posixPath = convertToPosixPath(part.path);
-                title.base->version = part.titleVersion;
-                title.base->type = part.appType;
-                title.base->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.base->location = deviceToLocation(part.indexedDevice);
+                title->base = titlePart{};
+                title->base->posixPath = convertToPosixPath(part.path);
+                title->base->version = part.titleVersion;
+                title->base->type = part.appType;
+                title->base->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->base->location = deviceToLocation(part.indexedDevice);
                 
                 // Change the output path
-                if (isBase(part.appType)) title.base->outputPath = "/Games/";
-                if (isSystemApp(part.appType)) title.base->outputPath = "/System Applications/";
+                if (isBase(part.appType)) title->base->outputPath = "/Games/";
+                if (isSystemApp(part.appType)) title->base->outputPath = "/System Applications/";
                 
-                if (!getTitleMetaXml(title, *title.base)) {
-                    title.base.reset();
+                if (!getTitleMetaXml(*title, *title->base)) {
+                    title->base.reset();
                     WHBLogPrint("Failed to read meta from game!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
                 }
             }
             else if (isUpdate(part.appType)) { // TODO: Log cases where maybe two updates are found (one on disc and one later via the title system)
-                title.update = titlePart{};
-                title.update->posixPath = convertToPosixPath(part.path);
-                title.update->version = part.titleVersion;
-                title.update->type = part.appType;
-                title.update->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.update->location = deviceToLocation(part.indexedDevice);
-                title.update->outputPath = "/Updates/";
-                if (!getTitleMetaXml(title, *title.update)) {
-                    title.update.reset();
+                title->update = titlePart{};
+                title->update->posixPath = convertToPosixPath(part.path);
+                title->update->version = part.titleVersion;
+                title->update->type = part.appType;
+                title->update->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->update->location = deviceToLocation(part.indexedDevice);
+                title->update->outputPath = "/Updates/";
+                if (!getTitleMetaXml(*title, *title->update)) {
+                    title->update.reset();
                     WHBLogPrint("Failed to read meta from update!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
                 }
             }
             else if (isDLC(part.appType)) {
-                title.dlc = titlePart{};
-                title.dlc->posixPath = convertToPosixPath(part.path);
-                title.dlc->version = part.titleVersion;
-                title.dlc->type = part.appType;
-                title.dlc->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
-                title.dlc->location = deviceToLocation(part.indexedDevice);
-                title.dlc->outputPath = "/DLCs/";
-                if (!getTitleMetaXml(title, *title.dlc)) {
-                    title.dlc.reset();
+                title->dlc = titlePart{};
+                title->dlc->posixPath = convertToPosixPath(part.path);
+                title->dlc->version = part.titleVersion;
+                title->dlc->type = part.appType;
+                title->dlc->titleHighId = (uint32_t)((part.titleId & 0xFFFFFFFF00000000) >> 32);
+                title->dlc->location = deviceToLocation(part.indexedDevice);
+                title->dlc->outputPath = "/DLCs/";
+                if (!getTitleMetaXml(*title, *title->dlc)) {
+                    title->dlc.reset();
                     WHBLogPrint("Failed to read meta from dlc!");
                     WHBLogFreetypeDraw();
                     sleep_for(2s);
@@ -328,7 +330,7 @@ bool loadTitles(bool skipDiscs) {
         }
 
         // Remove element from list again if it contains nothing
-        if (!(title.base || title.update || title.dlc)) {
+        if (!(title->base || title->update || title->dlc)) {
             installedTitles.pop_back();
         }
     }
@@ -336,18 +338,19 @@ bool loadTitles(bool skipDiscs) {
     // Try to append or create new title entries from save list data
     for (auto& sortedSave : rawSaves) {
         uint32_t saveTitleId = sortedSave.first;
-        const auto& existingEntry = std::find_if(installedTitles.begin(), installedTitles.end(), [saveTitleId](titleEntry& entry){ return entry.titleLowId == saveTitleId; });
+        const auto& existingEntry = std::find_if(installedTitles.begin(), installedTitles.end(), [saveTitleId](std::shared_ptr<titleEntry>& entry){ return entry->titleLowId == saveTitleId; });
         if (existingEntry != installedTitles.end()) {
-            existingEntry->saves = sortedSave.second;
+            (*existingEntry)->saves = sortedSave.second;
+            (*existingEntry)->saves->outputPath = "/Saves/" + (*existingEntry)->folderName + "/" + (*existingEntry)->saves->outputPath;
         }
         else {
-            installedTitles.emplace_back(titleEntry{
+            const auto& newEntry = installedTitles.emplace_back(std::make_shared<titleEntry>(titleEntry{
                 .titleLowId = sortedSave.first,
                 .saves = sortedSave.second
-            });
+            }));
             
-            if (!getSaveMetaXml(installedTitles.back(), *installedTitles.back().saves)) {
-                installedTitles.back().saves.reset();
+            if (!getSaveMetaXml(*newEntry, *newEntry->saves)) {
+                newEntry->saves.reset();
                 WHBLogPrint("Failed to read meta from saves!");
                 WHBLogFreetypeDraw();
                 sleep_for(250ms);
@@ -371,7 +374,7 @@ bool checkForDiscTitles(int32_t mcpHandle) {
     MCP_TitleList(mcpHandle, &titlesListed, titles.data(), titleByteSize);
 
     for (auto& title : titles) {
-        if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == titleLocation::Disc) {
+        if (isBase(title.appType) && deviceToLocation(title.indexedDevice) == TITLE_LOCATION::DISC) {
             return true;
         }
     }
@@ -500,9 +503,9 @@ bool getSaveListThroughACP(bool skipDiscs) {
 }
 */
 
-std::optional<titleEntry> getTitleWithName(std::string& nameOfTitle) {
+std::optional<std::shared_ptr<titleEntry>> getTitleWithName(std::string& nameOfTitle) {
     for (auto& title : installedTitles) {
-        if (title.shortTitle == nameOfTitle) return title;
+        if (title->shortTitle == nameOfTitle) return title;
     }
     return std::nullopt;
 }
@@ -519,7 +522,7 @@ void decodeXMLEscapeLine(std::string& xmlString) {
 }
 
 std::string normalizeFolderName(std::string& unsafeTitle) {
-    std::string retTitle = "";
+    std::string retTitle;
     for (char& chr : unsafeTitle) {
         if (std::find(nonValidFilenames.begin(), nonValidFilenames.end(), chr) == nonValidFilenames.end()) {
             retTitle += chr;

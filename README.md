@@ -1,19 +1,15 @@
-<p align="center">
-  <img src="assets/dumpling-logo.png" alt="Dumpling Logo" width="80" height="80">
-
-  <h3 align="center">Dumpling</h3>
-
-  <p align="center">
-    A simple, all-in-one Wii U file dumper! Developed with the intent of making dumping games and other files (for emulators like Cemu) faster and easier.
-  </p>
-</p>
+<div style="text-align: center;">
+    <img src="assets/dumpling-logo.png" alt="Dumpling Logo" style="width: 80px;" />
+    <h3>Dumpling</h3>
+    <p>A simple, all-in-one Wii U file dumper! Developed with the intent of making dumping games and other files (for emulators like Cemu) faster and easier.</p>
+</div>
 
 ## How to install
 **Method 1:**  
 Use the Wii U App Store to download and install it in the homebrew launcher. See Dumpling's page [here](https://apps.fortheusers.org/wiiu/dumpling).
 
 **Method 2:**  
-Download the [latest release from Github](https://github.com/emiyl/dumpling/releases), and extract the `dumpling.zip` file to the root of your SD card.
+Download the [latest release from GitHub](https://github.com/emiyl/dumpling/releases), and extract the `dumpling.zip` file to the root of your SD card.
 
 **Method 3:**  
 Use [dumpingapp.com](https://dumplingapp.com) on your Wii U to launch Dumpling without any setup or SD card.

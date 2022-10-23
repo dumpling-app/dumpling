@@ -6,6 +6,14 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
+ifeq ($(strip $(DEVKITPPC)),)
+$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>/devkitpro/devkitPPC")
+endif
+
+ifeq ($(strip $(DEVKITARM)),)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>/devkitpro/devkitARM")
+endif
+
 TOPDIR ?= $(CURDIR)
 
 #-------------------------------------------------------------------------------
@@ -13,9 +21,9 @@ TOPDIR ?= $(CURDIR)
 # APP_SHORTNAME sets the short name of the application
 # APP_AUTHOR sets the author of the application
 #-------------------------------------------------------------------------------
-APP_NAME		:= Dumpling
-APP_SHORTNAME	:= Dumpling
-APP_AUTHOR		:= Crementif and emiyl
+APP_NAME		:=	Dumpling
+APP_SHORTNAME	:=	Dumpling
+APP_AUTHOR		:=	Crementif and emiyl
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
@@ -34,24 +42,33 @@ TARGET		:=	dumpling
 BUILD		:=	build
 SOURCES		:=	source/app \
 				source/app/interfaces \
-				source/utils
+				source/utils \
+				source/utils/fatfs
 DATA		:=	data
 INCLUDES	:=	include
 CONTENT		:=
-ICON		:=
-TV_SPLASH	:=
-DRC_SPLASH	:=
+ICON		:=	assets/dumpling-icon.png
+TV_SPLASH	:=	assets/dumpling-tv-boot.png
+DRC_SPLASH	:=	assets/dumpling-drc-boot.png
 
 #-------------------------------------------------------------------------------
 # options for code generation
 #-------------------------------------------------------------------------------
 CFLAGS		:=	-g -Wall -Os -ffunction-sections -fdata-sections -Wno-narrowing \
-				$(MACHDEP)
+				$(MACHDEP) $(shell $(DEVKITPRO)/portlibs/ppc/bin/freetype-config --cflags)
 
-ifdef USING_CEMU
-CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSING_CEMU `freetype-config --cflags`
+CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__
+
+ifdef USE_DEBUG_STUBS
+CFLAGS		+=	-DUSE_DEBUG_STUBS=1
 else
-CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__ -DUSE_LIBFAT -DUSE_LIBMOCHA `freetype-config --cflags`
+CFLAGS		+=	-DUSE_DEBUG_STUBS=0
+endif
+
+ifdef USE_RAMDISK
+CFLAGS		+=	-DUSE_RAMDISK=1
+else
+CFLAGS		+=	-DUSE_RAMDISK=0
 endif
 
 CXXFLAGS	:=	$(CFLAGS) -std=c++20
@@ -59,7 +76,7 @@ CXXFLAGS	:=	$(CFLAGS) -std=c++20
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS		:=	-lstdc++ -lwut -lfat -lmocha -liosuhax `freetype-config --libs`
+LIBS		:=	-lstdc++ -lwut -lmocha $(shell $(DEVKITPRO)/portlibs/ppc/bin/freetype-config --libs)
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
@@ -141,35 +158,40 @@ else ifneq (,$(wildcard $(TOPDIR)/splash.png))
 	export APP_DRC_SPLASH := $(TOPDIR)/splash.png
 endif
 
-.PHONY: $(BUILD) cemu clean dist all
+.PHONY: $(BUILD) debug discimg clean dist all
 
 #-------------------------------------------------------------------------------
 all: $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_fs
-	@$(MAKE) --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@$(shell [ -d $@ ] || mkdir -p $@)
+	@$(MAKE) CC=$(DEVKITARM)/bin/arm-none-eabi-gcc CXX=$(DEVKITARM)/devkitARM/bin/arm-none-eabi-g++ -C $(CURDIR)/source/cfw/ios_usb
+	@$(MAKE) CC=$(DEVKITARM)/bin/arm-none-eabi-gcc CXX=$(DEVKITARM)/devkitARM/bin/arm-none-eabi-g++ -C $(CURDIR)/source/cfw/ios_mcp
+	@$(MAKE) CC=$(DEVKITARM)/bin/arm-none-eabi-gcc CXX=$(DEVKITARM)/devkitARM/bin/arm-none-eabi-g++ -C $(CURDIR)/source/cfw/ios_fs
+	@$(MAKE) CC=$(DEVKITARM)/bin/arm-none-eabi-gcc CXX=$(DEVKITARM)/devkitARM/bin/arm-none-eabi-g++ -C $(CURDIR)/source/cfw/ios_kernel
+	@$(MAKE) CC=$(DEVKITPPC)/bin/powerpc-eabi-gcc CXX=$(DEVKITPPC)/bin/powerpc-eabi-g++ -C $(BUILD) -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
-cemu:
-	@[ -d $(BUILD) ] || mkdir -p $(BUILD)
-	@$(MAKE) USING_CEMU=1 --no-print-directory -f $(CURDIR)/Makefile
+debug:
+	@$(shell [ -d $(BUILD) ] || mkdir -p $(BUILD))
+	@$(MAKE) USE_DEBUG_STUBS=1 -f $(CURDIR)/Makefile
 
-run_cemu_wsl: cemu
-	@$(shell $(CURDIR)/cemu/Cemu.exe --force-interpreter -g "$(shell wslpath -a -w $(OUTPUT).rpx)")
+discimg:
+	@$(shell [ -d $(BUILD) ] || mkdir -p $(BUILD))
+	@echo Recreating fatfs disk image...
+	@rm -f ./cemu/sdcard/split0.img ./cemu/sdcard/split1.img ./cemu/sdcard/split2.img ./cemu/sdcard/split3.img ./cemu/sdcard/split4.img
+	@cd ./cemu/sdcard/ && split -d --suffix-length=1 --bytes=2147483648 --additional-suffix=.img empty.img split || cd ./../../
+	@echo Recreated fatfs disk image!
+	@$(MAKE) USE_DEBUG_STUBS=1 USE_RAMDISK=1 -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_kernel
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_fs
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_mcp
-	@$(MAKE) clean --no-print-directory -C $(CURDIR)/source/cfw/ios_usb
+	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_kernel
+	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_fs
+	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_mcp
+	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_usb
 
 #-------------------------------------------------------------------------------
 dist:
@@ -179,6 +201,7 @@ dist:
 	@cp assets/meta.xml dist/wiiu/apps/dumpling/meta.xml
 	@cp assets/dumpling-banner.png dist/wiiu/apps/dumpling/icon.png
 	@cp $(TARGET).rpx dist/wiiu/apps/dumpling/$(TARGET).rpx
+	@cp $(TARGET).wuhb dist/wiiu/apps/dumpling/$(TARGET).wuhb
 	@echo Zip up a release zip
 	@rm -f dist/dumpling.zip
 	@cd dist && zip -q -r ./dumpling.zip ./wiiu && cd ..

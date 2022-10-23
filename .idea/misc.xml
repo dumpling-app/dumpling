@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CidrRootsConfiguration">
+    <sourceRoots>
+      <file path="$PROJECT_DIR$/source" />
+      <file path="$PROJECT_DIR$/source/app" />
+      <file path="$PROJECT_DIR$/source/cfw" />
+      <file path="$PROJECT_DIR$/source/utils" />
+    </sourceRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/.vscode" />
+      <file path="$PROJECT_DIR$/build" />
+      <file path="$PROJECT_DIR$/cemu" />
+      <file path="$PROJECT_DIR$/dist" />
+      <file path="$PROJECT_DIR$/source/cfw/ios_fs/build" />
+      <file path="$PROJECT_DIR$/source/cfw/ios_kernel/build" />
+      <file path="$PROJECT_DIR$/source/cfw/ios_mcp/build" />
+      <file path="$PROJECT_DIR$/source/cfw/ios_usb/build" />
+    </excludeRoots>
+  </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="MakefileSettings">
+    <option name="linkedExternalProjectsSettings">
+      <MakefileProjectSettings>
+        <option name="buildTarget" value="debug" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+          </set>
+        </option>
+        <option name="version" value="2" />
+      </MakefileProjectSettings>
+    </option>
+  </component>
+  <component name="MakefileWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+</project>

@@ -1,5 +1,6 @@
 #include "log_freetype.h"
-
+#include <mutex>
+#include <whb/log.h>
 #include <freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
@@ -13,14 +14,14 @@ uint32_t bottomLines = 0;
 
 bool freetypeHasForeground = false;
 
-uint8_t* frameBufferTVFrontPtr = NULL;
-uint8_t* frameBufferTVBackPtr = NULL;
+uint8_t* frameBufferTVFrontPtr = nullptr;
+uint8_t* frameBufferTVBackPtr = nullptr;
 uint32_t frameBufferTVSize = 0;
-uint8_t* frameBufferDRCFrontPtr = NULL;
-uint8_t* frameBufferDRCBackPtr = NULL;
+uint8_t* frameBufferDRCFrontPtr = nullptr;
+uint8_t* frameBufferDRCBackPtr = nullptr;
 uint32_t frameBufferDRCSize = 0;
-uint8_t* currTVFrameBuffer = NULL;
-uint8_t* currDRCFrameBuffer = NULL;
+uint8_t* currTVFrameBuffer = nullptr;
+uint8_t* currDRCFrameBuffer = nullptr;
 
 uint32_t fontColor = 0xFFFFFFFF;
 uint32_t backgroundColor = 0x0B5D5E00;
@@ -29,14 +30,12 @@ FT_Face fontFace;
 uint8_t* fontBuffer;
 FT_Pos cursorSpaceWidth = 0;
 
-
-
-#define ENABLE_THREADSAFE TRUE
+#define ENABLE_THREADSAFE FALSE
 #if ENABLE_THREADSAFE
 std::mutex _mutex;
 #define DEBUG_THREADSAFE std::scoped_lock<std::mutex> lck(_mutex);
 #else
-#define DEBUG_THREADSAFE (); 
+#define DEBUG_THREADSAFE do {} while(0)
 #endif
 
 static void FreetypeSetLine(uint32_t position, const char *line) {
@@ -215,6 +214,7 @@ void WHBLogFreetypeDraw() {
     OSScreenClearBufferEx(SCREEN_DRC, backgroundColor);
     const int32_t x = 0;
 
+    DEBUG_THREADSAFE;
     for (int32_t y=0; y<NUM_LINES; y++) {
         renderLine((x+4)*12, (y+1)*24, queueBuffer[y], false);
     }
@@ -229,10 +229,10 @@ void WHBLogFreetypeDraw() {
 }
 
 static uint32_t FreetypeProcCallbackAcquired(void *context) {
-    if (freetypeHasForeground) return 0;
     freetypeHasForeground = true;
 
     MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
+    MEMRecordStateForFrmHeap(heap, CONSOLE_FRAME_HEAP_TAG);
     if (frameBufferTVSize) {
         frameBufferTVFrontPtr = (uint8_t*)MEMAllocFromFrmHeapEx(heap, frameBufferTVSize, 0x100);
         frameBufferTVBackPtr = (uint8_t*)frameBufferTVFrontPtr + (1*(1280*720*4));
@@ -256,16 +256,16 @@ static uint32_t FreetypeProcCallbackAcquired(void *context) {
 }
 
 static uint32_t FreetypeProcCallbackReleased(void *context) {
-    if (!freetypeHasForeground) return 0;
     freetypeHasForeground = false;
+
     MEMHeapHandle heap = MEMGetBaseHeapHandle(MEM_BASE_HEAP_MEM1);
     MEMFreeByStateToFrmHeap(heap, CONSOLE_FRAME_HEAP_TAG);
-    currTVFrameBuffer = NULL;
-    frameBufferTVFrontPtr = NULL;
-    frameBufferTVBackPtr = NULL;
-    currDRCFrameBuffer = NULL;
-    frameBufferDRCFrontPtr = NULL;
-    frameBufferDRCBackPtr = NULL;
+    currTVFrameBuffer = nullptr;
+    frameBufferTVFrontPtr = nullptr;
+    frameBufferTVBackPtr = nullptr;
+    currDRCFrameBuffer = nullptr;
+    frameBufferDRCFrontPtr = nullptr;
+    frameBufferDRCBackPtr = nullptr;
     return 0;
 }
 
@@ -275,26 +275,25 @@ bool WHBLogFreetypeInit() {
     frameBufferTVSize = OSScreenGetBufferSizeEx(SCREEN_TV);
     frameBufferDRCSize = OSScreenGetBufferSizeEx(SCREEN_DRC);
 
-    FreetypeProcCallbackAcquired(NULL);
+    FreetypeProcCallbackAcquired(nullptr);
     OSScreenEnableEx(SCREEN_TV, TRUE);
     OSScreenEnableEx(SCREEN_DRC, TRUE);
 
-    ProcUIRegisterCallback(PROCUI_CALLBACK_ACQUIRE, FreetypeProcCallbackAcquired, NULL, 100);
-    ProcUIRegisterCallback(PROCUI_CALLBACK_RELEASE, FreetypeProcCallbackReleased, NULL, 100);
+    ProcUIRegisterCallback(PROCUI_CALLBACK_ACQUIRE, FreetypeProcCallbackAcquired, nullptr, 100);
+    ProcUIRegisterCallback(PROCUI_CALLBACK_RELEASE, FreetypeProcCallbackReleased, nullptr, 100);
 
     // Initialize freetype2
-    FT_Error result;
-    if ((result = FT_Init_FreeType(&fontLibrary)) != 0) {
+    if (FT_Error result = FT_Init_FreeType(&fontLibrary); result != 0) {
         return true;
     }
 
     uint32_t fontSize;
     OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, (void**)&fontBuffer, &fontSize);
 
-    if ((result = FT_New_Memory_Face(fontLibrary, fontBuffer, fontSize, 0, &fontFace)) != 0) {
+    if (FT_Error result = FT_New_Memory_Face(fontLibrary, fontBuffer, fontSize, 0, &fontFace); result != 0) {
         return true;
     }
-    if ((result = FT_Select_Charmap(fontFace, FT_ENCODING_UNICODE)) != 0) {
+    if (FT_Error result = FT_Select_Charmap(fontFace, FT_ENCODING_UNICODE); result != 0) {
         return true;
     }
     if (WHBLogFreetypeSetFontSize(22, 0)) {
@@ -399,7 +398,7 @@ void WHBLogFreetypeFree() {
     FT_Done_FreeType(fontLibrary);
 
     if (freetypeHasForeground) {
-        OSScreenShutdown();
-        FreetypeProcCallbackReleased(NULL);
+        // OSScreenShutdown();
+        FreetypeProcCallbackReleased(nullptr);
     }
 }

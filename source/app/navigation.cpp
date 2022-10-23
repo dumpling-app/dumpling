@@ -9,7 +9,7 @@ struct KPADWrapper {
     KPADStatus status;
 };
 
-std::array<KPADWrapper, 4> KPADControllers {false, WPAD_EXT_CORE, KPADStatus{}};
+std::array<KPADWrapper, 4> KPADControllers {{{false, WPAD_EXT_CORE, KPADStatus{}}}};
 
 
 // Technical functions
@@ -26,7 +26,7 @@ void updateInputs() {
     // Read WPAD (Pro Controller, Wiimote, Classic) input
     // Loop over each controller channel
     for (uint32_t i=0; i < KPADControllers.size(); i++) {
-        // Test if it's connected
+        // Test if its connected
         if (WPADProbe((WPADChan)i, &KPADControllers[i].type) != 0) {
             KPADControllers[i].connected = false;
             continue;
@@ -47,37 +47,6 @@ bool vpadButtonPressed(VPADButtons button) {
         if (vpadBuffer[0].hold & button) return true;
     }
     return false;
-}
-
-template <typename T>
-T translateButtonCode(KPADStatus& status, WPADButton button) {
-    if (status.extensionType == KPADExtensionType::WPAD_EXT_CORE || status.extensionType == KPADExtensionType::WPAD_EXT_NUNCHUK || status.extensionType == KPADExtensionType::WPAD_EXT_MPLUS_NUNCHUK) {
-        if (button == WPAD_BUTTON_A) return WPAD_BUTTON_A;
-        if (button == WPAD_BUTTON_B) return WPAD_BUTTON_B;
-        if (button == WPAD_BUTTON_PLUS) return WPAD_BUTTON_PLUS;
-        if (button == WPAD_BUTTON_UP) return WPAD_BUTTON_UP;
-        if (button == WPAD_BUTTON_DOWN) return WPAD_BUTTON_DOWN;
-        if (button == WPAD_BUTTON_LEFT) return WPAD_BUTTON_LEFT;
-        if (button == WPAD_BUTTON_RIGHT) return WPAD_BUTTON_DOWN;
-    }
-    if (status.extensionType == KPADExtensionType::WPAD_EXT_CLASSIC || status.extensionType == KPADExtensionType::WPAD_EXT_MPLUS_CLASSIC) {
-        if (button == WPAD_BUTTON_A) return WPAD_CLASSIC_BUTTON_A;
-        if (button == WPAD_BUTTON_B) return WPAD_CLASSIC_BUTTON_B;
-        if (button == WPAD_BUTTON_PLUS) return WPAD_CLASSIC_BUTTON_PLUS;
-        if (button == WPAD_BUTTON_UP) return WPAD_CLASSIC_BUTTON_UP;
-        if (button == WPAD_BUTTON_DOWN) return WPAD_CLASSIC_BUTTON_DOWN;
-        if (button == WPAD_BUTTON_LEFT) return WPAD_CLASSIC_BUTTON_LEFT;
-        if (button == WPAD_BUTTON_RIGHT) return WPAD_CLASSIC_BUTTON_RIGHT;
-    }
-    if (status.extensionType == KPADExtensionType::WPAD_EXT_PRO_CONTROLLER) {
-        if (button == WPAD_BUTTON_A) return WPAD_PRO_BUTTON_A;
-        if (button == WPAD_BUTTON_B) return WPAD_PRO_BUTTON_B;
-        if (button == WPAD_BUTTON_PLUS) return WPAD_PRO_BUTTON_PLUS;
-        if (button == WPAD_BUTTON_UP) return WPAD_PRO_BUTTON_UP;
-        if (button == WPAD_BUTTON_DOWN) return WPAD_PRO_BUTTON_DOWN;
-        if (button == WPAD_BUTTON_LEFT) return WPAD_PRO_BUTTON_LEFT;
-        if (button == WPAD_BUTTON_RIGHT) return WPAD_PRO_BUTTON_RIGHT;
-    }
 }
 
 // Check whether any KPAD controller is pressing the specified button

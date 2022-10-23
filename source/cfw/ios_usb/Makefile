@@ -45,7 +45,7 @@ $(PROJECTNAME).elf: $(OFILES)
 	@$(LINK) $(LDFLAGS) -o $(PROJECTNAME).elf $(OFILES)
 
 dirs:
-	@mkdir -p build
+	@$(shell [ -d build ] || mkdir -p build)
 
 clean:
 	@echo "Cleaning up files from $(PROJECTNAME)..."

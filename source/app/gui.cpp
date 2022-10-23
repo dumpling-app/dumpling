@@ -1,9 +1,6 @@
 #include "gui.h"
 #include "navigation.h"
-
-#include <whb/log.h>
-#include <coreinit/debug.h>
-#include <cstdarg>
+#include "cfw.h"
 
 static bool usingHBL = false;
 
@@ -18,8 +15,7 @@ void saveProcessCallback() {
 
 bool initializeGUI() {
     // Setup proc UI
-    uint64_t titleId = OSGetTitleID();
-    if (titleId == HBL_TITLE_ID || titleId == MII_MAKER_USA_TITLE_ID || titleId == MII_MAKER_EUR_TITLE_ID || titleId == MII_MAKER_JPN_TITLE_ID) {
+    if (uint64_t titleId = OSGetTitleID(); titleId == HBL_TITLE_ID || titleId == MII_MAKER_USA_TITLE_ID || titleId == MII_MAKER_EUR_TITLE_ID || titleId == MII_MAKER_JPN_TITLE_ID) {
         usingHBL = true;
     }
 
@@ -34,36 +30,48 @@ void shutdownGUI() {
     WHBLogFreetypeFree();
 }
 
-void exitApplication(bool shutdownOnExit) {
-    // Loop through ProcUI messages until it says Dumpling should exit
-    ProcUIStatus status;
-    while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {
-        if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+bool stillRunning() {
+    switch (ProcUIProcessMessages(true)) {
+        case PROCUI_STATUS_EXITING: {
+            return false;
+        }
+        case PROCUI_STATUS_RELEASE_FOREGROUND: {
             ProcUIDrawDoneRelease();
+            break;
         }
-
-        if (status != PROCUI_STATUS_IN_FOREGROUND) {
-            continue;
+        case PROCUI_STATUS_IN_FOREGROUND: {
+            break;
         }
-
-        if (shutdownOnExit) OSShutdown();
-        else if (usingHBL) SYSRelaunchTitle(0, NULL);
-        else SYSLaunchMenu();
+        case PROCUI_STATUS_IN_BACKGROUND:
+        default:
+            break;
     }
-    ProcUIShutdown();
+    return true;
 }
 
+void exitApplication(bool shutdownOnExit) {
+    // Loop through ProcUI messages until it says Dumpling should exit
+    if (getCFWVersion() == MOCHA_FSCLIENT) {
+        SYSLaunchMenu();
 
-std::mutex _logMutex;
-void guiSafeLog(const char* fmt, ...) {
-    std::scoped_lock<std::mutex> lck(_logMutex);
-    
-    char formattedLine[1024];
+        while(stillRunning()) {
+            sleep_for(100ms);
+        }
+    }
+    else {
+        ProcUIStatus status;
+        while((status = ProcUIProcessMessages(true)) != PROCUI_STATUS_EXITING) {
+            if (status == PROCUI_STATUS_RELEASE_FOREGROUND) {
+                ProcUIDrawDoneRelease();
+            }
 
-    va_list va;
-    va_start(va, fmt);
-    vsnprintf(formattedLine, 1024, fmt, va);
-    va_end(va);
+            if (status != PROCUI_STATUS_IN_FOREGROUND) {
+                continue;
+            }
 
-    OSConsoleWrite(formattedLine, strlen(formattedLine));
+            if (shutdownOnExit) OSShutdown();
+            else if (usingHBL) SYSRelaunchTitle(0, nullptr);
+        }
+    }
+    ProcUIShutdown();
 }

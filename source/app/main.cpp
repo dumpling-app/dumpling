@@ -3,36 +3,32 @@
 #include "cfw.h"
 #include "filesystem.h"
 #include "exploit.h"
-#include "memory.h"
 #include "titles.h"
 #include "users.h"
 #include "gui.h"
 
-extern "C" void __init_wut_malloc();
-
 // Initialize correct heaps for CustomRPXLoader
-extern "C" void __preinit_user(MEMHeapHandle *outMem1, MEMHeapHandle *outFG, MEMHeapHandle *outMem2) {
+extern "C" void __init_wut_malloc();
+extern "C" [[maybe_unused]] void __preinit_user(MEMHeapHandle *outMem1, MEMHeapHandle *outFG, MEMHeapHandle *outMem2) {
     __init_wut_malloc();
 }
 
 int main() {
     // Initialize libraries
     initializeGUI();
+    WHBLogCafeInit();
     FSInit();
+    FSAInit();
     nn::act::Initialize();
     ACPInitialize();
     initializeInputs();
 
     IMDisableAPD(); // Disable auto-shutdown feature
 
-#ifdef USING_CEMU
-    WHBLogCafeInit();
-#endif
-
     // Start Dumpling
     showLoadingScreen();
     if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
-        WHBLogPrint("");
+        WHBLogFreetypePrint("");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
         sleep_for(3s);
@@ -45,8 +41,6 @@ int main() {
     sleep_for(5s);
 
     // Close application properly
-    unmountSD();
-    unmountUSBDrive();
     unmountSystemDrives();
     shutdownCFW();
     ACPFinalize();
@@ -55,5 +49,5 @@ int main() {
     VPADShutdown();
     shutdownGUI();
 
-    exitApplication(getCFWVersion() != MOCHA_FSCLIENT && false);
+    exitApplication(getCFWVersion() != MOCHA_FSCLIENT && USE_DEBUG_STUBS == 0);
 }

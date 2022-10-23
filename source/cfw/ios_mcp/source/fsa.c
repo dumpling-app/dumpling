@@ -106,7 +106,7 @@ int32_t FSA_OpenDir(int32_t fd, char* path, int32_t* outHandle) {
 
     int32_t ret = svcIoctl(fd, 0x0A, inbuf, 0x520, outbuf, 0x293);
 
-    if(outHandle) *outHandle = outbuf[1];
+    if (outHandle) *outHandle = outbuf[1];
 
     freeIobuf(iobuf);
     return ret;
@@ -121,7 +121,7 @@ int32_t FSA_ReadDir(int32_t fd, int32_t handle, FSDirectoryEntry* out_data) {
 
     int32_t ret = svcIoctl(fd, 0x0B, inbuf, 0x520, outbuf, 0x293);
 
-    if(out_data) memcpy(out_data, &outbuf[1], sizeof(FSDirectoryEntry));
+    if (out_data) memcpy(out_data, &outbuf[1], sizeof(FSDirectoryEntry));
 
     freeIobuf(iobuf);
     return ret;
@@ -176,7 +176,7 @@ int32_t FSA_OpenFile(int32_t fd, char* path, char* mode, int32_t* outHandle) {
 
     int32_t ret = svcIoctl(fd, 0x0E, inbuf, 0x520, outbuf, 0x293);
 
-    if(outHandle) *outHandle = outbuf[1];
+    if (outHandle) *outHandle = outbuf[1];
 
     freeIobuf(iobuf);
     return ret;
@@ -205,7 +205,7 @@ int32_t _FSA_ReadWriteFile(int32_t fd, void* data, uint32_t size, uint32_t cnt, 
     iovec[2].length = 0x293;
 
     int32_t ret;
-    if(read) ret = svcIoctlv(fd, 0x0F, 1, 2, iovec);
+    if (read) ret = svcIoctlv(fd, 0x0F, 1, 2, iovec);
     else ret = svcIoctlv(fd, 0x10, 2, 1, iovec);
 
     freeIobuf(iobuf);
@@ -229,7 +229,7 @@ int32_t FSA_StatFile(int32_t fd, int32_t handle, FSStat* out_data) {
 
     int32_t ret = svcIoctl(fd, 0x14, inbuf, 0x520, outbuf, 0x293);
 
-    if(out_data) memcpy(out_data, &outbuf[1], sizeof(FSStat));
+    if (out_data) memcpy(out_data, &outbuf[1], sizeof(FSStat));
 
     freeIobuf(iobuf);
     return ret;
@@ -272,7 +272,7 @@ int32_t FSA_GetStat(int32_t fd, char *path, FSStat* out_data) {
 
     int32_t ret = svcIoctl(fd, 0x18, inbuf, 0x520, outbuf, 0x293);
 
-    if(out_data) memcpy(out_data, &outbuf[1], sizeof(FSStat));
+    if (out_data) memcpy(out_data, &outbuf[1], sizeof(FSStat));
 
     freeIobuf(iobuf);
     return ret;
@@ -339,9 +339,12 @@ int32_t FSA_GetDeviceInfo(int32_t fd, char* device_path, int32_t type, uint32_t*
         case 5:
             size = 0x64;
             break;
-        case 6: case 8:
+        case 6:
+        case 8:
             size = 0x14;
             break;
+        default:
+            size = 0;
     }
 
     memcpy(out_data, &outbuf[1], size);
@@ -359,7 +362,7 @@ int32_t FSA_RawOpen(int32_t fd, char* device_path, int32_t* outHandle) {
 
     int32_t ret = svcIoctl(fd, 0x6A, inbuf, 0x520, outbuf, 0x293);
 
-    if(outHandle) *outHandle = outbuf[1];
+    if (outHandle) *outHandle = outbuf[1];
 
     freeIobuf(iobuf);
     return ret;

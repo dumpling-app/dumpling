@@ -54,4 +54,4 @@ static_assert(sizeof(FSBlockInfo) == 0x14, "FSBlockInfo struct is not 0x14 bytes
 #define IPC_CUSTOM_COPY_ENVIRONMENT_PATH  0xF9
 #define IPC_CUSTOM_GET_MOCHA_API_VERSION  0xF8
 
-#define MOCHA_API_VERSION 1 + 1337 /* Special Dumpling Identifier */
+#define MOCHA_API_VERSION (1 + 1337) /* Special Dumpling Identifier */

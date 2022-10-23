@@ -10,24 +10,33 @@
 
 #include "interfaces/transfer.h"
 #include "interfaces/fat32.h"
+#include "interfaces/stub.h"
+
+#include <dirent.h>
 
 #include <mocha/mocha.h>
 #include <mocha/otp.h>
 
 // Dumping Functions
-
 #define BUFFER_SIZE_ALIGNMENT 64
-#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT)
+#define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT * 4)
 static_assert(BUFFER_SIZE % 0x8000 == 0, "Buffer size needs to be multiple of 0x8000 to properly read disc sections");
 
-static bool cancelledScanning = false;
 
-bool copyFile(const char* filename, std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
-    // Check if file is an actual file first
-    struct stat fileStat;
+enum class WALK_EVENT {
+    FILE,
+    BUFFER,
+    MAKE_PATH,
+    DIR_ENTER,
+    DIR_LEAVE
+};
+
+bool callback_scanFile(uint64_t& totalBytes, const char* filename, const std::string& srcPath) {
+    struct stat fileStat{};
     if (lstat(srcPath.c_str(), &fileStat) == -1) {
-        std::string errorMessage = "Failed to retrieve info from source file!\n";
-        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+        std::string errorMessage;
+        errorMessage += "Failed to retrieve info from source file!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
         errorMessage += "\nDetails:\n";
         errorMessage += "Error "+std::to_string(errno)+" when getting stats for:\n";
         errorMessage += srcPath;
@@ -35,24 +44,34 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
         return false;
     }
 
-    // If totalBytes is set it means that it's scanning for file sizes of openable files
-    if (totalBytes != nullptr) {
-        *totalBytes += fileStat.st_size;
+    totalBytes += fileStat.st_size;
+    return true;
+}
 
-        // Check whether user has cancelled scanning
-        updateInputs();
-        if (pressedBack()) {
-            *totalBytes = 0;
-            cancelledScanning = true;
-            return false;
-        }
-        return true;
+bool callback_scanBuffer(uint64_t& totalBytes, uint64_t bufferSize) {
+    totalBytes += bufferSize;
+    return true;
+}
+
+bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, const char* filename, const std::string& srcPath, const std::string& destPath) {
+    // Check if file is an actual file first
+    struct stat fileStat{};
+    if (lstat(srcPath.c_str(), &fileStat) == -1) {
+        std::string errorMessage;
+        errorMessage += "Failed to retrieve info from source file!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
+        errorMessage += "\nDetails:\n";
+        errorMessage += "Error "+std::to_string(errno)+" when getting stats for:\n";
+        errorMessage += srcPath;
+        setErrorPrompt(errorMessage);
+        return false;
     }
 
     FILE* readHandle = fopen(srcPath.c_str(), "rb");
     if (readHandle == nullptr) {
-        std::string errorMessage = "Couldn't open the file to copy from!\n";
-        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
+        std::string errorMessage;
+        errorMessage += "Couldn't open the file to copy from!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny errors!\n";
         errorMessage += "\nDetails:\n";
         errorMessage += "Error "+std::to_string(errno)+" after opening file!\n";
         errorMessage += srcPath;
@@ -63,15 +82,23 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     setFile(filename, fileStat.st_size);
 
     while(true) {
-        size_t bytesRead = 0;
         uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        if (copyBuffer == nullptr) {
+            fclose(readHandle);
+            std::string errorMessage = "Failed to allocate memory for chunk buffer!";
+            setErrorPrompt(errorMessage);
+            return false;
+        }
 
-        if (bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle); bytesRead != BUFFER_SIZE) {
+        size_t bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle);
+        if (bytesRead != BUFFER_SIZE) {
             if (int fileError = ferror(readHandle); fileError != 0) {
-                fclose(readHandle);
                 free(copyBuffer);
-                std::string errorMessage = "Failed to read all data from this file!\n";
-                if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny errors!\n";
+                copyBuffer = nullptr;
+                fclose(readHandle);
+                std::string errorMessage;
+                errorMessage += "Failed to read all data from this file!\n";
+                if (errno == EIO) errorMessage += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny errors!\n";
                 errorMessage += "Error "+std::to_string(errno)+" when reading data from:\n";
                 errorMessage += srcPath;
                 setErrorPrompt(errorMessage);
@@ -79,36 +106,30 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
             }
         }
 
-        // Check if the writing interface thread has failed
-        if (interface->hasFailed()) {
-            fclose(readHandle);
+        bool endOfFile = feof(readHandle) != 0;
+        if (!interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile)) {
             free(copyBuffer);
-            setErrorPrompt(interface->getFailReason());
+            fclose(readHandle);
+            setErrorPrompt(*interface->getStopError());
             return false;
         }
 
-        bool endOfFile = feof(readHandle) != 0;
-        interface->submitWriteFile(destPath, copyBuffer, bytesRead, endOfFile);
-
-        // setFileProgress(bytesRead);
-        // showCurrentProgress();
-        // // Check whether the inputs break
-        // updateInputs();
-        // if (pressedBack()) {
-        //     uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
-        //     if (selectedChoice != 0) continue;
-
-        //     WHBLogFreetypeClear();
-        //     WHBLogPrint("Quitting dumping process...");
-        //     WHBLogPrint("The app (likely) isn't frozen!");
-        //     WHBLogPrint("This should take a minute at most!");
-        //     WHBLogFreetypeDraw();
-        //     fclose(readHandle);
-
-
-        //     setErrorPrompt("Couldn't delete files from SD card, please delete them manually.");
-        //     return false;
-        // }
+        setFileProgress(bytesRead);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            if (selectedChoice != 0) continue;
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
+            fclose(readHandle);
+            cancelledDumping = true;
+            return false;
+        }
 
         if (endOfFile) {
             break;
@@ -119,12 +140,95 @@ bool copyFile(const char* filename, std::string srcPath, std::string destPath, u
     return true;
 }
 
-bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes, TransferInterface* interface) {
+bool callback_copyBuffer(TransferInterface* interface, bool& cancelledDumping, const char* filename, uint8_t* srcBuffer, uint64_t bufferSize, const std::string& destPath) {
+    setFile(std::filesystem::path(destPath).filename().c_str(), bufferSize);
+
+    // Copy source buffer into aligned copy buffer, then write it in parts
+    uint64_t uncopiedBytes = bufferSize;
+    while (true) {
+        uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
+        if (copyBuffer == nullptr) {
+            std::string errorMessage = "Failed to allocate memory for chunk buffer!";
+            setErrorPrompt(errorMessage);
+            return false;
+        }
+
+        uint32_t toCopyBytes = uncopiedBytes > BUFFER_SIZE ? BUFFER_SIZE : uncopiedBytes;
+        bool endOfBuffer = uncopiedBytes <= BUFFER_SIZE;
+        memcpy(copyBuffer, srcBuffer, toCopyBytes);
+
+        if (!interface->submitWriteFile(destPath, copyBuffer, toCopyBytes, endOfBuffer)) {
+            free(copyBuffer);
+            setErrorPrompt(*interface->getStopError());
+            return false;
+        }
+
+        setFileProgress(toCopyBytes);
+        showCurrentProgress();
+        // Check whether the inputs break
+        updateInputs();
+        if (pressedBack()) {
+            uint8_t selectedChoice = showDialogPrompt("Are you sure that you want to cancel the dumping process?", "Yes", "No");
+            if (selectedChoice != 0) continue;
+            WHBLogFreetypeClear();
+            WHBLogPrint("Quitting dumping process...");
+            WHBLogPrint("The app (likely) isn't frozen!");
+            WHBLogPrint("This should take a minute at most!");
+            WHBLogFreetypeDraw();
+            cancelledDumping = true;
+            return false;
+        }
+
+        if (endOfBuffer) {
+            break;
+        }
+    }
+    return true;
+}
+
+bool callback_makeDir(TransferInterface* interface, const std::string& destPath, bool makeRecursively) {
+    if (makeRecursively) {
+        std::filesystem::path folderPath(destPath);
+        folderPath = folderPath.remove_filename();
+        std::string createdPath;
+        for (const auto& it : folderPath) {
+            if (!it.empty() && it.string() != "/") {
+                createdPath += ("/" + it.string());
+                if (!interface->submitWriteFolder(createdPath)) {
+                    setErrorPrompt(*interface->getStopError());
+                    return false;
+                }
+            }
+        }
+    }
+    if (!interface->submitWriteFolder(destPath)) {
+        setErrorPrompt(*interface->getStopError());
+        return false;
+    }
+    return true;
+}
+
+bool callback_moveDir(TransferInterface* interface, const std::string& destPath) {
+    if (!interface->submitSwitchFolder(destPath)) {
+        setErrorPrompt(*interface->getStopError());
+        return false;
+    }
+    return true;
+}
+
+template <typename F>
+bool walkDirectoryRecursive(const std::string& srcPath, const std::string& destPath, F&& callback) {
+    // Call callback that e.g. makes directories first
+    if (!callback(WALK_EVENT::DIR_ENTER, nullptr, srcPath, destPath)) {
+        return false;
+    }
+
     // Open folder
     DIR* dirHandle;
     if ((dirHandle = opendir((srcPath+"/").c_str())) == nullptr) {
-        std::string errorMessage = "Failed to open folder to read content from!\n";
-        if (errno == EIO) errorMessage += "For discs: Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
+        std::string errorMessage;
+        errorMessage += "Failed to open folder to read content from!\n";
+        if (errno == EIO) errorMessage += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
         errorMessage += "\nDetails:\n";
         errorMessage += "Error "+std::to_string(errno)+" while opening folder:\n";
         errorMessage += srcPath;
@@ -133,35 +237,25 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes,
         return false;
     }
 
-    // Append slash when last character isn't a slash
-    if (totalBytes == nullptr) {
-        if (interface->hasFailed()) {
-            setErrorPrompt(interface->getFailReason());
-            return false;
-        }
-        interface->submitMakeFolder(destPath);
-    }
-
     // Loop over directory contents
     while (true) {
         errno = 0;
         struct dirent* dirEntry = readdir(dirHandle);
-        if (dirEntry != NULL) {
+        if (dirEntry != nullptr) {
             std::string entrySrcPath = srcPath + "/" + dirEntry->d_name;
             std::string entryDstPath = destPath + "/" + dirEntry->d_name;
             // Use lstat since readdir returns DT_REG for symlinks
-            struct stat fileStat;
+            struct stat fileStat{};
             if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
                 setErrorPrompt("Unknown Error "+std::to_string(errno)+":\nCouldn't check type of file/folder!\n"+entrySrcPath);
                 return false;
             }
-            
             if (S_ISLNK(fileStat.st_mode)) {
                 continue;
             }
             else if (S_ISREG(fileStat.st_mode)) {
                 // Copy file
-                if (!copyFile(dirEntry->d_name, entrySrcPath, entryDstPath, totalBytes, interface)) {
+                if (!callback(WALK_EVENT::FILE, dirEntry->d_name, entrySrcPath, entryDstPath)) {
                     closedir(dirHandle);
                     return false;
                 }
@@ -171,26 +265,28 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes,
                 if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
                 // Copy all the files in this subdirectory
-                if (!copyFolder(entrySrcPath, entryDstPath, totalBytes, interface)) {
+                if (!walkDirectoryRecursive(entrySrcPath, entryDstPath, callback)) {
                     closedir(dirHandle);
                     return false;
                 }
             }
         }
-        else if (dirEntry == NULL && errno == EIO) {
-            std::string errorMessage = "The Wii U had an issue while reading the disc(?)!\n";
-            errorMessage += "Make sure that it's clean!\nDumping is very sensitive to tiny issues!\n";
-            errorMessage += "Unfortunately, disc requires reinsertion to retry!\nTry restarting Dumpling and trying again.\n\nDetails:\n";
-            errorMessage += "Error "+std::to_string(errno)+" while iterating folder contents:\n";
-            errorMessage += srcPath;
+        else if (errno == EIO) {
+            std::string errorMessage =
+                    "The Wii U had an issue while reading the disc(?)!\n"
+                    "Make sure that its clean!\nDumping is very sensitive to tiny issues!\n"
+                    "Unfortunately, disc requires reinsertion to retry!\nTry restarting Dumpling and trying again.\n\nDetails:\n"
+                    "Error "+std::to_string(errno)+" while iterating folder contents:\n"
+                    +srcPath;
             setErrorPrompt(errorMessage);
             return false;
         }
-        else if (dirEntry == NULL && errno != 0) {
-            std::string errorMessage = "Unknown error while reading disc contents!\n";
-            errorMessage += "You might want to restart your console and try again.\n\nDetails:\n";
-            errorMessage += "Error "+std::to_string(errno)+" while iterating folder contents:\n";
-            errorMessage += srcPath;
+        else if (errno != 0) {
+            std::string errorMessage =
+                    "Unknown error while reading disc contents!\n"
+                    "You might want to restart your console and try again.\n\nDetails:\n"
+                    "Error "+std::to_string(errno)+" while iterating folder contents:\n"
+                    +srcPath;
             setErrorPrompt(errorMessage);
             return false;
         }
@@ -199,119 +295,235 @@ bool copyFolder(std::string srcPath, std::string destPath, uint64_t* totalBytes,
         }
     }
 
+    // Call callback that e.g. deletes directories after it deletes all files
     closedir(dirHandle);
-    return true;
+    return callback(WALK_EVENT::DIR_LEAVE, nullptr, srcPath, destPath);
 }
 
-bool dumpTitle(titleEntry& entry, dumpingConfig& config, uint64_t* totalBytes, TransferInterface* interface) {
-    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Game) && entry.base) {
-        if (!copyFolder(entry.base->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.base->outputPath, totalBytes, interface)) return false;
+template <class F>
+bool processTitleEntry(titleEntry& entry, dumpingConfig& config, F&& callback) {
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::GAME) && entry.base) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, entry.base->posixPath, entry.base->outputPath)) return false;
+        if (!walkDirectoryRecursive(entry.base->posixPath, entry.base->outputPath, callback)) return false;
     }
-    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Update) && entry.update) {
-        if (!copyFolder(entry.update->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.update->outputPath, totalBytes, interface)) return false;
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::UPDATE) && entry.update) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, entry.update->posixPath, entry.update->outputPath)) return false;
+        if (!walkDirectoryRecursive(entry.update->posixPath, entry.update->outputPath, callback)) return false;
     }
-    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::DLC) && entry.dlc) {
-        if (!copyFolder(entry.dlc->posixPath, getRootFromLocation(config.location)+"/dumpling"+entry.dlc->outputPath, totalBytes, interface)) return false;
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::DLC) && entry.dlc) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, entry.dlc->posixPath, entry.dlc->outputPath)) return false;
+        if (!walkDirectoryRecursive(entry.dlc->posixPath, entry.dlc->outputPath, callback)) return false;
     }
-    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Saves) && entry.saves && (entry.saves->commonSave || !entry.saves->userSaves.empty())) {
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::SAVES) && entry.saves && !entry.saves->userSaves.empty()) {
         for (auto& save : entry.saves->userSaves) {
             if (save.userId == config.accountId) {
-                if (!copyFolder(save.path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/"+(config.dumpAsDefaultUser?"80000001":getUserByPersistentId(save.userId)->persistentIdString), totalBytes, interface)) return false;
+                if (!callback(WALK_EVENT::MAKE_PATH, nullptr, save.path, entry.saves->outputPath + "/" + (config.dumpAsDefaultUser ? "80000001" : getUserByPersistentId(save.userId)->persistentIdString))) return false;
+                if (!walkDirectoryRecursive(save.path, entry.saves->outputPath + "/" + (config.dumpAsDefaultUser ? "80000001" : getUserByPersistentId(save.userId)->persistentIdString), callback)) return false;
             }
         }
-        if (entry.saves->commonSave) {
-            if (!copyFolder(entry.saves->commonSave->path, getRootFromLocation(config.location)+"/dumpling/Saves/"+entry.folderName+"/common", totalBytes, interface)) return false;
-        }
     }
-    if (HAS_FLAG(config.dumpTypes, dumpTypeFlags::Custom) && entry.custom) {
-        if (entry.custom->inputPath) {
-            if (!copyFolder(*entry.custom->inputPath, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes, interface)) return false;
-        }
-        if (entry.custom->inputBuffer) {
-            //if (!copyMemory(entry.custom->inputBuffer->first, entry.custom->inputBuffer->second, getRootFromLocation(config.location)+"/dumpling"+entry.custom->outputPath, totalBytes)) return false;
-        }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::SAVES) && entry.saves && entry.saves->commonSave) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, entry.saves->commonSave->path, entry.saves->outputPath + "/common")) return false;
+        if (!walkDirectoryRecursive(entry.saves->commonSave->path, entry.saves->outputPath + "/common", callback)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::CUSTOM) && entry.customFolder) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, entry.customFolder->inputPath, entry.customFolder->outputPath)) return false;
+        if (!walkDirectoryRecursive(entry.customFolder->inputPath, entry.customFolder->outputPath, callback)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::CUSTOM) && entry.customFile) {
+        if (!callback(WALK_EVENT::MAKE_PATH, nullptr, "", entry.customFile->outputFolder)) return false;
+        if (!callback(WALK_EVENT::DIR_ENTER, entry.customFile->outputFile.c_str(), "", entry.customFile->outputFolder)) return false;
+        if (!callback(WALK_EVENT::BUFFER, entry.customFile->outputFile.c_str(), "", entry.customFile->outputFolder)) return false;
+        if (!callback(WALK_EVENT::DIR_LEAVE, entry.customFile->outputFile.c_str(), "", entry.customFile->outputFolder)) return false;
     }
     return true;
 }
 
-bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingConfig& config) {
-    // Ask user whether it wants to do an initial scan
-    uint8_t scanChoice = showDialogPrompt("Run an initial scan to determine the dump size?\nThis might take some minutes but adds:\n - Progress while dumping\n - Check if enough storage is available\n - Give a rough time estimate", "Yes, check size", "No, just dump");
-    
-    uint64_t totalDumpSize = 0;
-    cancelledScanning = false;
-    if (scanChoice == 0) {
-        // Scan folder to get the full queue size
-        for (uint64_t i=0; i<queue.size(); i++) {
-            // Show message about the scanning process which freezes the game
-            WHBLogFreetypeStartScreen();
-            WHBLogFreetypePrint("Scanning the dump size!");
-            WHBLogFreetypePrint("This might take a few minutes if you selected a lot of titles...");
-            WHBLogFreetypePrint("Your Wii U isn't frozen in that case!");
-            WHBLogFreetypePrint("");
-            WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i].get().shortTitle.c_str(), i+1, queue.size());
-            WHBLogFreetypePrint("");
-            WHBLogFreetypeScreenPrintBottom("===============================");
-            WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
-            WHBLogFreetypeDraw();
-            if (!dumpTitle(queue[i], config, &totalDumpSize, nullptr) && !cancelledScanning) {
+bool deleteTitleEntry(titleEntry& entry, dumpingConfig& config, const std::function<void()>& callback_updateGUI) {
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::GAME) && entry.base) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget + entry.base->outputPath, callback_updateGUI)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::UPDATE) && entry.update) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget + entry.update->outputPath, callback_updateGUI)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::DLC) && entry.dlc) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget + entry.dlc->outputPath, callback_updateGUI)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::SAVES) && entry.saves && !entry.saves->userSaves.empty()) {
+        for (auto& save : entry.saves->userSaves) {
+            if (save.userId == config.accountId) {
+                std::string userSavePath = config.dumpAsDefaultUser ? "80000001" : getUserByPersistentId(save.userId)->persistentIdString;
+                if (!Fat32Transfer::deletePath(config.dumpTarget + entry.saves->outputPath + "/" + userSavePath, callback_updateGUI)) return false;
+            }
+        }
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::SAVES) && entry.saves && entry.saves->commonSave) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget + entry.saves->outputPath + "/common", callback_updateGUI)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::CUSTOM) && entry.customFolder) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget + entry.customFolder->outputPath, callback_updateGUI)) return false;
+    }
+    if (HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::CUSTOM) && entry.customFile) {
+        if (!Fat32Transfer::deletePath(config.dumpTarget+entry.customFile->outputFolder+"/"+entry.customFile->outputFile, callback_updateGUI)) return false;
+    }
+    return true;
+}
+
+bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config) {
+    // Delete previously dumped files
+    if (config.dumpMethod == DUMP_METHOD::FAT && !USE_WUT_DEVOPTAB()) {
+        uint64_t deletedCount = 0;
+        auto showDeleteProgress = [&deletedCount]() {
+            if (deletedCount % 10 == 0) {
+                WHBLogFreetypeStartScreen();
+                WHBLogPrint("Checking for existing files!");
+                WHBLogFreetypePrint("");
+                WHBLogFreetypePrint("This might take a few minutes if there's a lot of files...");
+                WHBLogFreetypePrint("Please don't turn your Wii U off!");
+                WHBLogFreetypePrint("");
+                WHBLogFreetypePrintf("Found and deleted %llu files...", deletedCount);
+                WHBLogFreetypeDrawScreen();
+            }
+            deletedCount++;
+        };
+        showDeleteProgress();
+        for (auto& entry : queue) {
+            if (!deleteTitleEntry(*entry, config, showDeleteProgress)) {
                 showErrorPrompt("Exit to Main Menu");
-                showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
                 return false;
             }
         }
     }
 
-    if (totalDumpSize != 0) {
-        // Check if there's enough space on the storage location and otherwise give a warning
-        uint64_t sizeAvailable = getFreeSpace(getRootFromLocation(config.location).c_str());
-        if (sizeAvailable < totalDumpSize) {
-            std::string freeSpaceWarning;
-            freeSpaceWarning += "You only have ";
-            freeSpaceWarning += formatByteSize(sizeAvailable);
-            freeSpaceWarning += ", while you require ";
-            freeSpaceWarning += formatByteSize(totalDumpSize);
-            freeSpaceWarning += " of free space!\n";
-            if (sizeAvailable == 0) freeSpaceWarning += "Make sure that your storage device is still plugged in!";
-            else freeSpaceWarning += "Make enough space, or dump one game at a time.";
-            showDialogPrompt(freeSpaceWarning.c_str(), "Exit to Main Menu");
-            return false;
-        }
-        else {
-            WHBLogFreetypeClear();
-            WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
-            WHBLogFreetypePrint("Dumping will start in 10 seconds...");
+    // Scan title size
+    uint64_t totalDumpSize = 0;
+    if (config.dumpMethod == DUMP_METHOD::FAT && config.scanTitleSize) {
+        // Scan folder to get the full queue size
+        for (size_t i=0; i<queue.size(); i++) {
+            // Show message about the scanning process which freezes the GUI
+            WHBLogFreetypeStartScreen();
+            WHBLogFreetypePrint("Scanning the dump size!");
+            WHBLogFreetypePrint("This might take a few minutes if you selected a lot of titles...");
+            WHBLogFreetypePrint("Your Wii U isn't frozen in that case!");
+            WHBLogFreetypePrint("");
+            WHBLogPrintf("Scanning %s... (title %lu / %lu)", queue[i]->shortTitle.c_str(), i+1, queue.size());
+            WHBLogFreetypePrint("");
+            WHBLogFreetypeScreenPrintBottom("===============================");
+            WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel scanning and just do dumping");
             WHBLogFreetypeDraw();
-            sleep_for(10s);
+            titleEntry& queueEntry = *queue[i];
+            bool cancelledDumping = false;
+            bool scanSuccess = processTitleEntry(queueEntry, config, [&totalDumpSize, &cancelledDumping, &queueEntry](WALK_EVENT event, const char *filename, const std::string &srcPath, const std::string &destPath) -> bool {
+                updateInputs();
+                if (pressedBack()) {
+                    cancelledDumping = true;
+                    return false;
+                }
+                else if (event == WALK_EVENT::FILE)
+                    return callback_scanFile(totalDumpSize, filename, srcPath);
+                else if (event == WALK_EVENT::BUFFER)
+                    return callback_scanBuffer(totalDumpSize, queueEntry.customFile->srcBufferSize);
+                return true;
+            });
+            if (cancelledDumping) {
+                totalDumpSize = 0;
+                sleep_for(1s);
+                break;
+            }
+            else if (!scanSuccess) {
+                showErrorPrompt("Back To Main Menu");
+                showDialogPrompt("Failed while trying to scan the dump for its size!", "Exit to Main Menu");
+                return false;
+            }
+        }
+
+        if (totalDumpSize > 0) {
+            // Check if there's enough space on the storage location and otherwise give a warning
+            uint64_t sizeAvailable = !USE_WUT_DEVOPTAB() ? Fat32Transfer::getDriveSpace(config.dumpTarget) : std::numeric_limits<uint64_t>::max();
+            if (sizeAvailable < totalDumpSize) {
+                std::string freeSpaceWarning;
+                freeSpaceWarning += "You only have " + formatByteSize(sizeAvailable) + ", while you require " + formatByteSize(totalDumpSize) + " of free space!\n";
+                if (sizeAvailable == 0) freeSpaceWarning += "Make sure that your storage device is still plugged in!";
+                else freeSpaceWarning += "Make enough space, or dump one game at a time.";
+                showDialogPrompt(freeSpaceWarning.c_str(), "Exit to Main Menu");
+                return false;
+            }
+            else {
+                WHBLogFreetypeClear();
+                WHBLogPrintf("Dump is %s while selected location has %s available!", formatByteSize(totalDumpSize).c_str(), formatByteSize(sizeAvailable).c_str());
+                WHBLogFreetypePrint("Dumping will start in 10 seconds...");
+                WHBLogFreetypeDraw();
+                sleep_for(10s);
+            }
         }
     }
 
-    // Dump title
+    std::unique_ptr<TransferInterface> interface = !USE_WUT_DEVOPTAB() ? std::unique_ptr<TransferInterface>{std::make_unique<Fat32Transfer>(config)} : std::make_unique<StubTransfer>(config);
+
+    // Dump files
     startQueue(totalDumpSize);
-
-    Fat32Transfer interface{config};
-
     for (size_t i=0; i<queue.size(); i++) {
         std::string status("Currently dumping ");
-        status += queue[i].get().shortTitle;
+        titleEntry& queueEntry = *queue[i];
+        status += queueEntry.shortTitle;
         if (queue.size() > 1) {
-            if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Game)) status += " (game ";
-            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Update)) status += " (update ";
-            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::DLC)) status += " (DLC ";
-            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Saves)) status += " (save ";
-            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::SystemApp)) status += " (app ";
-            else if (HAS_FLAG(config.filterTypes, dumpTypeFlags::Custom)) status += " (custom ";
-            else status += " (title ";
-            status += std::to_string(i+1);
-            status += "/";
-            status += std::to_string(queue.size());
-            status += ")";
+            if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::GAME)) status += " (game ";
+            else if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::UPDATE)) status += " (update ";
+            else if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::DLC)) status += " (DLC ";
+            else if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::SAVES)) status += " (save ";
+            else if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::SYSTEM_APP)) status += " (app ";
+            else if (HAS_FLAG(config.filterTypes, DUMP_TYPE_FLAGS::CUSTOM)) status += " (custom ";
+            else status += " (title "+std::to_string(i+1)+"/"+std::to_string(queue.size())+")";
         }
         status += "...";
-
         setDumpingStatus(status);
-        if (!dumpTitle(queue[i], config, nullptr, &interface)) {
-            showErrorPrompt("Back to Main Menu");
+
+        bool cancelledDumping = false;
+        std::filesystem::path currDir;
+        bool dumpSuccess = processTitleEntry(queueEntry, config, [&currDir, &interface, &cancelledDumping, &queueEntry](WALK_EVENT event, const char *filename, const std::string &srcPath, const std::string &destPath) -> bool {
+            if (event == WALK_EVENT::MAKE_PATH)
+                return callback_makeDir(interface.get(), destPath, true);
+            else if (event == WALK_EVENT::DIR_ENTER) {
+                currDir = destPath;
+                if (!callback_makeDir(interface.get(), destPath, false)) return false;
+                if (!callback_moveDir(interface.get(), currDir.string())) return false;
+            }
+            else if (event == WALK_EVENT::DIR_LEAVE) {
+                currDir = currDir.parent_path();
+                return callback_moveDir(interface.get(), currDir.string());
+            }
+            else if (event == WALK_EVENT::FILE)
+                return callback_copyFile(interface.get(), cancelledDumping, filename, srcPath, destPath);
+            else if (event == WALK_EVENT::BUFFER)
+                return callback_copyBuffer(interface.get(), cancelledDumping, filename, queueEntry.customFile->srcBuffer, queueEntry.customFile->srcBufferSize, destPath+"/"+filename);
+            return true;
+        });
+        if (!dumpSuccess) {
+            interface.reset();
+            if (!cancelledDumping) {
+                showErrorPrompt("Back To Main Menu");
+            }
+            uint8_t doDeleteFiles = showDialogPrompt("Delete the incomplete files from the currently transferring title?\nThis will make space to retry or dump something else.\nDepending on the size it might take a few minutes.\nAlready completed titles will not be deleted...", "Yes", "No");
+            if (doDeleteFiles == 0) {
+                uint64_t deletedCount = 0;
+                auto showDeleteProgress = [&deletedCount]() {
+                    if (deletedCount % 10 == 0) {
+                        WHBLogFreetypeStartScreen();
+                        WHBLogFreetypePrint("Deleting incomplete dumping files!");
+                        WHBLogFreetypePrint("");
+                        WHBLogFreetypePrint("This might take a few minutes if there's a lot of files...");
+                        WHBLogFreetypePrint("Please don't turn your Wii U off!");
+                        WHBLogFreetypePrint("");
+                        WHBLogFreetypePrintf("Deleted %llu files so far...", deletedCount);
+                        WHBLogFreetypeDrawScreen();
+                    }
+                    deletedCount++;
+                };
+                showDeleteProgress();
+                if (!deleteTitleEntry(queueEntry, config, showDeleteProgress)) {
+                    showErrorPrompt("Back To Main Menu");
+                }
+            }
             return false;
         }
     }
@@ -319,10 +531,12 @@ bool dumpQueue(std::vector<std::reference_wrapper<titleEntry>>& queue, dumpingCo
 }
 
 void dumpMLC() {
-    dumpingConfig mlcConfig = {.dumpTypes = dumpTypeFlags::Custom};
-    titleEntry mlcEntry{.shortTitle = "MLC Dump", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/"), .outputPath = "/MLC Dump"}};
-    
-    uint8_t selectedChoice = showDialogPrompt("Dumping the MLC can take 6-20 hours depending on it's contents!\nMake sure that you have enough space available.", "Proceed", "Cancel");
+    std::vector<std::shared_ptr<titleEntry>> queue = {
+            std::make_shared<titleEntry>(titleEntry{.shortTitle = "MLC Dump", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01"), .outputPath = "/MLC Dump"}})
+    };
+    dumpingConfig mlcConfig = {.dumpTypes = DUMP_TYPE_FLAGS::CUSTOM};
+
+    uint8_t selectedChoice = showDialogPrompt("Dumping the MLC can take 6-20 hours depending on its contents!\nMake sure that you have enough space available.", "Proceed", "Cancel");
     if (selectedChoice == 1) return;
 
     // Show the option screen
@@ -330,13 +544,8 @@ void dumpMLC() {
         return;
     }
 
-    Fat32Transfer interface{mlcConfig};
-
-    setDumpingStatus("Currently dumping the whole MLC...");
-    if (!dumpTitle(mlcEntry, mlcConfig, nullptr, &interface)) {
-        showErrorPrompt("Back to Main Menu");
-        return;
-    }
+    mlcConfig.scanTitleSize = false;
+    if (dumpQueue(queue, mlcConfig)) showDialogPrompt("Successfully dumped entire MLC!", "OK");
 }
 
 bool dumpDisc() {
@@ -390,9 +599,9 @@ bool dumpDisc() {
     }
 
     // Make a queue from game disc
-    std::vector<std::reference_wrapper<titleEntry>> queue;
+    std::vector<std::shared_ptr<titleEntry>> queue;
     for (auto& title : installedTitles) {
-        if (title.base && title.base->location == titleLocation::Disc) {
+        if (title->base && title->base->location == TITLE_LOCATION::DISC) {
             queue.emplace_back(std::ref(title));
             break;
         }
@@ -400,21 +609,26 @@ bool dumpDisc() {
 
     WHBLogFreetypeClear();
     WHBLogPrint("Currently inserted disc is:");
-    WHBLogPrint(queue.begin()->get().shortTitle.c_str());
-    WHBLogPrint("");
-    WHBLogPrint("Continuing to next step in 5 seconds...");
+    WHBLogPrint(queue.begin()->get()->shortTitle.c_str());
+    WHBLogFreetypePrint("");
+    WHBLogFreetypePrint("Continuing to next step in 5 seconds...");
     WHBLogFreetypeDraw();
     sleep_for(5s);
 
     // Dump queue
     uint8_t dumpOnlyBase = showDialogPrompt("Do you want to dump the update and DLC files?\nIt might be faster when you want to:\n - Dump all updates/DLC at once, without disc swapping!\n - Through methods like Cemu's Online Features, DumpsterU etc.", "Yes", "No");
     dumpingConfig config = {
-        .filterTypes = dumpTypeFlags::Game,
-        .dumpTypes = (dumpOnlyBase == 0) ? (dumpTypeFlags::Game | dumpTypeFlags::Update | dumpTypeFlags::DLC | dumpTypeFlags::Saves) : (dumpTypeFlags::Game | dumpTypeFlags::Saves)
+        .filterTypes = DUMP_TYPE_FLAGS::GAME,
+        .dumpTypes = (dumpOnlyBase == 0) ? (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::UPDATE | DUMP_TYPE_FLAGS::DLC | DUMP_TYPE_FLAGS::SAVES) : (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::SAVES)
     };
     if (!showOptionMenu(config, true)) return true;
+
+    auto startTime = std::chrono::system_clock::now();
     if (dumpQueue(queue, config)) {
-        showDialogPrompt("Successfully dumped this disc!", "OK");
+        auto endTime = std::chrono::system_clock::now();
+        auto elapsedDuration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
+        std::string finishedMsg = "Successfully dumped disc in\n"+formatElapsedTime(elapsedDuration)+"!";
+        showDialogPrompt(finishedMsg.c_str(), "OK");
         return true;
     }
     else {
@@ -424,54 +638,43 @@ bool dumpDisc() {
 }
 
 void dumpOnlineFiles() {
-    std::vector<std::reference_wrapper<titleEntry>> queue;
-    dumpingConfig onlineConfig = {.dumpTypes = (dumpTypeFlags::Custom)};
+    std::vector<std::shared_ptr<titleEntry>> queue;
+    dumpingConfig onlineConfig = {.dumpTypes = (DUMP_TYPE_FLAGS::CUSTOM)};
 
     // Loop until a valid account has been chosen
-    std::string accountIdStr = "";
-    std::string accountNameStr = "";
-    while(accountIdStr.empty()) {
-        if (!showOptionMenu(onlineConfig, true)) return;
-        
-        // Check if the selected user has 
-        for (auto& user : allUsers) {
-            if (user.persistentId == onlineConfig.accountId) {
-                if (!user.networkAccount) showDialogPrompt("This account doesn't have a NNID connected to it!\n\nSteps on how to connect/create a NNID to your Account:\n - Click the Mii icon on the Wii U's homescreen.\n - Click on the Link a Nintendo Network ID option.\n - Return to Dumpling.", "OK");
-                else if (!user.passwordCached) showDialogPrompt("Your password isn't saved!\n\nSteps on how to save your password in your account:\n - Click your Mii icon on the Wii U's homescreen.\n - Enable the Save Password option.\n - Return to Dumpling.", "OK");
-                else {
-                    accountIdStr = user.persistentIdString;
-                    accountNameStr = normalizeFolderName(user.miiName);
-                    trim(accountNameStr);
-                    if (accountNameStr.empty()) accountNameStr = "Non-Ascii User Name ["+accountIdStr+"]";
-                }
-            }
-        }
-    }
+    if (!showOptionMenu(onlineConfig, true)) return;
+    auto userIt = std::find_if(allUsers.begin(), allUsers.end(), [&onlineConfig](userAccount& user) {
+        return user.persistentId == onlineConfig.accountId;
+    });
 
-    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/usr/save/system/nim/ec/"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/nim/ec"}};
-    titleEntry miiEntry{.shortTitle = "Mii Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10056000/content"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10056000/content"}};
-    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/ccerts"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
-    titleEntry scertsEntry{.shortTitle = "scerts Files", .custom = customPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/scerts"), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/sys/title/0005001b/10054000/content/scerts"}};
-    titleEntry accountsEntry{.shortTitle = "Selected Account", .custom = customPart{.inputPath = convertToPosixPath((std::string("/vol/storage_mlc01/usr/save/system/act/")+accountIdStr).c_str()), .outputPath = "/Online Files/"+accountNameStr+"/mlc01/usr/save/system/act/"+(onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr)}};
+    std::string accountIdStr = userIt->persistentIdString;
+    std::string accountNameStr = normalizeFolderName(userIt->miiName);
+    if (accountNameStr.empty()) accountNameStr = "Non-Ascii Username ["+accountIdStr+"]";
+
+    titleEntry ecAccountInfoEntry{.shortTitle = "eShop Key File", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/usr/save/system/nim/ec"), .outputPath = "/Online Files/" + accountNameStr + "/mlc01/usr/save/system/nim/ec"}};
+    titleEntry miiEntry{.shortTitle = "Mii Files", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10056000/content"), .outputPath = "/Online Files/" + accountNameStr + "/mlc01/sys/title/0005001b/10056000/content"}};
+    titleEntry ccertsEntry{.shortTitle = "ccerts Files", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/ccerts"), .outputPath = "/Online Files/" + accountNameStr + "/mlc01/sys/title/0005001b/10054000/content/ccerts"}};
+    titleEntry scertsEntry{.shortTitle = "scerts Files", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/sys/title/0005001b/10054000/content/scerts"), .outputPath = "/Online Files/" + accountNameStr + "/mlc01/sys/title/0005001b/10054000/content/scerts"}};
+    titleEntry accountsEntry{.shortTitle = "Selected Account", .customFolder = folderPart{.inputPath = convertToPosixPath((std::string("/vol/storage_mlc01/usr/save/system/act/") + accountIdStr).c_str()), .outputPath = "/Online Files/" + accountNameStr + "/mlc01/usr/save/system/act/" + (onlineConfig.dumpAsDefaultUser ? "80000001" : accountIdStr)}};
 
     // Dump otp.bin and seeprom.bin
     WiiUConsoleOTP otpReturn;
-    std::vector<uint8_t> seepromBuffer(512);
+    std::array<uint8_t, 512> seepromBuffer{};
 
     Mocha_ReadOTP(&otpReturn);
     Mocha_SEEPROMRead(seepromBuffer.data(), 0, seepromBuffer.size());
 
-    titleEntry seepromFile{.shortTitle = "seeprom.bin File", .custom = customPart{.inputBuffer = std::pair((uint8_t*)seepromBuffer.data(), seepromBuffer.size()), .outputPath = "/Online Files/seeprom.bin"}};
-    titleEntry otpFile{.shortTitle = "otp.bin File", .custom = customPart{.inputBuffer = std::pair((uint8_t*)&otpReturn, sizeof(otpReturn)), .outputPath = "/Online Files/otp.bin"}};
+    titleEntry seepromFile{.shortTitle = "seeprom.bin File", .customFile = filePart{.srcBuffer = seepromBuffer.data(), .srcBufferSize = seepromBuffer.size(), .outputFolder = "/Online Files", .outputFile = "seeprom.bin"}};
+    titleEntry otpFile{.shortTitle = "otp.bin File", .customFile = filePart{.srcBuffer = (uint8_t*)&otpReturn, .srcBufferSize = sizeof(otpReturn), .outputFolder = "/Online Files", .outputFile = "otp.bin"}};
 
     // Add custom title entries to queue
-    queue.emplace_back(std::ref(ecAccountInfoEntry));
-    queue.emplace_back(std::ref(miiEntry));
-    queue.emplace_back(std::ref(ccertsEntry));
-    queue.emplace_back(std::ref(scertsEntry));
-    queue.emplace_back(std::ref(accountsEntry));
-    queue.emplace_back(std::ref(seepromFile));
-    queue.emplace_back(std::ref(otpFile));
+    queue.emplace_back(std::make_shared<titleEntry>(ecAccountInfoEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(miiEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(ccertsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(scertsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(accountsEntry));
+    queue.emplace_back(std::make_shared<titleEntry>(seepromFile));
+    queue.emplace_back(std::make_shared<titleEntry>(otpFile));
 
     if (dumpQueue(queue, onlineConfig)) showDialogPrompt("Successfully dumped all of the online files!", "OK");
     else showDialogPrompt("Failed to dump the online files...", "OK");
@@ -481,8 +684,6 @@ void cleanDumpingProcess() {
     WHBLogPrint("Cleaning up after dumping...");
     WHBLogFreetypeDraw();
     sleep_for(200ms);
-    unmountUSBDrive();
-    unmountSD();
     if (isDiscMounted() && !loadTitles(true)) {
         WHBLogPrint("Error while reloading titles after disc dumping...");
         WHBLogFreetypeDraw();
