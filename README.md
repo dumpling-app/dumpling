@@ -12,7 +12,7 @@ Use the Wii U App Store to download and install it in the homebrew launcher. See
 Download the [latest release from GitHub](https://github.com/emiyl/dumpling/releases), and extract the `dumpling.zip` file to the root of your SD card.
 
 **Method 3:**  
-Use [dumpingapp.com](https://dumplingapp.com) on your Wii U to launch Dumpling without any setup or SD card.
+Use [dumplingapp.com](https://dumplingapp.com) on your Wii U to launch Dumpling without any setup or SD card.
 
 ## How to use
 
