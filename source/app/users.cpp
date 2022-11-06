@@ -10,7 +10,7 @@ bool loadUsers() {
     nn::act::SlotNo currentAccount = nn::act::GetSlotNo();
     nn::act::SlotNo defaultAccount = nn::act::GetDefaultAccount();
 
-    for (nn::act::SlotNo i=1; i<12; i++) {
+    for (nn::act::SlotNo i=1; i<13; i++) {
         if (nn::act::IsSlotOccupied(i) == true) {
             userAccount newAccount;
             
