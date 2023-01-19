@@ -3,9 +3,9 @@
 void showLoadingScreen();
 void showMainMenu();
 
-uint8_t showDialogPrompt(const char* message, const char* button1, const char* button2);
-void showDialogPrompt(const char* message, const char* button);
+uint8_t showDialogPrompt(const wchar_t* message, const wchar_t* button1, const wchar_t* button2);
+void showDialogPrompt(const wchar_t* message, const wchar_t* button);
 bool showOptionMenu(dumpingConfig& config, bool showAccountOption);
-void setErrorPrompt(const char* message);
-void setErrorPrompt(std::string message);
-void showErrorPrompt(const char* button);
+void setErrorPrompt(const wchar_t* message);
+void setErrorPrompt(std::wstring message);
+void showErrorPrompt(const wchar_t* button);

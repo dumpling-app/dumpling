@@ -16,6 +16,6 @@ protected:
 
     const std::string sdPath = "fs:/vol/external01";
 
-    std::string error;
+    std::wstring error;
     std::unordered_map<std::string, FILE*> fileHandles;
 };

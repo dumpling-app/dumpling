@@ -12,7 +12,7 @@ struct listEntry {
     std::shared_ptr<titleEntry> listedEntry;
 };
 
-void showTitleList(const char* message, dumpingConfig config) {
+void showTitleList(const wchar_t* message, dumpingConfig config) {
     // Filter and create the list of titles that are displayed
     std::vector<listEntry> printTitles = {};
     for (auto& title : installedTitles) {
@@ -50,22 +50,22 @@ void showTitleList(const char* message, dumpingConfig config) {
         // Print selection header
         WHBLogFreetypeStartScreen();
         WHBLogFreetypePrint(message);
-        WHBLogFreetypePrint("===============================");
+        WHBLogFreetypePrint(L"===============================");
 
         // Print message when no title is found
         if (printTitles.empty()) {
-            WHBLogFreetypePrint("Nothing was found!");
-            WHBLogFreetypePrint("Make sure that everything is installed.");
+            WHBLogFreetypePrint(L"Nothing was found!");
+            WHBLogFreetypePrint(L"Make sure that everything is installed.");
         }
 
         // Print range of titles
         for (size_t i=listOffset; i<listOffset+listSize; i++) {
-            WHBLogFreetypePrintf("%c %s %.30s", i == selectedEntry ? '>' : ' ', config.queue ? (printTitles[i].queued ? "\u25A0": "\u25A1") : "", printTitles[i].listedEntry->shortTitle.c_str());
+            WHBLogFreetypePrintf(L"%C %C %.30S", i == selectedEntry ? L'>' : L' ', config.queue ? (printTitles[i].queued ? L'\u25A0': L'\u25A1') : L'\u200B', printTitles[i].listedEntry->shortTitle.c_str());
         }
-        WHBLogFreetypeScreenPrintBottom("===============================");
-        WHBLogFreetypeScreenPrintBottom("\uE045 Button = Start Dumping");
-        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Title");
-        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Back to Main Menu");
+        WHBLogFreetypeScreenPrintBottom(L"===============================");
+        WHBLogFreetypeScreenPrintBottom(L"\uE045 Button = Start Dumping");
+        WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Title");
+        WHBLogFreetypeScreenPrintBottom(L"\uE001 Button = Back to Main Menu");
         WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
@@ -109,7 +109,7 @@ void showTitleList(const char* message, dumpingConfig config) {
     }
 
     if (queuedTitles.empty()) {
-        showDialogPrompt("Select at least one title to dump!", "Go Back");
+        showDialogPrompt(L"Select at least one title to dump!", L"Go Back");
         showTitleList(message, config);
         return;
     }
@@ -120,7 +120,7 @@ void showTitleList(const char* message, dumpingConfig config) {
     if (dumpQueue(queuedTitles, config)) {
         auto endTime = std::chrono::system_clock::now();
         auto elapsedDuration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
-        std::string finishedMsg = "Dumping successfully finished in\n"+formatElapsedTime(elapsedDuration)+"!";
-        showDialogPrompt(finishedMsg.c_str(), "Continue to Main Menu");
+        std::wstring finishedMsg = L"Dumping successfully finished in\n"+formatElapsedTime(elapsedDuration)+L"!";
+        showDialogPrompt(finishedMsg.c_str(), L"Continue to Main Menu");
     }
 }

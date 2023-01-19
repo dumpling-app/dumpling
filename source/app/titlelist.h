@@ -1,3 +1,3 @@
 #include "common.h"
 
-void showTitleList(const char* message, dumpingConfig config);
+void showTitleList(const wchar_t* message, dumpingConfig config);

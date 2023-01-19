@@ -41,9 +41,9 @@ std::vector<std::pair<std::string, std::string>> Fat32Transfer::getDrives() {
         else if (i == DEV_USB01_REF) volumeName = "USB 1";
         else if (i == DEV_USB02_REF) volumeName = "USB 2";
         if (volumeLabel[0]) volumeName += std::string(" - ") + volumeLabel;
-        else volumeName += " - Not Named";
+        else volumeName += " - Unnamed";
 
-        targets.emplace_back(std::make_pair((driveIdPath+Fat32Transfer::targetDirectoryName).c_str(), volumeName));
+        targets.emplace_back((driveIdPath+Fat32Transfer::targetDirectoryName).c_str(), volumeName);
     }
     return targets;
 }
@@ -101,7 +101,7 @@ bool Fat32Transfer::deletePath(const std::string &path, const std::function<void
         f_unmount(path.c_str());
         free(deleteFS);
         if (res != FR_OK) {
-            std::string deleteError = "Error "+std::to_string(res)+" while deleting the following file:\n" + path + "\n";
+            std::wstring deleteError = L"Error "+std::to_wstring(res)+L" while deleting the following file:\n" + toWstring(path) + L"\n";
             setErrorPrompt(deleteError);
             return false;
         }
@@ -117,8 +117,8 @@ bool Fat32Transfer::deletePath(const std::string &path, const std::function<void
     recursiveDeletion = [driveIdx, &recursiveDeletion, callback_updateGUI](const std::filesystem::path& dirPath) -> FRESULT {
         DIR dir;
         if (FRESULT res = f_opendir(&dir, dirPath.c_str()); res != FR_OK) {
-            std::string deleteError = "Failed while deleting folder entry in recursive loop:\n";
-            deleteError += dirPath.string()+"\n";
+            std::wstring deleteError = L"Failed while deleting folder entry in recursive loop:\n";
+            deleteError += dirPath.wstring()+L"\n";
             setErrorPrompt(deleteError);
             return res;
         }
@@ -137,8 +137,8 @@ bool Fat32Transfer::deletePath(const std::string &path, const std::function<void
             }
             else {
                 if (FRESULT res = f_unlink((dirPath / fno.fname).c_str()); res != FR_OK) {
-                    std::string deleteError = "Failed to delete file:\n";
-                    deleteError += (dirPath / fno.fname).string()+"\n";
+                    std::wstring deleteError = L"Failed to delete file:\n";
+                    deleteError += (dirPath / fno.fname).wstring()+L"\n";
                     setErrorPrompt(deleteError);
                     f_closedir(&dir);
                     return res;
@@ -149,8 +149,8 @@ bool Fat32Transfer::deletePath(const std::string &path, const std::function<void
 
         f_closedir(&dir);
         if (FRESULT res = f_unlink((dirPath).c_str()); res != FR_OK) {
-            std::string deleteError = "Couldn't delete folder!\n";
-            deleteError += dirPath.string()+"\n";
+            std::wstring deleteError = L"Couldn't delete folder!\n";
+            deleteError += dirPath.wstring()+L"\n";
             setErrorPrompt(deleteError);
             return res;
         }
@@ -195,7 +195,7 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
     this->fs = (FATFSPtr*)malloc(sizeof(FATFS));
     if (FRESULT res = f_mount(this->fs, this->fatTarget.c_str(), 1); res != FR_OK) {
         this->runThreadLoop = false;
-        this->error = "Drive "+this->fatTarget+" couldn't be mounted! Error #"+std::to_string(res)+"\n";
+        this->error = L"Drive "+toWstring(this->fatTarget)+L" couldn't be mounted! Error #"+std::to_wstring(res)+L"\n";
     }
 
     if (this->runThreadLoop) {
@@ -218,19 +218,19 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
             [this](CommandSwitchDir& arg) {
                 DEBUG_OSReport("Switch Directory: path=%s", arg.dirPath.c_str());
                 if (FRESULT res = f_chdir((this->fatTarget+arg.dirPath).c_str()); res != FR_OK) {
-                    this->error += "Failed to switch to the given directory!\n";
-                    this->error += "Error "+std::to_string(res)+" after changing directory:\n";
-                    this->error += this->fatTarget+arg.dirPath;
+                    this->error += L"Failed to switch to the given directory!\n";
+                    this->error += L"Error "+std::to_wstring(res)+L" after changing directory:\n";
+                    this->error += toWstring(this->fatTarget+arg.dirPath);
                     this->runThreadLoop = false;
                 }
             },
             [this](CommandMakeDir& arg) {
                 DEBUG_OSReport("Make Directory: path=%s", arg.dirPath.c_str());
                 if (FRESULT res = f_mkdir((this->fatTarget+arg.dirPath).c_str()); res != FR_OK && res != FR_EXIST/* && res != FR_NO_PATH*/) {
-                    this->error += "Couldn't make the directory!\n";
-                    this->error += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
-                    this->error += "Error "+std::to_string(res)+" after creating directory:\n";
-                    this->error += this->fatTarget+arg.dirPath;
+                    this->error += L"Couldn't make the directory!\n";
+                    this->error += L"For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
+                    this->error += L"Error "+std::to_wstring(res)+L" after creating directory:\n";
+                    this->error += toWstring(this->fatTarget+arg.dirPath);
                     this->runThreadLoop = false;
                 }
             },
@@ -240,10 +240,10 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                 if (FRESULT res = (FRESULT) this->openFile(this->fatTarget + arg.filePath, arg.fileSize); res != FR_OK) {
                     free(arg.chunkBuffer);
                     this->closeFile(this->fatTarget + arg.filePath);
-                    this->error += "Couldn't open the file to copy to!\n";
-                    this->error += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
-                    this->error += "Error "+std::to_string(res)+" after creating SD card file:\n";
-                    this->error += this->fatTarget+arg.filePath;
+                    this->error += L"Couldn't open the file to copy to!\n";
+                    this->error += L"For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
+                    this->error += L"Error "+std::to_wstring(res)+L" after creating SD card file:\n";
+                    this->error += toWstring(this->fatTarget+arg.filePath);
                     this->runThreadLoop = false;
                     return;
                 }
@@ -252,11 +252,11 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
                 if (FRESULT res = f_write(this->currFileHandle, arg.chunkBuffer, arg.chunkSize, &bytesWritten); res != FR_OK || bytesWritten != arg.chunkSize) {
                     free(arg.chunkBuffer);
                     this->closeFile(this->fatTarget + arg.filePath);
-                    this->error += "Failed to write data to dumping device!\n";
-                    if (res == FR_DENIED) this->error += "There's no space available on the USB/SD card!\n";
-                    this->error += "\nDetails:\n";
-                    this->error += "Error "+std::to_string(res)+" when writing data to:\n";
-                    this->error += this->fatTarget+arg.filePath;
+                    this->error += L"Failed to write data to dumping device!\n";
+                    if (res == FR_DENIED) this->error += L"There's no space available on the USB/SD card!\n";
+                    this->error += L"\nDetails:\n";
+                    this->error += L"Error "+std::to_wstring(res)+L" when writing data to:\n";
+                    this->error += toWstring(this->fatTarget+arg.filePath);
                     this->runThreadLoop = false;
                     return;
                 }
@@ -273,7 +273,7 @@ void Fat32Transfer::transferThreadLoop(dumpingConfig config) {
     }
 
     OSReport("Cleaning up the thread...\n");
-    OSReport(this->error.c_str());
+    //OSReport(this->error.c_str());
 
     // Shutdown fatfs thread
     if (this->currFileHandle != nullptr) {

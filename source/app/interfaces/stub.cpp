@@ -53,10 +53,10 @@ void StubTransfer::transferThreadLoop(dumpingConfig config) {
                     if (destFileHandle == nullptr) {
                         this->closeFileHandle(arg.filePath);
                         free(arg.chunkBuffer);
-                        this->error += "Couldn't open the file to copy to!\n";
-                        this->error += "For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
-                        this->error += "Error "+std::to_string(errno)+" after creating SD card file:\n";
-                        this->error += arg.filePath;
+                        this->error += L"Couldn't open the file to copy to!\n";
+                        this->error += L"For SD cards: Make sure it isn't locked\nby the write-switch on the side!\n\nDetails:\n";
+                        this->error += L"Error "+std::to_wstring(errno)+L" after creating SD card file:\n";
+                        this->error += toWstring(arg.filePath);
                         this->runThreadLoop = false;
                         return;
                     }
@@ -64,13 +64,13 @@ void StubTransfer::transferThreadLoop(dumpingConfig config) {
                     if (size_t bytesWritten = fwrite(arg.chunkBuffer, sizeof(uint8_t), arg.chunkSize, destFileHandle); bytesWritten != arg.chunkSize) {
                         this->closeFileHandle(arg.filePath);
                         free(arg.chunkBuffer);
-                        this->error += "Failed to write data to dumping device!\n";
-                        if (errno == ENOSPC) this->error += "There's no space available on the USB/SD card!\n";
-                        if (errno == EIO) this->error += "For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
-                        this->error += "\nDetails:\n";
-                        this->error += "Error "+std::to_string(errno)+" when writing data from:\n";
-                        this->error += "to:\n";
-                        this->error += arg.filePath;
+                        this->error += L"Failed to write data to dumping device!\n";
+                        if (errno == ENOSPC) this->error += L"There's no space available on the USB/SD card!\n";
+                        if (errno == EIO) this->error += L"For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
+                        this->error += L"\nDetails:\n";
+                        this->error += L"Error "+std::to_wstring(errno)+L" when writing data from:\n";
+                        this->error += L"to:\n";
+                        this->error += toWstring(arg.filePath);
                         this->runThreadLoop = false;
                         return;
                     }

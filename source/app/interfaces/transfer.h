@@ -36,7 +36,7 @@ public:
     const uint32_t maxQueueSize = 64;
 
     bool hasStopped();
-    std::optional<std::string> getStopError();
+    std::optional<std::wstring> getStopError();
 protected:
     virtual void transferThreadLoop(dumpingConfig config) = 0;
 
@@ -45,7 +45,7 @@ protected:
 
     bool runThreadLoop = true;
     std::atomic<bool> threadStopped = false;
-    std::optional<std::string> threadStoppedError;
+    std::optional<std::wstring> threadStoppedError;
 
     std::thread transferThread;
 

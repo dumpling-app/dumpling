@@ -16,7 +16,7 @@ protected:
     static constexpr const char* targetDirectoryName = "Dumpling";
     std::string fatTarget;
 
-    std::string error;
+    std::wstring error;
 
     struct DIRPtr;
     std::unique_ptr<DIRPtr> currDir;

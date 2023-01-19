@@ -28,7 +28,7 @@ int main() {
     // Start Dumpling
     showLoadingScreen();
     if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
-        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint(L"");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
         sleep_for(3s);

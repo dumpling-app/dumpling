@@ -20,9 +20,8 @@ bool loadUsers() {
             if (res.IsFailure()) continue;
 
             // Convert mii name to normal string
-            std::u16string newString(miiName);
-            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
-            newAccount.miiName = convert.to_bytes(newString);
+            std::wstring_convert<std::codecvt_utf16<wchar_t>> convert;
+            newAccount.miiName = convert.from_bytes(reinterpret_cast<const char*>(miiName), reinterpret_cast<const char*>(miiName + std::char_traits<char16_t>::length(miiName)));
 
             // Convert persistent id into string
             std::ostringstream stream;

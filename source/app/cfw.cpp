@@ -64,7 +64,7 @@ CFWVersion testCFW() {
         return currCFWVersion;
     }
     else if (ret == MOCHA_RESULT_UNSUPPORTED_API_VERSION) {
-        uint8_t forceTiramisu = showDialogPrompt("Using an outdated Tiramisu version\nwithout FS client support!\n\nPlease update Tiramisu with this guide:\nhttps://wiiu.hacks.guide/#/tiramisu/sd-preparation\n\nForcing internal CFW will temporarily stop Tiramisu!", "Exit Dumpling To Update (Recommended)", "Force Internal CFW And Continue");
+        uint8_t forceTiramisu = showDialogPrompt(L"Using an outdated Tiramisu version\nwithout FS client support!\n\nPlease update Tiramisu with this guide:\nhttps://wiiu.hacks.guide/#/tiramisu/sd-preparation\n\nForcing internal CFW will temporarily stop Tiramisu!", L"Exit Dumpling To Update (Recommended)", L"Force Internal CFW And Continue");
         if (forceTiramisu == 1) {
             if (stopTiramisuServer()) {
                 WHBLogFreetypeClear();

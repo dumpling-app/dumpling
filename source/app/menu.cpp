@@ -15,14 +15,14 @@
 void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
-    WHBLogFreetypeSetFontSize(22, 22);
+    WHBLogFreetypeSetFontSize(22);
     WHBLogPrint("Dumpling V2.6.1");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
 }
 
-#define OPTION(n) (selectedOption == (n) ? '>' : ' ')
+#define OPTION(n) (selectedOption == (n) ? L'>' : L' ')
 
 // Can get recursively called
 void showMainMenu() {
@@ -31,23 +31,23 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogFreetypePrint("Dumpling V2.6.1");
-        WHBLogFreetypePrint("===============================");
-        WHBLogFreetypePrintf("%c Dump a game disc", OPTION(0));
-        WHBLogFreetypePrintf("%c Dump digital games", OPTION(1));
-        WHBLogFreetypePrint("");
-        WHBLogFreetypePrintf("%c Dump files to use Cemu online", OPTION(2));
-        WHBLogFreetypePrintf("%c Dump Wii U applications (e.g. Friend List, eShop etc.)", OPTION(3));
-        // WHBLogFreetypePrintf("%c Dump Amiibo Files", selectedOption==4 ? '>' : ' ');
-        WHBLogFreetypePrintf("");
-        WHBLogFreetypePrintf("%c Dump only Base files of a game", OPTION(4));
-        WHBLogFreetypePrintf("%c Dump only Update files of a game", OPTION(5));
-        WHBLogFreetypePrintf("%c Dump only DLC files of a game", OPTION(6));
-        WHBLogFreetypePrintf("%c Dump only Save files of a game", OPTION(7));
-        WHBLogFreetypePrintf("%c Dump whole MLC (everything stored on internal storage)", OPTION(8));
-        WHBLogFreetypeScreenPrintBottom("===============================");
-        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option \uE001 Button = Exit Dumpling");
-        WHBLogFreetypeScreenPrintBottom("");
+        WHBLogFreetypePrint(L"Dumpling V2.6.1");
+        WHBLogFreetypePrint(L"===============================");
+        WHBLogFreetypePrintf(L"%C Dump a game disc", OPTION(0));
+        WHBLogFreetypePrintf(L"%C Dump digital games", OPTION(1));
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrintf(L"%C Dump files to use Cemu online", OPTION(2));
+        WHBLogFreetypePrintf(L"%C Dump Wii U applications (e.g. Friend List, eShop etc.)", OPTION(3));
+        // WHBLogFreetypePrintf("%C Dump Amiibo Files", OPTION(4));
+        WHBLogFreetypePrintf(L"");
+        WHBLogFreetypePrintf(L"%C Dump only Base files of a game", OPTION(4));
+        WHBLogFreetypePrintf(L"%C Dump only Update files of a game", OPTION(5));
+        WHBLogFreetypePrintf(L"%C Dump only DLC files of a game", OPTION(6));
+        WHBLogFreetypePrintf(L"%C Dump only Save files of a game", OPTION(7));
+        WHBLogFreetypePrintf(L"%C Dump whole MLC (everything stored on internal storage)", OPTION(8));
+        WHBLogFreetypeScreenPrintBottom(L"===============================");
+        WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option \uE001 Button = Exit Dumpling");
+        WHBLogFreetypeScreenPrintBottom(L"");
         WHBLogFreetypeDrawScreen();
 
         // Loop until there's new input
@@ -69,7 +69,7 @@ void showMainMenu() {
                 break;
             }
             if (pressedBack()) {
-                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == MOCHA_FSCLIENT ? "Do you really want to exit Dumpling?" : "Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", "Yes", "No");
+                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == MOCHA_FSCLIENT ? L"Do you really want to exit Dumpling?" : L"Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", L"Yes", L"No");
                 if (exitSelectedOption == 0) {
                     WHBLogFreetypeClear();
                     return;
@@ -86,25 +86,25 @@ void showMainMenu() {
             dumpDisc();
             break;
         case 1:
-            showTitleList("Select all the games you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::UPDATE | DUMP_TYPE_FLAGS::DLC | DUMP_TYPE_FLAGS::SAVES), .queue = true});
+            showTitleList(L"Select all the games you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::UPDATE | DUMP_TYPE_FLAGS::DLC | DUMP_TYPE_FLAGS::SAVES), .queue = true});
             break;
         case 2:
             dumpOnlineFiles();
             break;
         case 3:
-            showTitleList("Select all the system applications you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::SYSTEM_APP, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
+            showTitleList(L"Select all the system applications you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::SYSTEM_APP, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
             break;
         case 4:
-            showTitleList("Select all the games that you want to dump the base game from!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
+            showTitleList(L"Select all the games that you want to dump the base game from!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
             break;
         case 5:
-            showTitleList("Select all the games that you want to dump the update from!", {.filterTypes = DUMP_TYPE_FLAGS::UPDATE, .dumpTypes = DUMP_TYPE_FLAGS::UPDATE, .queue = true});
+            showTitleList(L"Select all the games that you want to dump the update from!", {.filterTypes = DUMP_TYPE_FLAGS::UPDATE, .dumpTypes = DUMP_TYPE_FLAGS::UPDATE, .queue = true});
             break;
         case 6:
-            showTitleList("Select all the games that you want to dump the DLC from!", {.filterTypes = DUMP_TYPE_FLAGS::DLC, .dumpTypes = DUMP_TYPE_FLAGS::DLC, .queue = true});
+            showTitleList(L"Select all the games that you want to dump the DLC from!", {.filterTypes = DUMP_TYPE_FLAGS::DLC, .dumpTypes = DUMP_TYPE_FLAGS::DLC, .queue = true});
             break;
         case 7:
-            showTitleList("Select all the games that you want to dump the save from!", {.filterTypes = DUMP_TYPE_FLAGS::SAVES, .dumpTypes = DUMP_TYPE_FLAGS::SAVES, .queue = true});
+            showTitleList(L"Select all the games that you want to dump the save from!", {.filterTypes = DUMP_TYPE_FLAGS::SAVES, .dumpTypes = DUMP_TYPE_FLAGS::SAVES, .queue = true});
             break;
         case 8:
             dumpMLC();
@@ -142,85 +142,85 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         if ((drives.size()-1) < selectedDrive) selectedDrive = drives.size()-1;
 
         WHBLogFreetypeStartScreen();
-        WHBLogFreetypePrint("Change any options for this dump:");
-        WHBLogFreetypePrint("===============================");
-        WHBLogFreetypePrintf("%c Dump Destination: %s", OPTION(0), drives.empty() ? "No Drives Detected" : drives[selectedDrive].second.c_str());
-        WHBLogFreetypePrintf("%c Do Initial Scan For Required Empty Space: %s", OPTION(1), config.scanTitleSize ? "Yes" : "No");
-        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf("%c Online Account: %s", OPTION(2), allUsers[selectedAccount].miiName.c_str());
-        if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf("%c Account To Get Saves From: %s", OPTION(2), allUsers[selectedAccount].miiName.c_str());
-        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf("%c Merge Account To Default Cemu User: %s", OPTION(3), config.dumpAsDefaultUser ? "Yes" : "No");
-        if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf("%c Merge Saves To Default Cemu User: %s", OPTION(3), config.dumpAsDefaultUser ? "Yes" : "No");
-        if (USE_DEBUG_STUBS == 1) WHBLogFreetypePrintf("%c Change Fat32 Cache Size (DEBUG): %u", OPTION(4), config.debugCacheSize);
-        else WHBLogFreetypePrint("");
-        WHBLogFreetypePrintf("%c [Confirm]", OPTION(5));
-        WHBLogFreetypePrintf("%c [Cancel]", OPTION(6));
+        WHBLogFreetypePrint(L"Change any options for this dump:");
+        WHBLogFreetypePrint(L"===============================");
+        WHBLogFreetypePrintf(L"%C Dump Destination: %S", OPTION(0), drives.empty() ? L"No Drives Detected" : toWstring(drives[selectedDrive].second).c_str());
+        WHBLogFreetypePrintf(L"%C Do Initial Scan For Required Empty Space: %S", OPTION(1), config.scanTitleSize ? L"Yes" : L"No");
+        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Online Account: %S", OPTION(2), allUsers[selectedAccount].miiName.c_str());
+        if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Account To Get Saves From: %S", OPTION(2), allUsers[selectedAccount].miiName.c_str());
+        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Merge Account To Default Cemu User: %S", OPTION(3), config.dumpAsDefaultUser ? L"Yes" : L"No");
+        if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Merge Saves To Default Cemu User: %S", OPTION(3), config.dumpAsDefaultUser ? L"Yes" : L"No");
+        if (USE_DEBUG_STUBS == 1) WHBLogFreetypePrintf(L"%C Change Fat32 Cache Size (DEBUG): %u", OPTION(4), config.debugCacheSize);
+        else WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrintf(L"%C [Confirm]", OPTION(5));
+        WHBLogFreetypePrintf(L"%C [Cancel]", OPTION(6));
         if (selectedOption <= 4) {
-            WHBLogFreetypePrint("===============================");
+            WHBLogFreetypePrint(L"===============================");
         }
         if (selectedOption == 0) {
-            WHBLogFreetypePrint("Select an fat32/exfat device to write the files too.");
-            WHBLogFreetypePrint("Press \uE000 to refresh list. If your device doesn't show up:");
-            WHBLogFreetypePrint(" - Reinsert the SD card/USB drive and double-check the lock switch");
-            WHBLogFreetypePrint(" - Make sure its formatted as fat32/exfat drive");
-            WHBLogFreetypePrint(" - It doesn't have multiple (hidden) partitions");
-            WHBLogFreetypePrint(" - Try a different SD card (recommended) or USB drive");
+            WHBLogFreetypePrint(L"Select an fat32/exfat device to write the files too.");
+            WHBLogFreetypePrint(L"Press \uE000 to refresh list. If your device doesn't show up:");
+            WHBLogFreetypePrint(L" - Reinsert the SD card/USB drive and double-check the lock switch");
+            WHBLogFreetypePrint(L" - Make sure its formatted as fat32/exfat drive");
+            WHBLogFreetypePrint(L" - It doesn't have multiple (hidden) partitions");
+            WHBLogFreetypePrint(L" - Try a different SD card (recommended) or USB drive");
         }
         else if (selectedOption == 1) {
-            WHBLogFreetypePrint("Doing an initial scan allows you to:");
-            WHBLogFreetypePrint(" - Determine space required on SD/USB destination");
-            WHBLogFreetypePrint(" - Show overall progress while dumping");
-            WHBLogFreetypePrint(" - Show rough time estimate while dumping");
-            WHBLogFreetypePrint("This takes a few minutes (depending on size) extra.");
+            WHBLogFreetypePrint(L"Doing an initial scan allows you to:");
+            WHBLogFreetypePrint(L" - Determine space required on SD/USB destination");
+            WHBLogFreetypePrint(L" - Show overall progress while dumping");
+            WHBLogFreetypePrint(L" - Show rough time estimate while dumping");
+            WHBLogFreetypePrint(L"This takes a few minutes (depending on size) extra.");
         }
         else if (selectedOption == 2 && dumpingOnlineFiles) {
-            WHBLogFreetypePrint("Select the account you want to dump the online files for.");
+            WHBLogFreetypePrint(L"Select the account you want to dump the online files for.");
             if (!allUsers[selectedAccount].networkAccount) {
-                WHBLogFreetypePrint("This account doesn't have a NNID connected!");
-                WHBLogFreetypePrint(" - Click the Mii icon on the Wii U's homescreen");
-                WHBLogFreetypePrint(" - Click on Link a Nintendo Network ID option");
-                WHBLogFreetypePrint(" - Enable the Save Password option");
-                WHBLogFreetypePrint(" - Return to Dumpling");
+                WHBLogFreetypePrint(L"This account doesn't have a NNID connected!");
+                WHBLogFreetypePrint(L" - Click the Mii icon on the Wii U's homescreen");
+                WHBLogFreetypePrint(L" - Click on Link a Nintendo Network ID option");
+                WHBLogFreetypePrint(L" - Enable the Save Password option");
+                WHBLogFreetypePrint(L" - Return to Dumpling");
             }
             else if (!allUsers[selectedAccount].passwordCached) {
-                WHBLogFreetypePrint("This account doesn't have it's password saved!");
-                WHBLogFreetypePrint("This is required to use Cemu online!");
-                WHBLogFreetypePrint(" - Click the Mii icon on the Wii U's homescreen");
-                WHBLogFreetypePrint(" - Enable the Save Password option");
-                WHBLogFreetypePrint(" - Return to Dumpling");
+                WHBLogFreetypePrint(L"This account doesn't have it's password saved!");
+                WHBLogFreetypePrint(L"This is required to use Cemu online!");
+                WHBLogFreetypePrint(L" - Click the Mii icon on the Wii U's homescreen");
+                WHBLogFreetypePrint(L" - Enable the Save Password option");
+                WHBLogFreetypePrint(L" - Return to Dumpling");
             }
             else {
-                WHBLogFreetypePrint("This account is ready for Cemu's online functionality:");
-                WHBLogFreetypePrint(" - Selected account has NNID connected to it!");
-                WHBLogFreetypePrint(" - Selected account has its password saved!");
+                WHBLogFreetypePrint(L"This account is ready for Cemu's online functionality:");
+                WHBLogFreetypePrint(L" - Selected account has NNID connected to it!");
+                WHBLogFreetypePrint(L" - Selected account has its password saved!");
             }
         }
         else if (selectedOption == 2 && !dumpingOnlineFiles) {
-            WHBLogFreetypePrint("Select the Wii U account you want to dump the saves from.");
-            WHBLogFreetypePrint("If you don't care about the save files, then just any ");
+            WHBLogFreetypePrint(L"Select the Wii U account you want to dump the saves from.");
+            WHBLogFreetypePrint(L"If you don't care about the save files, then just any ");
         }
         else if (selectedOption == 3 && dumpingOnlineFiles) {
-            WHBLogFreetypePrint("Enabling this changes the dumped account files to");
-            WHBLogFreetypePrint("replace the existing Cemu account instead of being");
-            WHBLogFreetypePrint("an additional account.");
-            WHBLogFreetypePrint("Your existing saves, assuming you use Cemu's default");
-            WHBLogFreetypePrint("account, won't need to be transferred that way.");
+            WHBLogFreetypePrint(L"Enabling this changes the dumped account files to");
+            WHBLogFreetypePrint(L"replace the existing Cemu account instead of being");
+            WHBLogFreetypePrint(L"an additional account.");
+            WHBLogFreetypePrint(L"Your existing saves, assuming you use Cemu's default");
+            WHBLogFreetypePrint(L"account, won't need to be transferred that way.");
         }
         else if (selectedOption == 3 && !dumpingOnlineFiles) {
-            WHBLogFreetypePrint("Enabling this changes the dumped saves to replace existing saves");
-            WHBLogFreetypePrint("from the default Cemu account instead of being dumped");
-            WHBLogFreetypePrint("for your original Wii U account. This is recommended since");
-            WHBLogFreetypePrint("otherwise you have to dump/create a Cemu account that matches");
-            WHBLogFreetypePrint("the ID of your Wii U account to use these save files.");
+            WHBLogFreetypePrint(L"Enabling this changes the dumped saves to replace existing saves");
+            WHBLogFreetypePrint(L"from the default Cemu account instead of being dumped");
+            WHBLogFreetypePrint(L"for your original Wii U account. This is recommended since");
+            WHBLogFreetypePrint(L"otherwise you have to dump/create a Cemu account that matches");
+            WHBLogFreetypePrint(L"the ID of your Wii U account to use these save files.");
         }
         else if (selectedOption == 4) {
-            WHBLogFreetypePrint("This allows you to change the amount of fat32 sectors are kept");
-            WHBLogFreetypePrint("in memory before they are actually written. Used for trial and");
-            WHBLogFreetypePrint("erroring a good value for all games, since some options might");
-            WHBLogFreetypePrint("favor games with a few very large files but be detrimental");
-            WHBLogFreetypePrint("for small files. Recommended Values: 32,64,128,256 etc.");
+            WHBLogFreetypePrint(L"This allows you to change the amount of fat32 sectors are kept");
+            WHBLogFreetypePrint(L"in memory before they are actually written. Used for trial and");
+            WHBLogFreetypePrint(L"erroring a good value for all games, since some options might");
+            WHBLogFreetypePrint(L"favor games with a few very large files but be detrimental");
+            WHBLogFreetypePrint(L"for small files. Recommended Values: 32,64,128,256 etc.");
         }
-        WHBLogFreetypeScreenPrintBottom("===============================");
-        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option \uE001 Button = Cancel");
+        WHBLogFreetypeScreenPrintBottom(L"===============================");
+        WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option \uE001 Button = Cancel");
         WHBLogFreetypeDrawScreen();
 
         sleep_for(100ms);
@@ -259,7 +259,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 sleep_for(500ms);
                 break; // Refreshes screen with drive list
             }
-            const bool validAccount = !dumpingOnlineFiles || (dumpingOnlineFiles && allUsers[selectedAccount].networkAccount && allUsers[selectedAccount].passwordCached);
+            const bool validAccount = !dumpingOnlineFiles || true || (dumpingOnlineFiles && allUsers[selectedAccount].networkAccount && allUsers[selectedAccount].passwordCached);
             if (!drives.empty() & validAccount && (pressedStart() || (pressedOk() && selectedOption == 5))) {
                 if (dumpingOnlineFiles && config.dumpAsDefaultUser) {
                     alreadyDumpedDefaultAccount = true;
@@ -279,26 +279,26 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 
 // Helper functions
 
-uint8_t showDialogPrompt(const char* message, const char* button1, const char* button2) {
+uint8_t showDialogPrompt(const wchar_t* message, const wchar_t* button1, const wchar_t* button2) {
     sleep_for(100ms);
     uint8_t selectedOption = 0;
     while(true) {
         WHBLogFreetypeStartScreen();
 
         // Print each line
-        std::istringstream messageStream(message);
-        std::string line;
+        std::wistringstream messageStream(message);
+        std::wstring line;
 
         while(std::getline(messageStream, line)) {
-            WHBLogPrint(line.c_str());
+            WHBLogFreetypePrint(line.c_str());
         }
 
-        WHBLogFreetypePrint("");
-        WHBLogFreetypePrintf("%c [%s]", OPTION(0), button1);
-        if (button2 != nullptr) WHBLogFreetypePrintf("%c [%s]", OPTION(1), button2);
-        WHBLogFreetypePrint("");
-        WHBLogFreetypeScreenPrintBottom("===============================");
-        WHBLogFreetypeScreenPrintBottom("\uE000 Button = Select Option");
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrintf(L"%C [%S]", OPTION(0), button1);
+        if (button2 != nullptr) WHBLogFreetypePrintf(L"%C [%S]", OPTION(1), button2);
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypeScreenPrintBottom(L"===============================");
+        WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option");
         WHBLogFreetypeDrawScreen();
 
         // Input loop
@@ -327,24 +327,24 @@ uint8_t showDialogPrompt(const char* message, const char* button1, const char* b
     }
 }
 
-void showDialogPrompt(const char* message, const char* button) {
+void showDialogPrompt(const wchar_t* message, const wchar_t* button) {
     showDialogPrompt(message, button, nullptr);
 }
 
-const char* errorMessage = nullptr;
-void setErrorPrompt(const char* message) {
+const wchar_t* errorMessage = nullptr;
+void setErrorPrompt(const wchar_t* message) {
     errorMessage = message;
 }
 
-std::string messageCopy;
-void setErrorPrompt(std::string message) {
+std::wstring messageCopy;
+void setErrorPrompt(std::wstring message) {
     messageCopy = std::move(message);
     setErrorPrompt(messageCopy.c_str());
 }
 
-void showErrorPrompt(const char* button) {
-    std::string promptMessage("An error occurred:\n");
+void showErrorPrompt(const wchar_t* button) {
+    std::wstring promptMessage(L"An error occurred:\n");
     if (errorMessage) promptMessage += errorMessage;
-    else promptMessage += "No error was specified!";
+    else promptMessage += L"No error was specified!";
     showDialogPrompt(promptMessage.c_str(), button);
 }

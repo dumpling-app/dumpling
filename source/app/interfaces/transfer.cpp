@@ -57,6 +57,6 @@ bool TransferInterface::hasStopped() {
     return this->threadStopped;
 }
 
-std::optional<std::string> TransferInterface::getStopError() {
+std::optional<std::wstring> TransferInterface::getStopError() {
     return !this->threadStopped ? std::nullopt : this->threadStoppedError;
 }

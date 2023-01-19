@@ -102,32 +102,37 @@ typename std::enable_if<enable_bitmask_operators<E>::enable, E>::type operator& 
 // String trim functions
 
 [[maybe_unused]]
-static inline void ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](char8_t ch) {
+static inline void ltrim(std::wstring &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](wchar_t ch) {
         return !std::isspace(ch);
     }));
 }
 
 [[maybe_unused]]
-static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](char8_t ch) {
+static inline void rtrim(std::wstring &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](wchar_t ch) {
         return !std::isspace(ch);
     }).base(), s.end());
 }
 
 [[maybe_unused]]
-static inline void trim(std::string &s) {
+static inline void trim(std::wstring &s) {
     ltrim(s);
     rtrim(s);
 }
 
 [[maybe_unused]]
-static inline void replaceAll(std::string& str, const std::string& oldSubstr, const std::string& newSubstr) {
+static inline void replaceAll(std::wstring& str, const std::wstring& oldSubstr, const std::wstring& newSubstr) {
     size_t pos = 0;
-    while ((pos = str.find(oldSubstr, pos)) != std::string::npos) {
+    while ((pos = str.find(oldSubstr, pos)) != std::wstring::npos) {
         str.replace(pos, oldSubstr.length(), newSubstr);
         pos += newSubstr.length();
     }
+}
+
+[[maybe_unused]]
+static inline std::wstring toWstring(const std::string& stringToConvert) {
+    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(stringToConvert);
 }
 
 // Enums and Structs
@@ -182,7 +187,7 @@ struct userAccount {
     bool defaultAccount = false;
     bool networkAccount;
     bool passwordCached;
-    std::string miiName;
+    std::wstring miiName;
     std::string persistentIdString;
     nn::act::SlotNo slot;
     nn::act::PersistentId persistentId;
@@ -233,8 +238,8 @@ struct filePart {
 
 struct titleEntry {
     uint32_t titleLowId;
-    std::string shortTitle;
-    std::string productCode;
+    std::wstring shortTitle;
+    std::wstring productCode;
     std::string folderName;
     
     std::optional<titlePart> base;

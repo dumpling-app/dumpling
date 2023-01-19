@@ -17,34 +17,34 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
     metaPath.append("/meta/meta.xml");
 
     // Read meta.xml
-    std::ifstream xmlFile(metaPath);
+    std::wifstream xmlFile(metaPath);
     if (xmlFile.bad()) {
         WHBLogPrint("Couldn't open title xml file stream!");
         WHBLogPrint(metaPath.c_str());
         return false;
     }
-    std::string line;
-    std::string shortTitleJapan;
+    std::wstring line;
+    std::wstring shortTitleJapan;
 
     // Parse data from it using string matching
     bool foundShortTitle = !title.shortTitle.empty();
     bool foundJapaneseShortTitle = !shortTitleJapan.empty();
     bool foundProductCode = !title.productCode.empty();
     while(getline(xmlFile, line)) {
-        if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
-            title.shortTitle = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        if (!foundShortTitle && line.find(L"shortname_en") != std::wstring::npos) {
+            title.shortTitle = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             trim(title.shortTitle);
             decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
-        else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
-            shortTitleJapan = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        else if (!foundJapaneseShortTitle && line.find(L"shortname_ja") != std::wstring::npos) {
+            shortTitleJapan = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             trim(shortTitleJapan);
             decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
-        else if (!foundProductCode && line.find("product_code") != std::string::npos) {
-            title.productCode = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        else if (!foundProductCode && line.find(L"product_code") != std::wstring::npos) {
+            title.productCode = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             foundProductCode = true;
         }
         // Stop when all fields are encountered
@@ -65,9 +65,9 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
     WHBLogPrint("Error while parsing this meta.xml file:");
     WHBLogPrint(metaPath.c_str());
     WHBLogPrint("Problem was that only some information could be found:");
-    WHBLogPrintf("shortname_en = %s", title.shortTitle.c_str());
-    WHBLogPrintf("shortname_ja = %s", shortTitleJapan.c_str());
-    WHBLogPrintf("product_code = %s", title.productCode.c_str());
+    WHBLogFreetypePrintf(L"shortname_en = %S", title.shortTitle.c_str());
+    WHBLogFreetypePrintf(L"shortname_ja = %S", shortTitleJapan.c_str());
+    WHBLogFreetypePrintf(L"product_code = %S", title.productCode.c_str());
     WHBLogFreetypeDraw();
     return false;
 }
@@ -78,34 +78,34 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
     metaPath.append("/meta/meta.xml");
 
     // Read meta.xml
-    std::ifstream xmlFile(metaPath);
+    std::wifstream xmlFile(metaPath);
     if (xmlFile.bad()) {
         WHBLogPrint("Couldn't open save xml file stream!");
         WHBLogPrint(metaPath.c_str());
         return false;
     }
-    std::string line;
-    std::string shortTitleJapan;
+    std::wstring line;
+    std::wstring shortTitleJapan;
 
     // Parse data from it using string matching
     bool foundShortTitle = !title.shortTitle.empty();
     bool foundJapaneseShortTitle = !shortTitleJapan.empty();
     bool foundProductCode = !title.productCode.empty();
     while(getline(xmlFile, line)) {
-        if (!foundShortTitle && line.find("shortname_en") != std::string::npos) {
-            title.shortTitle = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        if (!foundShortTitle && line.find(L"shortname_en") != std::wstring::npos) {
+            title.shortTitle = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             trim(title.shortTitle);
             decodeXMLEscapeLine(title.shortTitle);
             if (!title.shortTitle.empty()) foundShortTitle = true;
         }
-        else if (!foundJapaneseShortTitle && line.find("shortname_ja") != std::string::npos) {
-            shortTitleJapan = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        else if (!foundJapaneseShortTitle && line.find(L"shortname_ja") != std::wstring::npos) {
+            shortTitleJapan = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             trim(shortTitleJapan);
             decodeXMLEscapeLine(shortTitleJapan);
             if (!shortTitleJapan.empty()) foundJapaneseShortTitle = true;
         }
-        else if (!foundProductCode && line.find("product_code") != std::string::npos) {
-            title.productCode = line.substr(line.find('>')+1, (line.find_last_of('<'))-(line.find_first_of('>')+1));
+        else if (!foundProductCode && line.find(L"product_code") != std::wstring::npos) {
+            title.productCode = line.substr(line.find(L'>')+1, (line.find_last_of(L'<'))-(line.find_first_of(L'>')+1));
             foundProductCode = true;
         }
         // Stop when all fields are encountered
@@ -125,9 +125,9 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
     WHBLogPrint("Error while parsing this meta.xml file:");
     WHBLogPrint(metaPath.c_str());
     WHBLogPrint("Problem was that only some information could be found:");
-    WHBLogPrintf("shortname_en = %s", title.shortTitle.c_str());
-    WHBLogPrintf("shortname_ja = %s", shortTitleJapan.c_str());
-    WHBLogPrintf("product_code = %s", title.productCode.c_str());
+    WHBLogFreetypePrintf(L"shortname_en = %S", title.shortTitle.c_str());
+    WHBLogFreetypePrintf(L"shortname_ja = %S", shortTitleJapan.c_str());
+    WHBLogFreetypePrintf(L"product_code = %S", title.productCode.c_str());
     WHBLogFreetypeDraw();
     return false;
 }
@@ -182,7 +182,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
     // Loop over high title id folders e.g. storage_mlc01:/usr/save/[iterated]
     DIR* highDirHandle;
-    if ((highDirHandle = opendir((saveDirPath+"/").c_str())) == nullptr) return false;
+    if (highDirHandle = opendir((saveDirPath+"/").c_str()); highDirHandle == nullptr) return false;
 
     struct dirent* highDirEntry;
     while ((highDirEntry = readdir(highDirHandle)) != nullptr) {
@@ -195,7 +195,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
         // Loop over low title id folders e.g. storage_mlc01:/usr/save/00050000/[iterated]
         DIR* lowDirHandle;
-        if ((lowDirHandle = opendir(highDirPath.c_str())) == nullptr) continue;
+        if (lowDirHandle = opendir(highDirPath.c_str()); lowDirHandle == nullptr) continue;
 
         struct dirent* lowDirEntry;
         while ((lowDirEntry = readdir(lowDirHandle)) != nullptr) {
@@ -210,7 +210,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
             // Loop over user saves folders e.g. storage_mlc01:/usr/save/00050000/101b0500/user/[iterated]
             DIR* userDirHandle;
-            if ((userDirHandle = opendir((lowDirPath + "user/").c_str())) == nullptr) continue;
+            if (userDirHandle = opendir((lowDirPath + "user/").c_str()); userDirHandle == nullptr) continue;
 
             struct dirent* userDirEntry;
             while ((userDirEntry = readdir(userDirHandle)) != nullptr) {
@@ -221,7 +221,7 @@ bool getSaveList(const std::string& saveDirPath) {
                 // Check whether the common or user save has any contents
                 bool hasContents = false;
                 DIR* contentDirHandle;
-                if ((contentDirHandle = opendir(userDirPath.c_str())) == nullptr) continue;
+                if (contentDirHandle = opendir(userDirPath.c_str()); contentDirHandle == nullptr) continue;
                 
                 struct dirent* contentDirEntry;
                 while ((contentDirEntry = readdir(contentDirHandle)) != nullptr) {
@@ -503,7 +503,7 @@ bool getSaveListThroughACP(bool skipDiscs) {
 }
 */
 
-std::optional<std::shared_ptr<titleEntry>> getTitleWithName(std::string& nameOfTitle) {
+std::optional<std::shared_ptr<titleEntry>> getTitleWithName(std::wstring& nameOfTitle) {
     for (auto& title : installedTitles) {
         if (title->shortTitle == nameOfTitle) return title;
     }
@@ -511,24 +511,24 @@ std::optional<std::shared_ptr<titleEntry>> getTitleWithName(std::string& nameOfT
 }
 
 // Helper functions
-std::array nonValidFilenames{'\0', '\\', '/', ':', '*', '?', '\"', '<', '>', '|', '.', '%', '$', '#'};
+std::array nonValidFilenames{L'\0', L'\\', L'/', L':', L'*', L'?', L'\"', L'<', L'>', L'|', L'.', L'%', L'$', L'#'};
 
-void decodeXMLEscapeLine(std::string& xmlString) {
-    replaceAll(xmlString, "&quot;", "\"");
-    replaceAll(xmlString, "&apos;", "'");
-    replaceAll(xmlString, "&lt;", "<");
-    replaceAll(xmlString, "&gt;", ">");
-    replaceAll(xmlString, "&amp;", "&");
+void decodeXMLEscapeLine(std::wstring& xmlString) {
+    replaceAll(xmlString, L"&quot;", L"\"");
+    replaceAll(xmlString, L"&apos;", L"'");
+    replaceAll(xmlString, L"&lt;", L"<");
+    replaceAll(xmlString, L"&gt;", L">");
+    replaceAll(xmlString, L"&amp;", L"&");
 }
 
-std::string normalizeFolderName(std::string& unsafeTitle) {
+std::string normalizeFolderName(std::wstring unsafeString) {
+    trim(unsafeString);
     std::string retTitle;
-    for (char& chr : unsafeTitle) {
-        if (std::find(nonValidFilenames.begin(), nonValidFilenames.end(), chr) == nonValidFilenames.end()) {
-            retTitle += chr;
+    for (wchar_t chr : unsafeString) {
+        if (chr <= 0x7F && std::find(nonValidFilenames.begin(), nonValidFilenames.end(), chr) == nonValidFilenames.end()) { // ASCII characters have a maximum value of 0x7F
+            retTitle += static_cast<char>(chr);
         }
     }
-    trim(retTitle);
     return retTitle;
 }
 

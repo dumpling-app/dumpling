@@ -11,7 +11,7 @@
 
 OSTime startTime;
 
-std::string dumpingMessage;
+std::wstring dumpingMessage;
 const char* currFilename;
 
 uint64_t totalQueueBytes;
@@ -58,37 +58,37 @@ void showCurrentProgress() {
 
         // Print general dumping message
         WHBLogFreetypeStartScreen();
-        WHBLogFreetypePrint("Dumping In Progress:");
-        WHBLogFreetypePrint("");
+        WHBLogFreetypePrint(L"Dumping In Progress:");
+        WHBLogFreetypePrint(L"");
         WHBLogFreetypePrint(dumpingMessage.c_str());
         if (totalQueueBytes != 0) printEstimateTime();
 
-        WHBLogFreetypePrint("");
-        WHBLogFreetypePrint("Details:");
-        WHBLogFreetypePrintf("File Name = %s", currFilename);
-        WHBLogFreetypePrintf("Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0, formatByteSizes(copiedFileBytes, totalFileBytes).c_str());
-        if (totalQueueBytes != 0) WHBLogFreetypePrintf("Overall Progress = %.1f%% done - %s", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(copiedQueueBytes, totalQueueBytes).c_str());
-        else WHBLogFreetypePrintf("Overall Progress = %s written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
-        WHBLogFreetypePrint("");
-        WHBLogFreetypePrintf("File Progress = %.1f%% done - %s", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(copiedFileBytes, totalFileBytes).c_str());
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrint(L"Details:");
+        WHBLogFreetypePrintf(L"File Name = %S", toWstring(currFilename).c_str());
+        WHBLogFreetypePrintf(L"Current Speed = %.3fMB/s", (double)bytesCopiedSecond/1000000.0);
+        if (totalQueueBytes != 0) WHBLogFreetypePrintf(L"Overall Progress = %.1f%% done - %S", calculatePercentage(copiedQueueBytes, totalQueueBytes), formatByteSizes(copiedQueueBytes, totalQueueBytes).c_str());
+        else WHBLogFreetypePrintf(L"Overall Progress = %S written, %d files copied", formatByteSize(copiedQueueBytes).c_str(), filesCopied);
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrintf(L"File Progress = %.1f%% done - %S", calculatePercentage(copiedFileBytes, totalFileBytes), formatByteSizes(copiedFileBytes, totalFileBytes).c_str());
 
-        /*WHBLogFreetypePrintf("Total Fat32 Time Spent on %.0f files: %.0f ms", profile_getSegment("files"), profile_getSegment("total"));
-        WHBLogFreetypePrintf(" - follow_path: %.0f ms", profile_getSegment("follow_path"));
-        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("followfinds"));
-        WHBLogFreetypePrintf(" - dir_register: %.0f ms", profile_getSegment("dir_register"));
-        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("registerfinds"));
-        WHBLogFreetypePrintf("   - dir_alloc: %.0f ms", profile_getSegment("dir_alloc"));*/
+//        WHBLogFreetypePrintf("Total Fat32 Time Spent on %.0f files: %.0f ms", profile_getSegment("files"), profile_getSegment("total"));
+//        WHBLogFreetypePrintf(" - follow_path: %.0f ms", profile_getSegment("follow_path"));
+//        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("followfinds"));
+//        WHBLogFreetypePrintf(" - dir_register: %.0f ms", profile_getSegment("dir_register"));
+//        WHBLogFreetypePrintf("   - dir_find's time: %.0f ms", profile_getSegment("registerfinds"));
+//        WHBLogFreetypePrintf("   - dir_alloc: %.0f ms", profile_getSegment("dir_alloc"));
 
-        WHBLogFreetypePrint("");
-        WHBLogFreetypeScreenPrintBottom("===============================");
-        WHBLogFreetypeScreenPrintBottom("\uE001 Button = Cancel Dumping");
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypeScreenPrintBottom(L"===============================");
+        WHBLogFreetypeScreenPrintBottom(L"\uE001 Button = Cancel Dumping");
         WHBLogFreetypeDrawScreen();
     }
 }
 
 
 // Set Progress Functions
-void setDumpingStatus(const std::string& message) {
+void setDumpingStatus(const std::wstring& message) {
     dumpingMessage = message;
 }
 
@@ -141,8 +141,8 @@ void printEstimateTime() {
     WHBLogPrint(estimatedTimeStr.c_str());
 }
 
-constexpr const char *suffix[] = {"Bytes", "KB", "MB", "GB"};
-std::string formatByteSize(uint64_t bytes) {
+constexpr const wchar_t *suffix[] = {L"Bytes", L"KB", L"MB", L"GB"};
+std::wstring formatByteSize(uint64_t bytes) {
     constexpr uint8_t length = sizeof(suffix)/sizeof(suffix[0]);
 
     uint32_t i = 0;
@@ -153,12 +153,12 @@ std::string formatByteSize(uint64_t bytes) {
         }
     }
 
-    char output[50];
-    sprintf(output, "%.01lf %s", dblBytes, suffix[i]);
+    wchar_t output[50];
+    swprintf(output, std::size(output), L"%.01lf %S", dblBytes, suffix[i]);
     return output;
 }
 
-std::string formatByteSizes(uint64_t firstBytes, uint64_t secondBytes) {
+std::wstring formatByteSizes(uint64_t firstBytes, uint64_t secondBytes) {
     constexpr uint8_t length = sizeof(suffix)/sizeof(suffix[0]);
 
     uint32_t i = 0;
@@ -171,13 +171,13 @@ std::string formatByteSizes(uint64_t firstBytes, uint64_t secondBytes) {
         }
     }
 
-    char output[50];
-    sprintf(output, "%.01lf/%.01lf %s", dblOther, dblDominant, suffix[i]);
+    wchar_t output[50];
+    swprintf(output, std::size(output), L"%.01lf/%.01lf %S", dblOther, dblDominant, suffix[i]);
     return output;
 }
 
-std::string formatElapsedTime(std::chrono::seconds elapsedSeconds) {
-    std::stringstream fmtTime;
+std::wstring formatElapsedTime(std::chrono::seconds elapsedSeconds) {
+    std::wstringstream fmtTime;
     auto hr = std::chrono::duration_cast<std::chrono::hours>(elapsedSeconds);
     if (hr.count() != 0) {
         elapsedSeconds -= hr;
