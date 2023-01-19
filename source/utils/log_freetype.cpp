@@ -1,14 +1,18 @@
 #include "log_freetype.h"
+#include "libschrift/schrift.h"
 #include <mutex>
 #include <whb/log.h>
-#include <freetype2/ft2build.h>
-#include FT_FREETYPE_H
+#include <cstring>
+#include <cstdarg>
+#include <cwchar>
+#include <unordered_map>
+#include <coreinit/debug.h>
 
 #define CONSOLE_FRAME_HEAP_TAG (0x0002B2B)
 #define NUM_LINES (18)
 #define LINE_LENGTH (128)
 
-char queueBuffer[NUM_LINES][LINE_LENGTH];
+wchar_t queueBuffer[NUM_LINES][LINE_LENGTH];
 uint32_t newLines = 0;
 uint32_t bottomLines = 0;
 
@@ -25,10 +29,10 @@ uint8_t* currDRCFrameBuffer = nullptr;
 
 uint32_t fontColor = 0xFFFFFFFF;
 uint32_t backgroundColor = 0x0B5D5E00;
-FT_Library fontLibrary;
-FT_Face fontFace;
+SFT fontFace = {};
+int32_t cursorSpaceWidth = 0;
 uint8_t* fontBuffer;
-FT_Pos cursorSpaceWidth = 0;
+std::unordered_map<SFT_Glyph, SFT_Image> glyphCache;
 
 #define ENABLE_THREADSAFE FALSE
 #if ENABLE_THREADSAFE
@@ -38,16 +42,16 @@ std::mutex _mutex;
 #define DEBUG_THREADSAFE do {} while(0)
 #endif
 
-static void FreetypeSetLine(uint32_t position, const char *line) {
+static void FreetypeSetLine(uint32_t position, const wchar_t *line) {
     DEBUG_THREADSAFE;
-    uint32_t length = strlen(line);
+    size_t length = wcslen(line);
     memcpy(queueBuffer[newLines - 1], line, length);
-    queueBuffer[newLines - 1][length] = '\0';
+    queueBuffer[newLines - 1][length] = L'\0';
 }
 
 static void FreetypeAddLine(const char *line) {
     DEBUG_THREADSAFE;
-    uint32_t length = strlen(line);
+    size_t length = strlen(line);
 
     if (length > LINE_LENGTH) {
         length = LINE_LENGTH - 1;
@@ -58,153 +62,164 @@ static void FreetypeAddLine(const char *line) {
             memcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
         }
 
-        memcpy(queueBuffer[newLines - 1], line, length);
-        queueBuffer[newLines - 1][length] = '\0';
+        std::mbstowcs(queueBuffer[newLines - 1], line, length);
+        queueBuffer[newLines - 1][length] = L'\0';
     }
     else {
-        memcpy(queueBuffer[newLines], line, length);
-        queueBuffer[newLines][length] = '\0';
+        std::mbstowcs(queueBuffer[newLines], line, length);
+        queueBuffer[newLines][length] = L'\0';
         newLines++;
     }
 }
 
-void drawPixel(int32_t x, int32_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    uint8_t opacity = a;
-    uint8_t backgroundOpacity = (255-opacity);
-    {
-        uint32_t width = 1280;
-        uint32_t v = (x + y * width) * 4;
-        currTVFrameBuffer[v + 0] = (r * opacity + (backgroundOpacity * currTVFrameBuffer[v + 0]))/255;
-        currTVFrameBuffer[v + 1] = (g * opacity + (backgroundOpacity * currTVFrameBuffer[v + 1]))/255;
-        currTVFrameBuffer[v + 2] = (b * opacity + (backgroundOpacity * currTVFrameBuffer[v + 2]))/255;
-        currTVFrameBuffer[v + 3] = a;
+static void FreetypeAddLine(const wchar_t *line) {
+    DEBUG_THREADSAFE;
+    size_t length = wcslen(line);
+
+    if (length > LINE_LENGTH) {
+        length = LINE_LENGTH - 1;
     }
 
-    {
-        uint32_t width = 896;
-        uint32_t v = (x + y * width) * 4;
-        currDRCFrameBuffer[v + 0] = (r * opacity + (backgroundOpacity * currDRCFrameBuffer[v + 0]))/255;
-        currDRCFrameBuffer[v + 1] = (g * opacity + (backgroundOpacity * currDRCFrameBuffer[v + 1]))/255;
-        currDRCFrameBuffer[v + 2] = (b * opacity + (backgroundOpacity * currDRCFrameBuffer[v + 2]))/255;
-        currDRCFrameBuffer[v + 3] = a;
+    if (newLines == NUM_LINES) {
+        for (uint32_t i=0; i<NUM_LINES-1; i++) {
+            memcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
+        }
+
+        wmemcpy(queueBuffer[newLines - 1], line, length);
+        queueBuffer[newLines - 1][length] = L'\0';
+    }
+    else {
+        wmemcpy(queueBuffer[newLines], line, length);
+        queueBuffer[newLines][length] = L'\0';
+        newLines++;
     }
 }
 
-void drawBitmap(FT_Bitmap *bitmap, FT_Int x, FT_Int y) {
+void drawPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+    {
+        constexpr uint32_t width = 1280;
+        uint32_t v = (x + y * width) * 4;
+        currTVFrameBuffer[v + 0] = r;
+        currTVFrameBuffer[v + 1] = g;
+        currTVFrameBuffer[v + 2] = b;
+    }
+
+    {
+        constexpr uint32_t width = 896;
+        uint32_t v = (x + y * width) * 4;
+        currDRCFrameBuffer[v + 0] = r;
+        currDRCFrameBuffer[v + 1] = g;
+        currDRCFrameBuffer[v + 2] = b;
+    }
+}
+
+void drawPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    const float letterOpacity = (float)a/255.0f;
+    const float backgroundOpacity = 1.0f-letterOpacity;
+    float R = ((float)r * letterOpacity);
+    float G = ((float)g * letterOpacity);
+    float B = ((float)b * letterOpacity);
+
+    {
+        constexpr uint32_t width = 1280;
+        uint32_t v = (x + y * width) * 4;
+        currTVFrameBuffer[v + 0] = (uint8_t)(R + ((float)currTVFrameBuffer[v + 0] * backgroundOpacity));
+        currTVFrameBuffer[v + 1] = (uint8_t)(G + ((float)currTVFrameBuffer[v + 1] * backgroundOpacity));
+        currTVFrameBuffer[v + 2] = (uint8_t)(B + ((float)currTVFrameBuffer[v + 2] * backgroundOpacity));
+    }
+
+    {
+        constexpr uint32_t width = 896;
+        uint32_t v = (x + y * width) * 4;
+        currDRCFrameBuffer[v + 0] = (uint8_t)(R + ((float)currDRCFrameBuffer[v + 0] * backgroundOpacity));
+        currDRCFrameBuffer[v + 1] = (uint8_t)(G + ((float)currDRCFrameBuffer[v + 1] * backgroundOpacity));
+        currDRCFrameBuffer[v + 2] = (uint8_t)(B + ((float)currDRCFrameBuffer[v + 2] * backgroundOpacity));
+    }
+}
+
+void drawBitmap(SFT_Image *bitmap, int32_t x, int32_t y) {
     uint8_t r = (fontColor >> 16) & 0xff;
     uint8_t g = (fontColor >> 8) & 0xff;
     uint8_t b = (fontColor >> 0) & 0xff;
-    uint8_t a = 0xFF;
 
-    FT_Int y_max = y + bitmap->rows;
+    int32_t x_max = x + bitmap->width;
+    int32_t y_max = y + bitmap->height;
 
-    switch (bitmap->pixel_mode) {
-        case FT_PIXEL_MODE_GRAY: {
-            FT_Int x_max = x + bitmap->width;
-            for (FT_Int i=x, p=0; i < x_max; i++, p++) {
-                for (FT_Int j=y, q=0; j < y_max; j++, q++) {
-                    if (i < 0 || j < 0 || i >= 854 || j >= 480) continue;
+    for (int32_t i=x, p=0; i < x_max; i++, p++) {
+        for (int32_t j=y, q=0; j < y_max; j++, q++) {
+            if (i < 0 || j < 0 || i >= 854 || j >= 480) continue;
 
-                    uint8_t col = bitmap->buffer[q * bitmap->pitch + p];
-                    if (col == 0) continue;
-
-                    uint8_t pixelOpacity = col;
-                    drawPixel(i, j, r, g, b, (a+pixelOpacity)/2);
-                }
-            }
-            break;
-        }
-        case FT_PIXEL_MODE_LCD: {
-            FT_Int x_max = x + bitmap->width / 3;
-            for (FT_Int i=x, p=0; i < x_max; i++, p++) {
-                for (FT_Int j=y, q=0; j < y_max; j++, q++) {
-                    if (i < 0 || j < 0 || i >= 854 || j >= 480)
-                        continue;
-                    uint8_t cr = bitmap->buffer[q * bitmap->pitch + p * 3 + 0];
-                    uint8_t cg = bitmap->buffer[q * bitmap->pitch + p * 3 + 1];
-                    uint8_t cb = bitmap->buffer[q * bitmap->pitch + p * 3 + 2];
-
-                    if ((cr | cg | cb) == 0)
-                        continue;
-                    drawPixel(i, j, cr, cg, cb, 255);
-                }
-            }
-            break;
+            uint8_t col = ((uint8_t*)bitmap->pixels)[q * bitmap->width + p];
+            if (col == 0) continue;
+            else if (col == 0xFF) drawPixel(i, j, r, g, b);
+            else drawPixel(i, j, r, g, b, col);
         }
     }
 }
 
-int32_t renderLine(int32_t x, int32_t y, char *string, bool wrap) {
-    FT_GlyphSlot slot = fontFace->glyph;
-    int32_t pen_x = x;
-    int32_t pen_y = y;
-    FT_UInt previous_glyph = 0;
+uint32_t renderLine(uint32_t x, uint32_t y, const wchar_t *string, bool wrap) {
+    int32_t pen_x = (int32_t)x;
+    int32_t pen_y = (int32_t)y;
 
-    while (*string) {
-        uint32_t buf = *string++;
-
-        if ((buf >> 6) == 3) {
-            uint8_t b1 = buf & 0xFF;
-            uint8_t b2 = *string++;
-            uint8_t b3 = *string++;
-            if ((buf & 0xF0) == 0xC0) {
-                if ((b2 & 0xC0) == 0x80) b2 &= 0x3F;
-                buf = ((b1 & 0xF) << 6) | b2;
-            }
-            else if ((buf & 0xF0) == 0xD0) {
-                if ((b2 & 0xC0) == 0x80) b2 &= 0x3F;
-                buf = 0x400 | ((b1 & 0xF) << 6) | b2;
-            }
-            else if ((buf & 0xF0) == 0xE0) {
-                if ((b2 & 0xC0) == 0x80) b2 &= 0x3F;
-                if ((b3 & 0xC0) == 0x80) b3 &= 0x3F;
-                buf = ((b1 & 0xF) << 12) | (b2 << 6) | b3;
-            }
-        }
-        else if (buf & 0x80) {
-            string++;
+    for (; *string; string++) {
+        SFT_Glyph gid;
+        if (sft_lookup(&fontFace, *string, &gid) == -1) {
+            OSReport("[log_freetype] Failed to do character lookup!\n");
             continue;
         }
 
-        if (buf == '\n') {
-            pen_y += (fontFace->size->metrics.height >> 6);
-            pen_x = x;
+        SFT_GMetrics mtx;
+        if (sft_gmetrics(&fontFace, gid, &mtx) == -1) {
+            OSReport("[log_freetype] Failed to extract metrics from character!\n");
             continue;
         }
 
-        FT_UInt glyph_index = FT_Get_Char_Index(fontFace, buf);
-
-        if (FT_HAS_KERNING(fontFace)) {
-            FT_Vector vector;
-            FT_Get_Kerning(fontFace, previous_glyph, glyph_index, FT_KERNING_DEFAULT, &vector);
-            pen_x += (vector.x >> 6);
+        if (*string == L'\n') {
+            pen_y += mtx.minHeight;
+            pen_x = (int32_t)x;
+            continue;
         }
 
-        if (FT_Load_Glyph(fontFace, glyph_index, FT_LOAD_DEFAULT)) continue;
+        if (!glyphCache.contains(gid)) {
+            int32_t textureWidth = (mtx.minWidth + 3) & ~3;
+            int32_t textureHeight = mtx.minHeight;
 
-        if (FT_Render_Glyph(fontFace->glyph, FT_RENDER_MODE_NORMAL)) continue;
+            SFT_Image img{
+                    .pixels = nullptr,
+                    .width = textureWidth,
+                    .height = textureHeight
+            };
 
-        if ((pen_x + (slot->advance.x >> 6)) > 853) {
+            if (textureWidth == 0) textureWidth = 4;
+            if (textureHeight == 0) textureHeight = 4;
+
+            img.pixels = malloc((uint32_t)(img.width * img.height));
+            if (img.pixels == nullptr || sft_render(&fontFace, gid, img) == -1) {
+                OSReport("[log_freetype] Failed to render a character!\n");
+                continue;
+            }
+            glyphCache.emplace(gid, img);
+        }
+
+        if ((pen_x + (int32_t)mtx.advanceWidth) > 853) {
             if (wrap) {
-                pen_y += (fontFace->size->metrics.height >> 6);
+                pen_y += (int32_t)fontFace.yOffset;
                 pen_x = x;
             }
             else {
-                return pen_x;
+                return pen_y;
             }
         }
 
-        drawBitmap(&slot->bitmap, pen_x + slot->bitmap_left, (fontFace->height >> 6) + pen_y - slot->bitmap_top);
-
-        if (x == pen_x && buf == ' ' && cursorSpaceWidth != 0) {
-            pen_x += (cursorSpaceWidth >> 6);
+        drawBitmap(&glyphCache[gid], pen_x + (int32_t)mtx.leftSideBearing, pen_y + (int32_t)mtx.yOffset);
+        if ((int32_t)x == pen_x && *string == ' ' && cursorSpaceWidth != 0) {
+            pen_x += cursorSpaceWidth;
         }
         else {
-            pen_x += (slot->advance.x >> 6);
+            pen_x += (int32_t)mtx.advanceWidth;
         }
-        previous_glyph = glyph_index;
     }
-    return pen_x;
+    return pen_y;
 }
 
 void WHBLogFreetypeDraw() {
@@ -215,8 +230,8 @@ void WHBLogFreetypeDraw() {
     const int32_t x = 0;
 
     DEBUG_THREADSAFE;
-    for (int32_t y=0; y<NUM_LINES; y++) {
-        renderLine((x+4)*12, (y+1)*24, queueBuffer[y], false);
+    for (uint32_t y=0; y<NUM_LINES; y++) {
+        renderLine((x+2)*12, (y+2)*24, queueBuffer[y], false);
     }
 
     DCFlushRange(currTVFrameBuffer, frameBufferTVSize);
@@ -282,21 +297,19 @@ bool WHBLogFreetypeInit() {
     ProcUIRegisterCallback(PROCUI_CALLBACK_ACQUIRE, FreetypeProcCallbackAcquired, nullptr, 100);
     ProcUIRegisterCallback(PROCUI_CALLBACK_RELEASE, FreetypeProcCallbackReleased, nullptr, 100);
 
-    // Initialize freetype2
-    if (FT_Error result = FT_Init_FreeType(&fontLibrary); result != 0) {
-        return true;
-    }
+    uint32_t fontBufferSize;
+    OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, (void**)&fontBuffer, &fontBufferSize);
 
-    uint32_t fontSize;
-    OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, (void**)&fontBuffer, &fontSize);
+    // Initialize libschrift
+    fontFace.xScale = 20;
+    fontFace.yScale = 20;
+    fontFace.flags = SFT_DOWNWARD_Y;
+    fontFace.font = sft_loadmem(fontBuffer, fontBufferSize);
 
-    if (FT_Error result = FT_New_Memory_Face(fontLibrary, fontBuffer, fontSize, 0, &fontFace); result != 0) {
+    if (fontFace.font != nullptr) {
         return true;
     }
-    if (FT_Error result = FT_Select_Charmap(fontFace, FT_ENCODING_UNICODE); result != 0) {
-        return true;
-    }
-    if (WHBLogFreetypeSetFontSize(22, 0)) {
+    if (WHBLogFreetypeSetFontSize(20)) {
         return true;
     }
 
@@ -308,7 +321,7 @@ void WHBLogFreetypeClear() {
     DEBUG_THREADSAFE;
     newLines = 0;
     bottomLines = 0;
-    memset(queueBuffer, '\0', sizeof(queueBuffer));
+    wmemset((wchar_t*)queueBuffer, L'\0', NUM_LINES * LINE_LENGTH);
 }
 
 void WHBLogFreetypeStartScreen() {
@@ -323,46 +336,46 @@ uint32_t WHBLogFreetypeGetScreenPosition() {
     return newLines;
 }
 
-void WHBLogFreetypePrintfAtPosition(uint32_t position, const char *fmt, ...) {
+void WHBLogFreetypePrintfAtPosition(uint32_t position, const wchar_t *fmt, ...) {
     DEBUG_THREADSAFE;
     if (position < 0 || position > NUM_LINES) return;
 
     va_list va;
     va_start(va, fmt);
-    vsnprintf(queueBuffer[position], LINE_LENGTH, fmt, va);
+    vswprintf(queueBuffer[position], LINE_LENGTH, fmt, va);
     va_end(va);
 }
 
-void WHBLogFreetypePrintf(const char *fmt, ...) {
-    char formattedLine[LINE_LENGTH];
+void WHBLogFreetypePrintf(const wchar_t *fmt, ...) {
+    wchar_t formattedLine[LINE_LENGTH];
     
     va_list va;
     va_start(va, fmt);
-    vsnprintf(formattedLine, LINE_LENGTH, fmt, va);
+    vswprintf(formattedLine, LINE_LENGTH, fmt, va);
     va_end(va);
     FreetypeAddLine(formattedLine);
 }
 
-void WHBLogFreetypePrintAtPosition(uint32_t position, const char *line) {
+void WHBLogFreetypePrintAtPosition(uint32_t position, const wchar_t *line) {
     if (position < 0 || position > NUM_LINES) return;
 
     FreetypeSetLine(position, line);
 }
 
-void WHBLogFreetypeScreenPrintBottom(const char *line) {
+void WHBLogFreetypeScreenPrintBottom(const wchar_t *line) {
     DEBUG_THREADSAFE;
-    uint32_t length = strlen(line);
+    uint32_t length = wcslen(line);
 
     if (length > LINE_LENGTH) {
         length = LINE_LENGTH - 1;
     }
     
     for (uint32_t i=(NUM_LINES-1)-bottomLines+1; i<NUM_LINES; i++) {
-        memcpy(queueBuffer[i-1], queueBuffer[i], LINE_LENGTH);
+        wmemcpy(queueBuffer[i-1], queueBuffer[i], LINE_LENGTH);
     }
 
-    memcpy(queueBuffer[NUM_LINES - 1], line, length);
-    queueBuffer[NUM_LINES - 1][length] = '\0';
+    wmemcpy(queueBuffer[NUM_LINES - 1], line, length);
+    queueBuffer[NUM_LINES - 1][length] = L'\0';
     if (bottomLines < NUM_LINES-1) bottomLines++;
 }
 
@@ -370,7 +383,7 @@ uint32_t WHBLogFreetypeScreenSize() {
     return NUM_LINES;
 }
 
-void WHBLogFreetypePrint(const char* line) {
+void WHBLogFreetypePrint(const wchar_t* line) {
     FreetypeAddLine(line);
 }
 
@@ -382,20 +395,36 @@ void WHBLogFreetypeSetFontColor(uint32_t color) {
     fontColor = color;
 }
 
-bool WHBLogFreetypeSetFontSize(uint8_t width, uint8_t height) {
-    if (FT_Set_Pixel_Sizes(fontFace, width, height) != 0) return true;
+bool WHBLogFreetypeSetFontSize(uint8_t size) {
+    fontFace.xScale = size;
+    fontFace.yScale = size;
 
-    FT_UInt glyph_index = FT_Get_Char_Index(fontFace, '>');
+    SFT_LMetrics lmetrics;
+    sft_lmetrics(&fontFace, &lmetrics);
 
-    if (FT_Load_Glyph(fontFace, glyph_index, FT_LOAD_DEFAULT)) return true;
-    if (FT_Render_Glyph(fontFace->glyph, FT_RENDER_MODE_NORMAL)) return true;
-    cursorSpaceWidth = fontFace->glyph->advance.x;
-    return false;
+    SFT_Glyph gid;
+    SFT_GMetrics mtx;
+    if (sft_lookup(&fontFace, L'>', &gid) == -1 || sft_gmetrics(&fontFace, gid, &mtx) == -1) {
+        OSReport("[log_freetype] Failed to lookup the character for the selector list!\n");
+        return false;
+    }
+
+    cursorSpaceWidth = (int32_t)mtx.advanceWidth;
+    for (auto& glyph : glyphCache) {
+        free(glyph.second.pixels);
+    }
+    glyphCache.clear();
+    return true;
 }
 
 void WHBLogFreetypeFree() {
-    FT_Done_Face(fontFace);
-    FT_Done_FreeType(fontLibrary);
+    sft_freefont(fontFace.font);
+    fontFace.font = nullptr;
+    fontFace = {};
+
+    for (auto& glyph : glyphCache) {
+        free(glyph.second.pixels);
+    }
 
     if (freetypeHasForeground) {
         // OSScreenShutdown();

@@ -43,7 +43,8 @@ BUILD		:=	build
 SOURCES		:=	source/app \
 				source/app/interfaces \
 				source/utils \
-				source/utils/fatfs
+				source/utils/fatfs \
+				source/utils/libschrift
 DATA		:=	data
 INCLUDES	:=	include
 CONTENT		:=
@@ -55,7 +56,7 @@ DRC_SPLASH	:=	assets/dumpling-drc-boot.png
 # options for code generation
 #-------------------------------------------------------------------------------
 CFLAGS		:=	-g -Wall -Os -ffunction-sections -fdata-sections -Wno-narrowing \
-				$(MACHDEP) $(shell $(DEVKITPRO)/portlibs/ppc/bin/freetype-config --cflags)
+				$(MACHDEP)
 
 CFLAGS		+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -D__wiiu__
 
@@ -76,7 +77,7 @@ CXXFLAGS	:=	$(CFLAGS) -std=c++20
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS		:=	-lstdc++ -lwut -lmocha $(shell $(DEVKITPRO)/portlibs/ppc/bin/freetype-config --libs)
+LIBS		:=	-lstdc++ -lwut -lmocha
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level

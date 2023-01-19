@@ -52,3 +52,4 @@ You don't need to run/have Mocha CFW or Haxchi, just launch Dumpling from the Ho
 ## License
 Dumpling is licensed under [MIT](https://github.com/emiyl/dumpling/blob/master/LICENSE.md).  
 Dumpling uses [fatfs](http://elm-chan.org/fsw/ff/00index_e.html), see its BSD-styled license [here](https://github.com/emiyl/dumpling/blob/master/source/utils/fatfs/LICENSE.txt).
+Dumpling also includes [libschrift](https://github.com/tomolt/libschrift), see its ISC-styled license [here](https://github.com/tomolt/libschrift/blob/master/LICENSE).
