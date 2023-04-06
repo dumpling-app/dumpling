@@ -16,7 +16,7 @@ void showLoadingScreen() {
     WHBLogFreetypeSetBackgroundColor(0x0b5d5e00);
     WHBLogFreetypeSetFontColor(0xFFFFFFFF);
     WHBLogFreetypeSetFontSize(22);
-    WHBLogPrint("Dumpling V2.6.2");
+    WHBLogPrint("Dumpling V2.6.3");
     WHBLogPrint("-- Made by Crementif and Emiyl --");
     WHBLogPrint("");
     WHBLogFreetypeDraw();
@@ -31,7 +31,7 @@ void showMainMenu() {
     while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
-        WHBLogFreetypePrint(L"Dumpling V2.6.2");
+        WHBLogFreetypePrint(L"Dumpling V2.6.3");
         WHBLogFreetypePrint(L"===============================");
         WHBLogFreetypePrintf(L"%C Dump a game disc", OPTION(0));
         WHBLogFreetypePrintf(L"%C Dump digital games", OPTION(1));
@@ -39,7 +39,7 @@ void showMainMenu() {
         WHBLogFreetypePrintf(L"%C Dump files to use Cemu online", OPTION(2));
         WHBLogFreetypePrintf(L"%C Dump Wii U applications (e.g. Friend List, eShop etc.)", OPTION(3));
         // WHBLogFreetypePrintf("%C Dump Amiibo Files", OPTION(4));
-        WHBLogFreetypePrintf(L"");
+        WHBLogFreetypePrint(L"");
         WHBLogFreetypePrintf(L"%C Dump only Base files of a game", OPTION(4));
         WHBLogFreetypePrintf(L"%C Dump only Update files of a game", OPTION(5));
         WHBLogFreetypePrintf(L"%C Dump only DLC files of a game", OPTION(6));

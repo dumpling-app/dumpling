@@ -58,6 +58,9 @@ bool getTitleMetaXml(titleEntry& title, titlePart& part) {
             title.shortTitle = shortTitleJapan;
         }
         title.folderName = normalizeFolderName(title.shortTitle);
+        if (title.folderName.size() <= 2) {
+            title.folderName = normalizeFolderName(title.productCode);
+        }
         part.outputPath += title.folderName;
         return true;
     }
@@ -118,6 +121,9 @@ bool getSaveMetaXml(titleEntry& title, savePart& part) {
             title.shortTitle = shortTitleJapan;
         }
         title.folderName = normalizeFolderName(title.shortTitle);
+        if (title.folderName.size() <= 2) {
+            title.folderName = normalizeFolderName(title.productCode);
+        }
         part.outputPath = "/Saves/" + title.folderName + "/" + part.outputPath;
         return true;
     }
@@ -186,7 +192,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
     struct dirent* highDirEntry;
     while ((highDirEntry = readdir(highDirHandle)) != nullptr) {
-        if ((highDirEntry->d_type & DT_DIR) != DT_DIR) continue;
+        if (highDirEntry->d_type != DT_DIR) continue;
         if (strlen(highDirEntry->d_name) != 8) continue;
 
         uint32_t highTitleId = strtoul((const char*)highDirEntry->d_name, nullptr, 16);
@@ -199,7 +205,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
         struct dirent* lowDirEntry;
         while ((lowDirEntry = readdir(lowDirHandle)) != nullptr) {
-            if ((lowDirEntry->d_type & DT_DIR) != DT_DIR) continue;
+            if (lowDirEntry->d_type != DT_DIR) continue;
             if (strlen(lowDirEntry->d_name) != 8) continue;
 
             uint32_t lowTitleId = strtoul((const char*)&lowDirEntry->d_name, nullptr, 16);
@@ -214,7 +220,7 @@ bool getSaveList(const std::string& saveDirPath) {
 
             struct dirent* userDirEntry;
             while ((userDirEntry = readdir(userDirHandle)) != nullptr) {
-                if ((userDirEntry->d_type & DT_DIR) != DT_DIR) continue;
+                if (userDirEntry->d_type != DT_DIR) continue;
 
                 std::string userDirPath = lowDirPath + "user/" + userDirEntry->d_name;
 
@@ -225,7 +231,7 @@ bool getSaveList(const std::string& saveDirPath) {
                 
                 struct dirent* contentDirEntry;
                 while ((contentDirEntry = readdir(contentDirHandle)) != nullptr) {
-                    if ((contentDirEntry->d_type & DT_DIR) == DT_DIR || (contentDirEntry->d_type & DT_REG) == DT_REG) {
+                    if (contentDirEntry->d_type == DT_DIR || contentDirEntry->d_type == DT_REG) {
                         // WHBLogPrint((userDirPath + contentDirEntry->d_name).c_str());
                         // WHBLogFreetypeDraw();
                         // sleep_for(500ms);

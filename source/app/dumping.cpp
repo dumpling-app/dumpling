@@ -241,23 +241,17 @@ bool walkDirectoryRecursive(const std::string& srcPath, const std::string& destP
         if (dirEntry != nullptr) {
             std::string entrySrcPath = srcPath + "/" + dirEntry->d_name;
             std::string entryDstPath = destPath + "/" + dirEntry->d_name;
-            // Use lstat since readdir returns DT_REG for symlinks
-            struct stat fileStat{};
-            if (lstat(entrySrcPath.c_str(), &fileStat) != 0) {
-                setErrorPrompt(L"Unknown Error "+std::to_wstring(errno)+L":\nCouldn't check type of file/folder!\n"+toWstring(entrySrcPath));
-                return false;
-            }
-            if (S_ISLNK(fileStat.st_mode)) {
+            if (dirEntry->d_type == DT_LNK) {
                 continue;
             }
-            else if (S_ISREG(fileStat.st_mode)) {
+            else if (dirEntry->d_type == DT_REG) {
                 // Copy file
                 if (!callback(WALK_EVENT::FILE, dirEntry->d_name, entrySrcPath, entryDstPath)) {
                     closedir(dirHandle);
                     return false;
                 }
             }
-            else if (S_ISDIR(fileStat.st_mode)) {
+            else if (dirEntry->d_type == DT_DIR) {
                 // Ignore root and parent folder entries
                 if (strcmp(dirEntry->d_name, ".") == 0 || strcmp(dirEntry->d_name, "..") == 0) continue;
 
