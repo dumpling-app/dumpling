@@ -34,34 +34,14 @@ bool unmountDefaultDevoptab() {
     return true;
 }
 
-// Wii files hook
-typedef int (*devoptab_open)(struct _reent *r, void *fileStruct, const char *path, int flags, int mode);
-devoptab_open mlc_open = nullptr;
-#define O_OPEN_UNENCRYPTED 0x4000000
-int hook_openWiiFiles(struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
-    std::string strPath(path);
-    int newFlags = flags;
-    if (strPath.length() >= 10 && strPath.ends_with(".nfs")) {
-        newFlags = newFlags | O_OPEN_UNENCRYPTED;
-    }
-    return mlc_open(r, fileStruct, path, newFlags, mode);
-}
-
-bool installWiiFilesHook(const char* dev_name) {
-    auto* dev = const_cast<devoptab_t*>(GetDeviceOpTab(dev_name));
-    if (dev == nullptr) return false;
-    mlc_open = dev->open_r;
-    dev->open_r = hook_openWiiFiles;
-    return true;
-}
 
 bool mountSystemDrives() {
     WHBLogPrint("Mounting system drives...");
     WHBLogFreetypeDraw();
     if (USE_LIBMOCHA()) {
         //unmountDefaultDevoptab();
-        if (Mocha_MountFS("storage_mlc01", nullptr, "/vol/storage_mlc01") == MOCHA_RESULT_SUCCESS && installWiiFilesHook("storage_mlc01:")) systemMLCMounted = true;
-        if (Mocha_MountFS("storage_usb01", nullptr, "/vol/storage_usb01") == MOCHA_RESULT_SUCCESS && installWiiFilesHook("storage_usb01:")) systemUSBMounted = true;
+        if (Mocha_MountFS("storage_mlc01", nullptr, "/vol/storage_mlc01") == MOCHA_RESULT_SUCCESS) systemMLCMounted = true;
+        if (Mocha_MountFS("storage_usb01", nullptr, "/vol/storage_usb01") == MOCHA_RESULT_SUCCESS) systemUSBMounted = true;
     }
     else {
         systemMLCMounted = true;

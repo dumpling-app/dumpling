@@ -16,11 +16,14 @@
 
 #include <mocha/mocha.h>
 #include <mocha/otp.h>
+#include <sys/unistd.h>
 
 // Dumping Functions
 #define BUFFER_SIZE_ALIGNMENT 64
 #define BUFFER_SIZE (1024 * BUFFER_SIZE_ALIGNMENT * 4)
+// not sure which one is better
 static_assert(BUFFER_SIZE % 0x8000 == 0, "Buffer size needs to be multiple of 0x8000 to properly read disc sections");
+static_assert(BUFFER_SIZE % 0x10000 == 0, "Buffer size needs to be multiple of 0x10000 to properly read disc sections");
 
 
 enum class WALK_EVENT {
@@ -53,6 +56,7 @@ bool callback_scanBuffer(uint64_t& totalBytes, uint64_t bufferSize) {
     return true;
 }
 
+#define O_OPEN_UNENCRYPTED 0x4000000
 bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, const char* filename, const std::string& srcPath, const std::string& destPath) {
     // Check if file is an actual file first
     struct stat fileStat{};
@@ -67,8 +71,8 @@ bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, con
         return false;
     }
 
-    FILE* readHandle = fopen(srcPath.c_str(), "rb");
-    if (readHandle == nullptr) {
+    int readHandle = open(srcPath.c_str(), srcPath.length() >= 10 && srcPath.ends_with(".nfs") ? O_OPEN_UNENCRYPTED | O_RDONLY : O_RDONLY);
+    if (readHandle == -1) {
         std::wstring errorMessage;
         errorMessage += L"Couldn't open the file to copy from!\n";
         if (errno == EIO) errorMessage += L"For discs: Make sure that its clean!\nDumping is very sensitive to tiny errors!\n";
@@ -84,31 +88,29 @@ bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, con
     while(true) {
         uint8_t* copyBuffer = (uint8_t*)aligned_alloc(BUFFER_SIZE_ALIGNMENT, BUFFER_SIZE);
         if (copyBuffer == nullptr) {
-            fclose(readHandle);
+            close(readHandle);
             setErrorPrompt(L"Failed to allocate memory for chunk buffer!");
             return false;
         }
 
-        size_t bytesRead = fread(copyBuffer, sizeof(uint8_t), BUFFER_SIZE, readHandle);
-        if (bytesRead != BUFFER_SIZE) {
-            if (int fileError = ferror(readHandle); fileError != 0) {
-                free(copyBuffer);
-                copyBuffer = nullptr;
-                fclose(readHandle);
-                std::wstring errorMessage;
-                errorMessage += L"Failed to read all data from this file!\n";
-                if (errno == EIO) errorMessage += L"For discs: Make sure that its clean!\nDumping is very sensitive to tiny errors!\n";
-                errorMessage += L"Error "+std::to_wstring(errno)+L" when reading data from:\n";
-                errorMessage += toWstring(srcPath);
-                setErrorPrompt(errorMessage);
-                return false;
-            }
+        ssize_t bytesRead = read(readHandle, copyBuffer, BUFFER_SIZE);
+        if (bytesRead == -1) {
+            free(copyBuffer);
+            copyBuffer = nullptr;
+            close(readHandle);
+            std::wstring errorMessage;
+            errorMessage += L"Failed to read all data from this file!\n";
+            if (errno == EIO) errorMessage += L"For discs: Make sure that its clean!\nDumping is very sensitive to tiny errors!\n";
+            errorMessage += L"Error "+std::to_wstring(errno)+L" when reading data from:\n";
+            errorMessage += toWstring(srcPath);
+            setErrorPrompt(errorMessage);
+            return false;
         }
 
-        bool endOfFile = feof(readHandle) != 0;
+        bool endOfFile = bytesRead < BUFFER_SIZE;
         if (!interface->submitWriteFile(destPath, fileStat.st_size, copyBuffer, bytesRead, endOfFile)) {
             free(copyBuffer);
-            fclose(readHandle);
+            close(readHandle);
             setErrorPrompt(*interface->getStopError());
             return false;
         }
@@ -125,7 +127,7 @@ bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, con
             WHBLogPrint("The app (likely) isn't frozen!");
             WHBLogPrint("This should take a minute at most!");
             WHBLogFreetypeDraw();
-            fclose(readHandle);
+            close(readHandle);
             cancelledDumping = true;
             return false;
         }
@@ -135,7 +137,7 @@ bool callback_copyFile(TransferInterface* interface, bool& cancelledDumping, con
         }
     }
 
-    fclose(readHandle);
+    close(readHandle);
     return true;
 }
 
