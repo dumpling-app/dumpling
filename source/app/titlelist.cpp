@@ -84,12 +84,12 @@ void showTitleList(const wchar_t* message, dumpingConfig config) {
                 if (listOffset+listSize == selectedEntry) listOffset++;
                 break;
             }
-            if (pressedOk()) {
+            if (pressedOk() && !printTitles.empty()) {
                 printTitles[selectedEntry].queued = !printTitles[selectedEntry].queued;
                 if (!config.queue) startQueueDump = true;
                 break;
             }
-            if (pressedStart() && config.queue) {
+            if (pressedStart() && !printTitles.empty() && config.queue) {
                 startQueueDump = true;
                 break;
             }
