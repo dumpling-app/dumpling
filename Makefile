@@ -185,6 +185,10 @@ discimg:
 	@echo Recreated fatfs disk image!
 	@$(MAKE) USE_DEBUG_STUBS=1 USE_RAMDISK=1 -f $(CURDIR)/Makefile
 
+withoutdiscimg:
+	@$(shell [ -d $(BUILD) ] || mkdir -p $(BUILD))
+	@$(MAKE) USE_DEBUG_STUBS=1 USE_RAMDISK=1 -f $(CURDIR)/Makefile
+
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...

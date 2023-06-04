@@ -1,5 +1,7 @@
 #include "ffcache.h"
 
+#include <coreinit/thread.h>
+#include <coreinit/time.h>
 #include <mocha/fsa.h>
 #include <memory.h>
 #include <coreinit/debug.h>
