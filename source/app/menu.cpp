@@ -45,6 +45,8 @@ void showMainMenu() {
         WHBLogFreetypePrintf(L"%C Dump only DLC files of a game", OPTION(6));
         WHBLogFreetypePrintf(L"%C Dump only Save files of a game", OPTION(7));
         WHBLogFreetypePrintf(L"%C Dump whole MLC (everything stored on internal storage)", OPTION(8));
+        WHBLogFreetypePrint(L"");
+        WHBLogFreetypePrintf(L"%C Dump all SpotPass data", OPTION(9));
         WHBLogFreetypeScreenPrintBottom(L"===============================");
         WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option \uE001 Button = Exit Dumpling");
         WHBLogFreetypeScreenPrintBottom(L"");
@@ -60,7 +62,7 @@ void showMainMenu() {
                 selectedOption--;
                 break;
             }
-            if (navigatedDown() && selectedOption < 8) {
+            if (navigatedDown() && selectedOption < 9) {
                 selectedOption++;
                 break;
             }
@@ -110,6 +112,7 @@ void showMainMenu() {
             dumpMLC();
             break;
         case 9:
+            dumpSpotpass();
             break;
         case 10:
             break;

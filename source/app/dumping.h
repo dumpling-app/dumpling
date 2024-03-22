@@ -5,4 +5,5 @@ bool dumpDisc();
 void dumpMLC();
 void dumpOnlineFiles();
 void dumpAmiibo();
+void dumpSpotpass();
 void cleanDumpingProcess();
