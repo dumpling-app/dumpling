@@ -10,14 +10,21 @@ bool loadUsers() {
     nn::act::SlotNo currentAccount = nn::act::GetSlotNo();
     nn::act::SlotNo defaultAccount = nn::act::GetDefaultAccount();
 
-    for (nn::act::SlotNo i=1; i<13; i++) {
+    for (nn::act::SlotNo i = 1; i < 13; i++) {
         if (nn::act::IsSlotOccupied(i) == true) {
             userAccount newAccount;
-            
+
             // Extract account info
-            char16_t miiName[nn::act::MiiNameSize+1];
-            nn::Result res = nn::act::GetMiiNameEx((int16_t *)miiName, i);
+            char16_t miiName[nn::act::MiiNameSize + 1];
+            nn::Result res = nn::act::GetMiiNameEx((int16_t*)miiName, i);
             if (res.IsFailure()) continue;
+
+            if (nn::act::IsNetworkAccountEx(i)) {
+                char accountId[nn::act::AccountIdSize + 1];
+                res = nn::act::GetAccountIdEx(accountId, i);
+                if (res.IsFailure()) continue;
+                newAccount.accountId = accountId;
+            }
 
             // Convert mii name to normal string
             std::wstring_convert<std::codecvt_utf16<wchar_t>> convert;
