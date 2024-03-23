@@ -31,13 +31,13 @@
 #include <padscore/wpad.h>
 #include <padscore/kpad.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
     int32_t OSGetSystemMode();
-#ifdef __cplusplus
-}
-#endif
+ #ifdef __cplusplus
+ }
+ #endif
 
 #include <cstdlib>
 #include <cstring>
