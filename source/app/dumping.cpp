@@ -273,7 +273,7 @@ bool walkDirectoryRecursive(const std::string& srcPath, const std::string& destP
         errorMessage += L"Failed to open folder to read content from!\n";
         if (errno == EIO) errorMessage += L"For discs: Make sure that its clean!\nDumping is very sensitive to tiny issues!\n";
         errorMessage += L"\nDetails:\n";
-        errorMessage += L"Error " + std::to_wstring(errno) + L" while opening folder:\n";
+        errorMessage += L"Error "+std::to_wstring(errno)+L" while opening folder:\n";
         errorMessage += toWstring(srcPath);
         setErrorPrompt(errorMessage);
         return false;
@@ -559,7 +559,7 @@ bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& c
                 return callback_copyFile(interface.get(), cancelledDumping, filename, srcPath, destPath);
             }
             else if (event == WALK_EVENT::BUFFER)
-                callback_copyBuffer(interface.get(), cancelledDumping, filename, queueEntry.customFile->srcBuffer, queueEntry.customFile->srcBufferSize, destPath+"/"+filename);
+                return callback_copyBuffer(interface.get(), cancelledDumping, filename, queueEntry.customFile->srcBuffer, queueEntry.customFile->srcBufferSize, destPath+"/"+filename);
             return true;
         });
         if (!dumpSuccess) {
