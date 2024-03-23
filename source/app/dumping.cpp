@@ -7,6 +7,7 @@
 #include "users.h"
 #include "cfw.h"
 #include "gui.h"
+#include "http.h"
 
 #include "interfaces/transfer.h"
 #include "interfaces/fat32.h"
@@ -53,6 +54,48 @@ bool callback_scanFile(uint64_t& totalBytes, const char* filename, const std::st
 
 bool callback_scanBuffer(uint64_t& totalBytes, uint64_t bufferSize) {
     totalBytes += bufferSize;
+    return true;
+}
+
+bool readFile(const std::string& path, std::vector<uint8_t>& data) {
+    data.clear();
+
+    struct stat fileStat {};
+    if (lstat(path.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
+        std::wstring errorMessage;
+        errorMessage += L"Failed to retrieve info from source file!\n";
+        errorMessage += L"\nDetails:\n";
+        errorMessage += L"Error " + std::to_wstring(errno) + L" when getting stats for:\n";
+        errorMessage += toWstring(path);
+        setErrorPrompt(errorMessage);
+        return false;
+    }
+
+    int handle = open(path.c_str(), O_RDONLY);
+    if (handle == -1) {
+        std::wstring errorMessage;
+        errorMessage += L"Couldn't open the file to read from!\n";
+        errorMessage += L"\nDetails:\n";
+        errorMessage += L"Error " + std::to_wstring(errno) + L" after opening file!\n";
+        errorMessage += toWstring(path);
+        setErrorPrompt(errorMessage);
+        return false;
+    }
+
+    data.resize(fileStat.st_size);
+    ssize_t bytesRead = read(handle, data.data(), fileStat.st_size);
+    if (bytesRead == -1) {
+        close(handle);
+        std::wstring errorMessage;
+        errorMessage += L"Failed to read all data from this file!\n";
+        errorMessage += L"Error " + std::to_wstring(errno) + L" when reading data from:\n";
+        errorMessage += toWstring(path);
+        setErrorPrompt(errorMessage);
+        return false;
+    }
+
+    close(handle);
+
     return true;
 }
 
@@ -713,6 +756,28 @@ void dumpSpotpass() {
     dumpFileFilter filter{ .fileNames = {"task.db"} };
     if (dumpQueue(queue, spotpassConfig, &filter)) showDialogPrompt(L"Successfully dumped all of the SpotPass files!", L"OK");
     else showDialogPrompt(L"Failed to dump the SpotPass files...", L"OK");
+
+    wchar_t promptMessage[256];
+    swprintf(promptMessage, 256, L"Do you want to anonymously upload the SpotPass files to an archival server?\nIt will upload %d files of 1MB each!\n", filter.outMatchedFiles.size());
+    uint8_t doUploadFiles = showDialogPrompt(promptMessage, L"Yes", L"No");
+    if (doUploadFiles == 0) {
+        for (auto& taskFilepath : filter.outMatchedFiles) {
+            std::vector<uint8_t> data;
+            int resCode = -1;
+            if (readFile(taskFilepath, data)) {
+                if (http_uploadFile("https://bossarchive.raregamingdump.ca/api/upload/wup", data, resCode)) {
+                    WHBLogPrintf("Uploaded file to server! %s (%d)", taskFilepath.c_str(), resCode);
+                }
+                else {
+                    WHBLogPrintf("Failed to upload file to server! %s", taskFilepath.c_str());
+                }
+            }
+            else {
+                WHBLogPrintf("Failed to read file to upload! %s", taskFilepath.c_str());
+            }
+        }
+    }
+
 }
 
 void cleanDumpingProcess() {
