@@ -362,7 +362,7 @@ bool deleteTitleEntry(titleEntry& entry, dumpingConfig& config, const std::funct
     return true;
 }
 
-bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config) {
+bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config, std::optional<dumpFileFilter*> filter) {
     // Delete previously dumped files
     if (config.dumpMethod == DUMP_METHOD::FAT && !USE_WUT_DEVOPTAB()) {
         uint64_t deletedCount = 0;
@@ -473,7 +473,7 @@ bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& c
 
         bool cancelledDumping = false;
         std::filesystem::path currDir;
-        bool dumpSuccess = processTitleEntry(queueEntry, config, [&currDir, &interface, &cancelledDumping, &queueEntry](WALK_EVENT event, const char* filename, const std::string& srcPath, const std::string& destPath) -> bool {
+        bool dumpSuccess = processTitleEntry(queueEntry, config, [&currDir, &interface, &cancelledDumping, &queueEntry, &filter](WALK_EVENT event, const char* filename, const std::string& srcPath, const std::string& destPath) -> bool {
             if (event == WALK_EVENT::MAKE_PATH)
                 return callback_makeDir(interface.get(), destPath, true);
             else if (event == WALK_EVENT::DIR_ENTER) {
@@ -485,8 +485,37 @@ bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& c
                 currDir = currDir.parent_path();
                 return callback_moveDir(interface.get(), currDir.string());
             }
-            else if (event == WALK_EVENT::FILE)
+            else if (event == WALK_EVENT::FILE) {
+
+                if (filter.has_value()) {
+                    auto& fileFilter = filter.value();
+                    bool hasMatched = false;
+
+                    std::string filenameStr(filename);
+                    for (auto& ext : fileFilter->extensions) {
+                        if (filenameStr.ends_with(ext)) {
+                            hasMatched = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasMatched) {
+                        for (auto& name : fileFilter->fileNames) {
+                            if (filenameStr.compare(name) == 0) {
+                                hasMatched = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hasMatched)
+                        fileFilter->outMatchedFiles.push_back(srcPath);
+
+                }
+
+
                 return callback_copyFile(interface.get(), cancelledDumping, filename, srcPath, destPath);
+            }
             else if (event == WALK_EVENT::BUFFER)
                 return callback_copyBuffer(interface.get(), cancelledDumping, filename, queueEntry.customFile->srcBuffer, queueEntry.customFile->srcBufferSize, destPath + "/" + filename);
             return true;
@@ -681,7 +710,8 @@ void dumpSpotpass() {
     titleEntry slcSpotpassDir{ .shortTitle = L"SpotPass Directory", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/usr/save/system/boss"), .outputPath = "/SpotPass Files"} };
     queue.emplace_back(std::make_shared<titleEntry>(slcSpotpassDir));
 
-    if (dumpQueue(queue, spotpassConfig)) showDialogPrompt(L"Successfully dumped all of the SpotPass files!", L"OK");
+    dumpFileFilter filter{ .fileNames = {"task.db"} };
+    if (dumpQueue(queue, spotpassConfig, &filter)) showDialogPrompt(L"Successfully dumped all of the SpotPass files!", L"OK");
     else showDialogPrompt(L"Failed to dump the SpotPass files...", L"OK");
 }
 

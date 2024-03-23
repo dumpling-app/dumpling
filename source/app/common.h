@@ -251,6 +251,13 @@ struct titleEntry {
     std::optional<filePart> customFile;
 };
 
+struct dumpFileFilter {
+    std::vector<std::string> fileNames;
+    std::vector<std::string> extensions;
+
+    std::vector<std::string> outMatchedFiles;
+};
+
 #if USE_DEBUG_STUBS
 #define IS_CEMU_PRESENT() (OSGetSystemMode() == 0)
 #define USE_WUT_DEVOPTAB() (IS_CEMU_PRESENT() && USE_RAMDISK == 0)
