@@ -14,12 +14,9 @@ extern "C" [[maybe_unused]] void __preinit_user(MEMHeapHandle *outMem1, MEMHeapH
     __init_wut_malloc();
 }
 
-#include <whb/log_udp.h>
-
 int main() {
     // Initialize libraries
     initializeGUI();
-    WHBLogUdpInit();
     FSInit();
     FSAInit();
     nn::act::Initialize();

@@ -10,13 +10,13 @@ bool loadUsers() {
     nn::act::SlotNo currentAccount = nn::act::GetSlotNo();
     nn::act::SlotNo defaultAccount = nn::act::GetDefaultAccount();
 
-    for (nn::act::SlotNo i = 1; i < 13; i++) {
+    for (nn::act::SlotNo i=1; i<13; i++) {
         if (nn::act::IsSlotOccupied(i) == true) {
             userAccount newAccount;
 
             // Extract account info
-            char16_t miiName[nn::act::MiiNameSize + 1];
-            nn::Result res = nn::act::GetMiiNameEx((int16_t*)miiName, i);
+            char16_t miiName[nn::act::MiiNameSize+1];
+            nn::Result res = nn::act::GetMiiNameEx((int16_t *)miiName, i);
             if (res.IsFailure()) continue;
 
             if (nn::act::IsNetworkAccountEx(i)) {

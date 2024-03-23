@@ -102,21 +102,21 @@ typename std::enable_if<enable_bitmask_operators<E>::enable, E>::type operator& 
 // String trim functions
 
 [[maybe_unused]]
-static inline void ltrim(std::wstring& s) {
+static inline void ltrim(std::wstring &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](wchar_t ch) {
         return !std::isspace(ch);
-        }));
+    }));
 }
 
 [[maybe_unused]]
-static inline void rtrim(std::wstring& s) {
+static inline void rtrim(std::wstring &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](wchar_t ch) {
         return !std::isspace(ch);
-        }).base(), s.end());
+    }).base(), s.end());
 }
 
 [[maybe_unused]]
-static inline void trim(std::wstring& s) {
+static inline void trim(std::wstring &s) {
     ltrim(s);
     rtrim(s);
 }
@@ -179,7 +179,7 @@ struct dumpingConfig {
     bool queue = false;
     DUMP_METHOD dumpMethod = DUMP_METHOD::FAT;
     std::string dumpTarget;
-    uint32_t debugCacheSize = 1024 * 4;
+    uint32_t debugCacheSize = 1024*4;
 };
 
 struct userAccount {

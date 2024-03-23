@@ -28,7 +28,7 @@ void showLoadingScreen() {
 void showMainMenu() {
     uint8_t selectedOption = 0;
     bool startSelectedOption = false;
-    while (!startSelectedOption) {
+    while(!startSelectedOption) {
         // Print menu text
         WHBLogFreetypeStartScreen();
         WHBLogFreetypePrint(L"Dumpling V2.6.4");
@@ -55,7 +55,7 @@ void showMainMenu() {
         // Loop until there's new input
         sleep_for(200ms); // Cooldown between each button press
         updateInputs();
-        while (!startSelectedOption) {
+        while(!startSelectedOption) {
             updateInputs();
             // Check each button state
             if (navigatedUp() && selectedOption > 0) {
@@ -83,30 +83,30 @@ void showMainMenu() {
     }
 
     // Go to the selected menu
-    switch (selectedOption) {
+    switch(selectedOption) {
         case 0:
             dumpDisc();
             break;
         case 1:
-            showTitleList(L"Select all the games you want to dump!", { .filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::UPDATE | DUMP_TYPE_FLAGS::DLC | DUMP_TYPE_FLAGS::SAVES), .queue = true });
+            showTitleList(L"Select all the games you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = (DUMP_TYPE_FLAGS::GAME | DUMP_TYPE_FLAGS::UPDATE | DUMP_TYPE_FLAGS::DLC | DUMP_TYPE_FLAGS::SAVES), .queue = true});
             break;
         case 2:
             dumpOnlineFiles();
             break;
         case 3:
-            showTitleList(L"Select all the system applications you want to dump!", { .filterTypes = DUMP_TYPE_FLAGS::SYSTEM_APP, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true });
+            showTitleList(L"Select all the system applications you want to dump!", {.filterTypes = DUMP_TYPE_FLAGS::SYSTEM_APP, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
             break;
         case 4:
-            showTitleList(L"Select all the games that you want to dump the base game from!", { .filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true });
+            showTitleList(L"Select all the games that you want to dump the base game from!", {.filterTypes = DUMP_TYPE_FLAGS::GAME, .dumpTypes = DUMP_TYPE_FLAGS::GAME, .queue = true});
             break;
         case 5:
-            showTitleList(L"Select all the games that you want to dump the update from!", { .filterTypes = DUMP_TYPE_FLAGS::UPDATE, .dumpTypes = DUMP_TYPE_FLAGS::UPDATE, .queue = true });
+            showTitleList(L"Select all the games that you want to dump the update from!", {.filterTypes = DUMP_TYPE_FLAGS::UPDATE, .dumpTypes = DUMP_TYPE_FLAGS::UPDATE, .queue = true});
             break;
         case 6:
-            showTitleList(L"Select all the games that you want to dump the DLC from!", { .filterTypes = DUMP_TYPE_FLAGS::DLC, .dumpTypes = DUMP_TYPE_FLAGS::DLC, .queue = true });
+            showTitleList(L"Select all the games that you want to dump the DLC from!", {.filterTypes = DUMP_TYPE_FLAGS::DLC, .dumpTypes = DUMP_TYPE_FLAGS::DLC, .queue = true});
             break;
         case 7:
-            showTitleList(L"Select all the games that you want to dump the save from!", { .filterTypes = DUMP_TYPE_FLAGS::SAVES, .dumpTypes = DUMP_TYPE_FLAGS::SAVES, .queue = true });
+            showTitleList(L"Select all the games that you want to dump the save from!", {.filterTypes = DUMP_TYPE_FLAGS::SAVES, .dumpTypes = DUMP_TYPE_FLAGS::SAVES, .queue = true});
             break;
         case 8:
             dumpMLC();
@@ -140,9 +140,9 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
     const bool dumpingOnlineFiles = showAccountOption && HAS_FLAG(config.dumpTypes, DUMP_TYPE_FLAGS::CUSTOM);
 
     sleep_for(1s);
-    while (true) {
+    while(true) {
         auto drives = !USE_WUT_DEVOPTAB() ? Fat32Transfer::getDrives() : StubTransfer::getDrives();
-        if ((drives.size() - 1) < selectedDrive) selectedDrive = drives.size() - 1;
+        if ((drives.size()-1) < selectedDrive) selectedDrive = drives.size()-1;
 
         WHBLogFreetypeStartScreen();
         WHBLogFreetypePrint(L"Change any options for this dump:");
@@ -228,7 +228,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 
         sleep_for(100ms);
         updateInputs();
-        while (true) {
+        while(true) {
             updateInputs();
             if (navigatedUp() && selectedOption > 0) {
                 selectedOption--;
@@ -251,11 +251,11 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
                 break;
             }
             if (navigatedRight()) {
-                if (selectedOption == 0 && selectedDrive < drives.size() - 1) selectedDrive++;
+                if (selectedOption == 0 && selectedDrive < drives.size()-1) selectedDrive++;
                 if (selectedOption == 1) config.scanTitleSize = !config.scanTitleSize;
-                if (selectedOption == 2 && selectedAccount < allUsers.size() - 1) selectedAccount++;
+                if (selectedOption == 2 && selectedAccount < allUsers.size()-1) selectedAccount++;
                 if (selectedOption == 3) config.dumpAsDefaultUser = !config.dumpAsDefaultUser;
-                if (selectedOption == 4 && config.debugCacheSize < (256 * 512)) config.debugCacheSize += 256;
+                if (selectedOption == 4 && config.debugCacheSize < (256*512)) config.debugCacheSize += 256;
                 break;
             }
             if (pressedOk() && selectedOption == 0) {
@@ -285,14 +285,14 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
 uint8_t showDialogPrompt(const wchar_t* message, const wchar_t* button1, const wchar_t* button2) {
     sleep_for(100ms);
     uint8_t selectedOption = 0;
-    while (true) {
+    while(true) {
         WHBLogFreetypeStartScreen();
 
         // Print each line
         std::wistringstream messageStream(message);
         std::wstring line;
 
-        while (std::getline(messageStream, line)) {
+        while(std::getline(messageStream, line)) {
             WHBLogFreetypePrint(line.c_str());
         }
 
