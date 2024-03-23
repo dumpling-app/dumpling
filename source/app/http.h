@@ -47,6 +47,4 @@ void http_init();
  */
 void http_submitUploadQueue(const std::string& url, const std::vector<uint8_t>& data, UploadQueueCallback updateCallback, void* userdata);
 
-int http_safeDelete(int handle);
-
 void http_exit();
