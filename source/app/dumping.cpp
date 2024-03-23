@@ -756,24 +756,85 @@ void dumpSpotpass() {
     if (dumpQueue(queue, spotpassConfig, &filter)) showDialogPrompt(L"Successfully dumped all of the SpotPass files!", L"OK");
     else showDialogPrompt(L"Failed to dump the SpotPass files...", L"OK");
 
-    wchar_t promptMessage[256];
-    swprintf(promptMessage, 256, L"Do you want to anonymously upload the SpotPass files to an archival server?\nIt will upload %d files of 1MB each!\n", filter.outMatchedFiles.size());
+    wchar_t promptMessage[512];
+    swprintf(promptMessage, 512, L"Do you want to upload the files to the SpotPass Archival Project?\n" 
+                                  "The files do not contain any personally identifiable information.\n"
+                                  "It will upload %d files of 1MB each!\n", filter.outMatchedFiles.size());
+
     uint8_t doUploadFiles = showDialogPrompt(promptMessage, L"Yes", L"No");
     if (doUploadFiles == 0) {
-        for (auto& taskFilepath : filter.outMatchedFiles) {
+
+        size_t currentUploadIdx = 0;
+        bool taskUploadError = false;
+
+        struct userdata_upload_t {
+            bool* taskUploadError;
+            size_t* currentUploadIdx;
+            dumpFileFilter* filter;
+        } userdata = { &taskUploadError, &currentUploadIdx, &filter };
+
+        auto uploadCallback = [](UploadQueueEntry& entry, float progress) {
+            bool has_started = entry.started;
+            bool has_finished = entry.finished;
+            bool has_error = entry.error;
+
+            userdata_upload_t* userdata = (userdata_upload_t*)entry.userdata;
+            bool& taskUploadError = *userdata->taskUploadError;
+            size_t& currentUploadIdx = *userdata->currentUploadIdx;
+            dumpFileFilter& filter = *userdata->filter;
+
+            if(has_started && has_error) {
+                taskUploadError = true;
+                return;
+            }
+
+            if(has_started && has_finished) {
+                currentUploadIdx++;
+                return;
+            }
+
+            WHBLogFreetypeStartScreen();
+            WHBLogFreetypeScreenPrintBottom(L"===============================");
+            WHBLogFreetypeScreenPrintBottom(L"SpotPass Uploader");
+
+            WHBLogFreetypePrintf(L"Uploading SpotPass task file ... (%d out %d)", currentUploadIdx + 1, filter.outMatchedFiles.size());
+            WHBLogFreetypePrintf(L"File path: %s", filter.outMatchedFiles[currentUploadIdx].c_str());
+            WHBLogFreetypePrint(L"");
+            WHBLogFreetypePrintf(L"Progress: %.1f%%", progress * 100.0f);
+            WHBLogFreetypePrint(L"");
+            if(!has_started && progress <= std::numeric_limits<float>::epsilon()) {
+                WHBLogFreetypePrint(L"Status: Waiting for server to start upload...");
+            } else {
+                WHBLogFreetypePrint(L"Status: Uploading...");
+            }
+
+            WHBLogFreetypeDrawScreen();
+        };
+
+        for (size_t i = 0; i < filter.outMatchedFiles.size(); i++) {
+            std::string filePath = filter.outMatchedFiles[i];
             std::vector<uint8_t> data;
-            int resCode = -1;
-            if (readFile(taskFilepath, data)) {
-                if (http_uploadFile("https://bossarchive.raregamingdump.ca/api/upload/wup", data, resCode)) {
-                    WHBLogPrintf("Uploaded file to server! %s (%d)", taskFilepath.c_str(), resCode);
-                }
-                else {
-                    WHBLogPrintf("Failed to upload file to server! %s", taskFilepath.c_str());
-                }
+            if (!readFile(filePath, data)) {
+                taskUploadError = true;
+                break;
             }
-            else {
-                WHBLogPrintf("Failed to read file to upload! %s", taskFilepath.c_str());
-            }
+
+            http_submitUploadQueue("https://bossarchive.raregamingdump.ca/api/upload/wup", data, uploadCallback, &userdata);
+            WHBLogPrintf("Submitting upload for SpotPass task file ... (%d out %d)", i + 1, filter.outMatchedFiles.size());
+        }
+
+        if (taskUploadError) {
+            showDialogPrompt(L"Failed to read the SpotPass files for upload...", L"OK");
+        }
+
+        while(!taskUploadError && currentUploadIdx < filter.outMatchedFiles.size()) {
+            std::this_thread::yield();
+        }
+
+        if (taskUploadError) {
+            showDialogPrompt(L"Failed to upload the SpotPass files...", L"OK");
+        } else {
+            showDialogPrompt(L"Successfully uploaded all of the SpotPass files!", L"OK");
         }
     }
 
