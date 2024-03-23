@@ -20,6 +20,14 @@ jobs:
         with:
           name: binary
           path: "*.rpx"
+      - uses: actions/upload-artifact@master
+        with:
+          name: binary
+          path: "*.wuhb"
+      - uses: actions/upload-artifact@master
+        with:
+          name: binary
+          path: "*.elf"
   deploy-binary:
     needs: build-binary
     runs-on: ubuntu-18.04

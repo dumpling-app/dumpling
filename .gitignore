@@ -48,6 +48,7 @@ config.properties
 /cemu
 dumpling.wuhb
 dumpling.rpx
+dumpling.wua
 dumpling.elf
 
 source/cfw/ios_kernel/build/

@@ -7,3 +7,5 @@
 /dataSources/
 /dataSources.local.xml
 compilerexplorer.settings.xml
+# GitHub Copilot persisted chat sessions
+/copilot/chatSessions

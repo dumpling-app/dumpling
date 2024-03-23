@@ -48,9 +48,9 @@ SOURCES		:=	source/app \
 DATA		:=	data
 INCLUDES	:=	include
 CONTENT		:=
-ICON		:=	assets/dumpling-icon.png
-TV_SPLASH	:=	assets/dumpling-tv-boot.png
-DRC_SPLASH	:=	assets/dumpling-drc-boot.png
+ICON		:=	dist/dumpling-icon.png
+TV_SPLASH	:=	dist/dumpling-tv-boot.png
+DRC_SPLASH	:=	dist/dumpling-drc-boot.png
 
 #-------------------------------------------------------------------------------
 # options for code generation
@@ -159,7 +159,7 @@ else ifneq (,$(wildcard $(TOPDIR)/splash.png))
 	export APP_DRC_SPLASH := $(TOPDIR)/splash.png
 endif
 
-.PHONY: $(BUILD) debug discimg clean dist all
+.PHONY: $(BUILD) debug discimg reusediscimage clean dist all
 
 #-------------------------------------------------------------------------------
 all: $(BUILD)
@@ -185,14 +185,14 @@ discimg:
 	@echo Recreated fatfs disk image!
 	@$(MAKE) USE_DEBUG_STUBS=1 USE_RAMDISK=1 -f $(CURDIR)/Makefile
 
-withoutdiscimg:
+reusediscimage:
 	@$(shell [ -d $(BUILD) ] || mkdir -p $(BUILD))
 	@$(MAKE) USE_DEBUG_STUBS=1 USE_RAMDISK=1 -f $(CURDIR)/Makefile
 
 #-------------------------------------------------------------------------------
 clean:
 	@echo Clean files from app...
-	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).wua $(TARGET).elf
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_kernel
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_fs
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_mcp
@@ -203,8 +203,8 @@ dist:
 	@echo Making dist folder
 	@mkdir -p dist/wiiu/apps/dumpling
 	@echo Put latest files into it
-	@cp assets/meta.xml dist/wiiu/apps/dumpling/meta.xml
-	@cp assets/dumpling-banner.png dist/wiiu/apps/dumpling/icon.png
+	@cp dist/meta.xml dist/wiiu/apps/dumpling/meta.xml
+	@cp dist/dumpling-banner.png dist/wiiu/apps/dumpling/icon.png
 	@cp $(TARGET).rpx dist/wiiu/apps/dumpling/$(TARGET).rpx
 	@cp $(TARGET).wuhb dist/wiiu/apps/dumpling/$(TARGET).wuhb
 	@echo Zip up a release zip
@@ -221,9 +221,19 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #-------------------------------------------------------------------------------
 # main targets
 #-------------------------------------------------------------------------------
-all: $(OUTPUT).wuhb
+all: $(OUTPUT).wuhb $(OUTPUT).wua
 
 $(OUTPUT).wuhb	:	$(OUTPUT).rpx
+$(OUTPUT).wua	:	$(OUTPUT).rpx
+	@echo Creating wua...
+	@cp $(OUTPUT).rpx $(TOPDIR)/dist/wua/00050000103b3b3b_v0/code/dumpling.rpx
+	@#rm -rf $(TOPDIR)/dist/wua/00050000103b3b3b_v0/content/
+	@#mkdir $(TOPDIR)/dist/wua/00050000103b3b3b_v0/content/
+	@#cp -r $(TOPDIR)/$(CONTENT)/. $(TOPDIR)/dist/wua/00050000103b3b3b_v0/content/
+	@rm -f $(OUTPUT).wua
+	@# Allow zarchive.exe to fail since on native Linux it will fail
+	@$(TOPDIR)/dist/zarchive.exe $(shell wslpath -m $(TOPDIR)/dist/wua || echo $(TOPDIR)/dist/wua) $(shell wslpath -m $(OUTPUT).wua || echo $(OUTPUT).wua) || echo "zarchive.exe couldn't be executed, skipping wua creation..."
+	@echo built ... sand.wua
 $(OUTPUT).rpx	:	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 

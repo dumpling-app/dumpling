@@ -1,6 +1,6 @@
-FROM wiiuenv/devkitppc:20220917 AS final
+FROM ghcr.io/wiiu-env/devkitppc:20231112 AS final
 
-COPY --from=wiiuenv/libmocha:20220919112600f3c45c /artifacts $DEVKITPRO
+COPY --from=ghcr.io/wiiu-env/libmocha:20231127 /artifacts $DEVKITPRO
 
 RUN apt update && apt -y install xxd
 
