@@ -22,4 +22,4 @@ jobs:
       - uses: actions/upload-artifact@master
         with:
           name: binary
-          path: "/dist/dumpling.zip"
+          path: "./dist/dumpling.zip"
