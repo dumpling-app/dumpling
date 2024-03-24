@@ -193,6 +193,8 @@ reusediscimage:
 clean:
 	@echo Clean files from app...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).wua $(TARGET).elf
+	@rm -fr dist/wua/00050000103b3b3b_v0/code/$(TARGET).rpx
+	@rm -fr dist/wiiu/apps/dumpling/$(TARGET).rpx dist/wiiu/apps/dumpling/$(TARGET).wuhb
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_kernel
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_fs
 	@$(MAKE) clean -C $(CURDIR)/source/cfw/ios_mcp

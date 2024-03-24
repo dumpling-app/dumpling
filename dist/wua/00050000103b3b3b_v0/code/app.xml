@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<app type="complex" access="777">
+  <version type="unsignedInt" length="4">16</version>
+  <os_version type="hexBinary" length="8">000500101000400A</os_version>
+  <title_id type="hexBinary" length="8">00050000103B3B3B</title_id>
+  <title_version type="hexBinary" length="2">0102</title_version>
+  <sdk_version type="unsignedInt" length="4">21213</sdk_version>
+  <app_type type="hexBinary" length="4">D0000006</app_type>
+  <group_id type="hexBinary" length="4">00000400</group_id>
+  <os_mask type="hexBinary" length="32">0000000000000000000000000000000000000000000000000000000000000600</os_mask>
+  <common_id type="hexBinary" length="8">0000000000000000</common_id>
+</app>

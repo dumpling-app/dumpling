@@ -44,7 +44,8 @@ config.properties
 
 # Project specific
 /build
-/dist
+/dist/wiiu
+/dist/dumpling.zip
 /cemu
 dumpling.wuhb
 dumpling.rpx
