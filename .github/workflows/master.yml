@@ -28,18 +28,3 @@ jobs:
         with:
           name: binary
           path: "*.elf"
-  deploy-binary:
-    needs: build-binary
-    runs-on: ubuntu-18.04
-    steps:
-      - name: Get environment variables
-        id: get_repository_name
-        run: |
-          echo REPOSITORY_NAME=$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//") >> $GITHUB_ENV
-          echo DATETIME=$(echo $(date '+%Y%m%d-%H%M%S')) >> $GITHUB_ENV
-      - uses: actions/download-artifact@master
-        with:
-          name: binary
-          path: wiiu/apps/dumpling
-      - name: zip artifact
-        run: zip -r ${{ env.REPOSITORY_NAME }}_${{ env.DATETIME }}.zip wiiu
