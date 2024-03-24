@@ -16,15 +16,10 @@ jobs:
         run: |
           docker build . -t builder
           docker run --rm -v ${PWD}:/project builder make -j$(nproc)
+      - name: create distribution .zip
+        run: |
+          docker run --rm -v ${PWD}:/project builder make dist
       - uses: actions/upload-artifact@master
         with:
           name: binary
-          path: "*.rpx"
-      - uses: actions/upload-artifact@master
-        with:
-          name: binary
-          path: "*.wuhb"
-      - uses: actions/upload-artifact@master
-        with:
-          name: binary
-          path: "*.elf"
+          path: "/dist/dumpling.zip"

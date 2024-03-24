@@ -19,7 +19,10 @@ bool initializeGUI() {
         usingHBL = true;
     }
 
-    WHBLogFreetypeInit();
+    if (WHBLogFreetypeInit()) {
+        OSFatal("Couldn't initialize the GUI properly due to WHBLogFreetypeInit failing!\n");
+        return false;
+    }
     
     OSEnableHomeButtonMenu(false);
     ProcUIInit(&saveProcessCallback);

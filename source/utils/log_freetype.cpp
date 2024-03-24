@@ -62,13 +62,17 @@ static void FreetypeAddLine(const char *line) {
             memcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
         }
 
-        std::mbstowcs(queueBuffer[newLines - 1], line, length);
-        queueBuffer[newLines - 1][length] = L'\0';
+        size_t wideLength = std::mbstowcs(queueBuffer[newLines - 1], line, length);
+        if (wideLength != (size_t)-1) {
+            queueBuffer[newLines - 1][wideLength] = L'\0';
+        }
     }
     else {
-        std::mbstowcs(queueBuffer[newLines], line, length);
-        queueBuffer[newLines][length] = L'\0';
-        newLines++;
+        size_t wideLength = std::mbstowcs(queueBuffer[newLines], line, length);
+        if (wideLength != (size_t)-1) {
+            queueBuffer[newLines][wideLength] = L'\0';
+            newLines++;
+        }
     }
 }
 
@@ -306,10 +310,12 @@ bool WHBLogFreetypeInit() {
     fontFace.flags = SFT_DOWNWARD_Y;
     fontFace.font = sft_loadmem(fontBuffer, fontBufferSize);
 
-    if (fontFace.font != nullptr) {
+    if (fontFace.font == nullptr) {
+        OSReport("[log_freetype] Failed to load the font!\n");
         return true;
     }
     if (WHBLogFreetypeSetFontSize(20)) {
+        OSReport("[log_freetype] Failed to set the font size while initializing!\n");
         return true;
     }
 
@@ -406,7 +412,7 @@ bool WHBLogFreetypeSetFontSize(uint8_t size) {
     SFT_GMetrics mtx;
     if (sft_lookup(&fontFace, L'>', &gid) == -1 || sft_gmetrics(&fontFace, gid, &mtx) == -1) {
         OSReport("[log_freetype] Failed to lookup the character for the selector list!\n");
-        return false;
+        return true;
     }
 
     cursorSpaceWidth = (int32_t)mtx.advanceWidth;
@@ -414,7 +420,7 @@ bool WHBLogFreetypeSetFontSize(uint8_t size) {
         free(glyph.second.pixels);
     }
     glyphCache.clear();
-    return true;
+    return false;
 }
 
 void WHBLogFreetypeFree() {
