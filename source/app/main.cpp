@@ -6,6 +6,7 @@
 #include "titles.h"
 #include "users.h"
 #include "gui.h"
+#include "../utils/http.h"
 
 // Initialize correct heaps for CustomRPXLoader
 extern "C" void __init_wut_malloc();
@@ -16,12 +17,12 @@ extern "C" [[maybe_unused]] void __preinit_user(MEMHeapHandle *outMem1, MEMHeapH
 int main() {
     // Initialize libraries
     initializeGUI();
-    WHBLogCafeInit();
     FSInit();
     FSAInit();
     nn::act::Initialize();
     ACPInitialize();
     initializeInputs();
+    http_init();
 
     IMDisableAPD(); // Disable auto-shutdown feature
 
@@ -41,6 +42,7 @@ int main() {
     sleep_for(5s);
 
     // Close application properly
+    http_exit();
     unmountSystemDrives();
     shutdownCFW();
     ACPFinalize();
