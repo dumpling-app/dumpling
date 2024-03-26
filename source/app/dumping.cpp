@@ -784,8 +784,6 @@ void dumpSpotpass() {
             std::vector<uint8_t> data(fileSize);
             instream.read((char*)data.data(), fileSize);
 
-            WHBLogPrintf("%d bytes | 0x%08x 0x%08x 0x%08x 0x%08x", fileSize, *(uint32_t*)&data[0], *(uint32_t*)&data[4], *(uint32_t*)&data[8], *(uint32_t*)&data[12]);
-
             http_submitUploadQueue("https://bossarchive.raregamingdump.ca/api/upload/wup", data, uploadCallback, &userdata);
             WHBLogPrintf("Submitting upload for SpotPass task file ... (%d out %d)", i + 1, filter.outMatchedFiles.size());
         }
