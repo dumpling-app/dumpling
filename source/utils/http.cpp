@@ -3,7 +3,7 @@
 static std::atomic<bool> is_http_initialized = false;
 
 static std::mutex uploadQueueAccessMutex;
-static std::vector<UploadQueueEntry> uploadQueue;
+static std::queue<UploadQueueEntry> uploadQueue;
 
 static float currentUploadProgress = 0.0f;
 
@@ -77,16 +77,14 @@ void http_uploadQueueWorker() {
             continue;
         }
 
-        UploadQueueEntry& entry = uploadQueue.at(0);
+        UploadQueueEntry entry = uploadQueue.front();
+        uploadQueue.pop();
+
         uploadQueueAccessMutex.unlock();
 
         WHBLogPrintf("Uploading %lu bytes to %s", entry.data.size(), entry.url.c_str());
         http_handleUpload(entry);
         entry.callback(entry, currentUploadProgress);
-
-        uploadQueueAccessMutex.lock();
-        uploadQueue.erase(uploadQueue.begin());
-        uploadQueueAccessMutex.unlock();
 
     }
 }
@@ -99,7 +97,7 @@ float http_getCurrentProgress() {
 void http_submitUploadQueue(const std::string& url, const std::vector<uint8_t>& data, UploadQueueCallback updateCallback, void* userdata) {
     uploadQueueAccessMutex.lock();
     UploadQueueEntry entry { .curl = nullptr, .url = url, .data = data, .started = false, .finished = false, .error = false, .callback = updateCallback, .userdata = userdata};
-    uploadQueue.push_back(entry);
+    uploadQueue.push(entry);
     uploadQueueAccessMutex.unlock();
 }
 
