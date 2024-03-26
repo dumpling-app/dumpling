@@ -6,13 +6,15 @@
 #include "titles.h"
 #include "users.h"
 #include "gui.h"
-#include "http.h"
+#include "../utils/http.h"
 
 // Initialize correct heaps for CustomRPXLoader
 extern "C" void __init_wut_malloc();
 extern "C" [[maybe_unused]] void __preinit_user(MEMHeapHandle *outMem1, MEMHeapHandle *outFG, MEMHeapHandle *outMem2) {
     __init_wut_malloc();
 }
+
+#include <whb/log_udp.h>
 
 int main() {
     // Initialize libraries
@@ -23,6 +25,7 @@ int main() {
     ACPInitialize();
     initializeInputs();
     http_init();
+    WHBLogUdpInit();
 
     IMDisableAPD(); // Disable auto-shutdown feature
 

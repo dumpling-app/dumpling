@@ -7,7 +7,7 @@
 #include "users.h"
 #include "cfw.h"
 #include "gui.h"
-#include "http.h"
+#include "../utils/http.h"
 
 #include "interfaces/transfer.h"
 #include "interfaces/fat32.h"
@@ -54,48 +54,6 @@ bool callback_scanFile(uint64_t& totalBytes, const char* filename, const std::st
 
 bool callback_scanBuffer(uint64_t& totalBytes, uint64_t bufferSize) {
     totalBytes += bufferSize;
-    return true;
-}
-
-bool readFile(const std::string& path, std::vector<uint8_t>& data) {
-    data.clear();
-
-    struct stat fileStat {};
-    if (lstat(path.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
-        std::wstring errorMessage;
-        errorMessage += L"Failed to retrieve info from source file!\n";
-        errorMessage += L"\nDetails:\n";
-        errorMessage += L"Error " + std::to_wstring(errno) + L" when getting stats for:\n";
-        errorMessage += toWstring(path);
-        setErrorPrompt(errorMessage);
-        return false;
-    }
-
-    int handle = open(path.c_str(), O_RDONLY);
-    if (handle == -1) {
-        std::wstring errorMessage;
-        errorMessage += L"Couldn't open the file to read from!\n";
-        errorMessage += L"\nDetails:\n";
-        errorMessage += L"Error " + std::to_wstring(errno) + L" after opening file!\n";
-        errorMessage += toWstring(path);
-        setErrorPrompt(errorMessage);
-        return false;
-    }
-
-    data.resize(fileStat.st_size);
-    ssize_t bytesRead = read(handle, data.data(), fileStat.st_size);
-    if (bytesRead == -1) {
-        close(handle);
-        std::wstring errorMessage;
-        errorMessage += L"Failed to read all data from this file!\n";
-        errorMessage += L"Error " + std::to_wstring(errno) + L" when reading data from:\n";
-        errorMessage += toWstring(path);
-        setErrorPrompt(errorMessage);
-        return false;
-    }
-
-    close(handle);
-
     return true;
 }
 
@@ -813,11 +771,20 @@ void dumpSpotpass() {
 
         for (size_t i = 0; i < filter.outMatchedFiles.size(); i++) {
             std::string filePath = filter.outMatchedFiles[i];
-            std::vector<uint8_t> data;
-            if (!readFile(filePath, data)) {
+            
+            std::ifstream instream(filePath, std::ios::binary | std::ios::ate);
+            if (!instream) {
                 taskUploadError = true;
                 break;
             }
+
+            auto fileSize = instream.tellg();
+            instream.seekg(0, std::ios::beg);
+
+            std::vector<uint8_t> data(fileSize);
+            instream.read((char*)data.data(), fileSize);
+
+            WHBLogPrintf("%d bytes | 0x%08x 0x%08x 0x%08x 0x%08x", fileSize, *(uint32_t*)&data[0], *(uint32_t*)&data[4], *(uint32_t*)&data[8], *(uint32_t*)&data[12]);
 
             http_submitUploadQueue("https://bossarchive.raregamingdump.ca/api/upload/wup", data, uploadCallback, &userdata);
             WHBLogPrintf("Submitting upload for SpotPass task file ... (%d out %d)", i + 1, filter.outMatchedFiles.size());
