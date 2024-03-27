@@ -6,6 +6,7 @@
 #include "./../../utils/fatfs/diskio.h"
 #include "../../utils/log_freetype.h"
 #include "../../utils/fatfs/ffcache.h"
+#include "../cfw.h"
 
 struct Fat32Transfer::FATFSPtr: public FATFS {};
 struct Fat32Transfer::FILPtr: public FIL {};
@@ -16,6 +17,11 @@ size_t Fat32Transfer::filePtrAlignment = 0x40 - (offsetof(FIL, buf) % 0x40);
 std::vector<std::pair<std::string, std::string>> Fat32Transfer::getDrives() {
     std::vector<std::pair<std::string, std::string>> targets;
     for (BYTE i=0; i<FF_VOLUMES; i++) {
+#if USE_DEBUG_STUBS == 0
+        if (getCFWVersion() == CFWVersion::MOCHA_FSCLIENT && i == DEV_SD_REF)
+            continue;
+#endif
+
         std::string driveIdPath = std::to_string(i)+":/";
 
         FATFS fs;

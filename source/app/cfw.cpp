@@ -7,19 +7,19 @@
 
 CFWVersion currCFWVersion = CFWVersion::NONE;
 
-bool stopTiramisuServer() {
+bool stopMochaServer() {
     WHBLogFreetypeClear();
     WHBLogPrint("Opening iosuhax to send stop command...");
     WHBLogFreetypeDraw();
 
     IOSHandle iosuhaxHandle = IOS_Open("/dev/iosuhax", (IOSOpenMode)0);
     if (iosuhaxHandle < IOS_ERROR_OK) {
-        WHBLogPrint("Couldn't open /dev/iosuhax to stop Tiramisu?");
+        WHBLogPrint("Couldn't open /dev/iosuhax to stop Mocha?");
         WHBLogFreetypeDraw();
         return false;
     }
 
-    WHBLogPrint("Sending stop command to Tiramisu... ");
+    WHBLogPrint("Sending stop command to Mocha... ");
     WHBLogFreetypeDraw();
     sleep_for(250ms);
 
@@ -27,7 +27,7 @@ bool stopTiramisuServer() {
     *responseBuffer = 0;
     IOS_Ioctl(iosuhaxHandle, 0x03/*IOCTL_KILL_SERVER*/, nullptr, 0, responseBuffer, 4);
     
-    WHBLogPrint("Waiting for Tiramisu to stop... ");
+    WHBLogPrint("Waiting for Mocha to stop... ");
     WHBLogFreetypeDraw();
     sleep_for(2s);
     return true;
@@ -56,17 +56,42 @@ CFWVersion testCFW() {
             currCFWVersion = CFWVersion::DUMPLING;
         }
         else {
-            WHBLogPrint("Detected MochaPayload with FSClient support...");
-            WHBLogPrint("Will use that for its dumping support.");
-            WHBLogFreetypeDraw();
-            currCFWVersion = CFWVersion::MOCHA_FSCLIENT;
+            uint8_t stopCFW = showDialogPrompt(L"Detected Mocha or Tiramisu CFW...\n\nTo allow SD card access and to prevent SD card corruption\nDumpling needs to shutdown Aroma/Tiramisu temporarily.\nThis will also stop Aroma plugins like SwipSwapMe and FTPiiU.\n\nIf you're already dumping to an USB stick then you can skip this step.", L"Allow SD card access and stop CFW", L"Only allow USB devices but keep CFW");
+            if (stopCFW == 0) {
+                if (stopMochaServer()) {
+                    WHBLogFreetypeClear();
+                    WHBLogPrint("Detected and stopped Tiramisu/Aroma...");
+                    WHBLogPrint("Attempt to replace it now with Dumpling CFW...");
+                    WHBLogFreetypeDraw();
+                    sleep_for(1s);
+                    currCFWVersion = CFWVersion::DUMPLING;
+                }
+                else {
+                    WHBLogFreetypeClear();
+                    WHBLogPrint("Failed to stop Aroma/Tiramisu CFW!");
+                    WHBLogPrint("Please try again after restarting your Wii U!");
+                    WHBLogPrint("");
+                    WHBLogPrint("Exiting Dumpling in 10 seconds...");
+                    WHBLogFreetypeDraw();
+                    sleep_for(10s);
+                    currCFWVersion = CFWVersion::FAILED;
+                }
+            }
+            else {
+                WHBLogFreetypeClear();
+                WHBLogPrint("Detected Mocha or Tiramisu CFW...");
+                WHBLogPrint("Skipping stopping CFW and allowing USB devices...");
+                WHBLogFreetypeDraw();
+                sleep_for(2s);
+                currCFWVersion = CFWVersion::MOCHA_FSCLIENT;
+            }
         }
         return currCFWVersion;
     }
     else if (ret == MOCHA_RESULT_UNSUPPORTED_API_VERSION) {
         uint8_t forceTiramisu = showDialogPrompt(L"Using an outdated Tiramisu version\nwithout FS client support!\n\nPlease update Tiramisu with this guide:\nhttps://wiiu.hacks.guide/#/tiramisu/sd-preparation\n\nForcing internal CFW will temporarily stop Tiramisu!", L"Exit Dumpling To Update (Recommended)", L"Force Internal CFW And Continue");
         if (forceTiramisu == 1) {
-            if (stopTiramisuServer()) {
+            if (stopMochaServer()) {
                 WHBLogFreetypeClear();
                 WHBLogPrint("Detected and stopped Tiramisu...");
                 WHBLogPrint("Attempt to replace it with Dumpling CFW...");
@@ -90,7 +115,7 @@ CFWVersion testCFW() {
         else {
             WHBLogFreetypeClear();
             WHBLogPrint("Exiting Dumpling...");
-            WHBLogPrint("You have to manually update your Tiramisu now!");
+            WHBLogPrint("You have to manually update your Tiramisu/Aroma now!");
             WHBLogFreetypeDraw();
             sleep_for(3s);
             currCFWVersion = CFWVersion::FAILED;
