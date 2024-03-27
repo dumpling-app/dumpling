@@ -59,7 +59,7 @@ static void FreetypeAddLine(const char *line) {
 
     if (newLines == NUM_LINES) {
         for (uint32_t i=0; i<NUM_LINES-1; i++) {
-            memcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
+            wmemcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
         }
 
         size_t wideLength = std::mbstowcs(queueBuffer[newLines - 1], line, length);
@@ -86,7 +86,7 @@ static void FreetypeAddLine(const wchar_t *line) {
 
     if (newLines == NUM_LINES) {
         for (uint32_t i=0; i<NUM_LINES-1; i++) {
-            memcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
+            wmemcpy(queueBuffer[i], queueBuffer[i + 1], LINE_LENGTH);
         }
 
         wmemcpy(queueBuffer[newLines - 1], line, length);

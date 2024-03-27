@@ -29,6 +29,7 @@
 
 # Executables
 *.exe
+!/dist/zarchive.exe
 *.out
 *.app
 

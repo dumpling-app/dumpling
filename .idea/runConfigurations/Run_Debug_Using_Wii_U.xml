@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run Debug Using Wii U" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="./dumpling.rpx" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$ProjectFileDir$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="dumpling" TARGET_NAME="debug" CONFIG_NAME="debug" version="1" RUN_PATH="//wsl$/Debian/opt/devkitpro/tools/bin/wiiload">
+  <configuration default="false" name="Run Debug Using Wii U" type="CLionNativeAppRunConfigurationType" PROGRAM_PARAMS="./dumpling.rpx" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="file://$ProjectFileDir$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="dumpling" TARGET_NAME="debug" CONFIG_NAME="debug" version="1" RUN_PATH="//wsl$/Debian/opt/devkitpro/tools/bin/wiiload">
     <envs>
-      <env name="WIILOAD" value="tcp:192.168.1.117" />
+      <env name="WIILOAD" value="tcp:192.168.1.61" />
     </envs>
     <method v="2">
       <option name="CLION.COMPOUND.BUILD" enabled="true" />
