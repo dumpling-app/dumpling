@@ -56,7 +56,7 @@ CFWVersion testCFW() {
             currCFWVersion = CFWVersion::DUMPLING;
         }
         else {
-            uint8_t stopCFW = showDialogPrompt(L"Detected Mocha or Tiramisu CFW...\n\nTo allow SD card access and to prevent SD card corruption\nDumpling needs to shutdown Aroma/Tiramisu temporarily.\nThis will also stop Aroma plugins like SwipSwapMe and FTPiiU.\n\nIf you're already dumping to an USB stick then you can skip this step.", L"Allow SD card access and stop CFW", L"Only allow USB devices but keep CFW");
+            uint8_t stopCFW = showDialogPrompt(L"Detected Mocha or Tiramisu CFW...\n\nTo allow SD card access and to prevent SD card corruption\nDumpling needs to shutdown Aroma/Tiramisu temporarily.\nThis will also stop Aroma plugins like SwipSwapMe and FTPiiU.\n\nYou can skip this step if you're only planning on dumping to USB sticks.", L"Allow SD card access and stop CFW", L"Only allow USB devices but keep CFW");
             if (stopCFW == 0) {
                 if (stopMochaServer()) {
                     WHBLogFreetypeClear();
