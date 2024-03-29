@@ -43,7 +43,7 @@ You don't need to run/have Mocha CFW or Haxchi, just launch Dumpling from the Ho
  - Now also supports easily dumping vWii games (requires [nfs2iso2nfs](https://github.com/FIX94/nfs2iso2nfs/releases/tag/v0.5.6) for converting vWii games to .iso).
 
 ## Credits
- - [Crementif](https://github.com/Crementif) for [dumpling-rework](https://github.com/emiyl/dumpling)
+ - [Crementif](https://github.com/Crementif) for [dumpling](https://github.com/dumpling-app/dumpling)
  - [emiyl](https://github.com/emiyl) for [dumpling-classic](https://github.com/emiyl/dumpling-classic)
  - chriz, Tomk007 and Jaimie for testing
  - [wut](https://github.com/devkitpro/wut) for providing the Wii U toolchain that Dumpling is built with
