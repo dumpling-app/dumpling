@@ -45,8 +45,6 @@ void showMainMenu() {
         WHBLogFreetypePrintf(L"%C Dump only DLC files of a game", OPTION(6));
         WHBLogFreetypePrintf(L"%C Dump only Save files of a game", OPTION(7));
         WHBLogFreetypePrintf(L"%C Dump whole MLC (everything stored on internal storage)", OPTION(8));
-        WHBLogFreetypePrint(L"");
-        WHBLogFreetypePrintf(L"%C Dump all SpotPass data", OPTION(9));
         WHBLogFreetypeScreenPrintBottom(L"===============================");
         WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option \uE001 Button = Exit Dumpling");
         WHBLogFreetypeScreenPrintBottom(L"");
@@ -62,7 +60,7 @@ void showMainMenu() {
                 selectedOption--;
                 break;
             }
-            if (navigatedDown() && selectedOption < 9) {
+            if (navigatedDown() && selectedOption < 8) {
                 selectedOption++;
                 break;
             }
@@ -112,7 +110,6 @@ void showMainMenu() {
             dumpMLC();
             break;
         case 9:
-            dumpSpotpass();
             break;
         case 10:
             break;
@@ -149,7 +146,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         WHBLogFreetypePrint(L"===============================");
         WHBLogFreetypePrintf(L"%C Dump Destination: %S", OPTION(0), drives.empty() ? L"No Drives Detected" : toWstring(drives[selectedDrive].second).c_str());
         WHBLogFreetypePrintf(L"%C Do Initial Scan For Required Empty Space: %S", OPTION(1), config.scanTitleSize ? L"Yes" : L"No");
-        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Online Account: %S (NNID: %s)", OPTION(2), allUsers[selectedAccount].miiName.c_str(), allUsers[selectedAccount].networkAccount ? allUsers[selectedAccount].accountId.c_str() : "<NO NNID LINKED>");
+        if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Online Account: %S", OPTION(2), allUsers[selectedAccount].miiName.c_str());
         if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Account To Get Saves From: %S", OPTION(2), allUsers[selectedAccount].miiName.c_str());
         if (showAccountOption && dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Merge Account To Default Cemu User: %S", OPTION(3), config.dumpAsDefaultUser ? L"Yes" : L"No");
         if (showAccountOption && !dumpingOnlineFiles) WHBLogFreetypePrintf(L"%C Merge Saves To Default Cemu User: %S", OPTION(3), config.dumpAsDefaultUser ? L"Yes" : L"No");

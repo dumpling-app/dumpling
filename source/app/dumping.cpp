@@ -7,7 +7,6 @@
 #include "users.h"
 #include "cfw.h"
 #include "gui.h"
-#include "../utils/http.h"
 
 #include "interfaces/transfer.h"
 #include "interfaces/fat32.h"
@@ -363,7 +362,7 @@ bool deleteTitleEntry(titleEntry& entry, dumpingConfig& config, const std::funct
     return true;
 }
 
-bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config, std::optional<dumpFileFilter*> filter) {
+bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& config) {
     // Delete previously dumped files
     if (config.dumpMethod == DUMP_METHOD::FAT && !USE_WUT_DEVOPTAB()) {
         uint64_t deletedCount = 0;
@@ -474,7 +473,7 @@ bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& c
 
         bool cancelledDumping = false;
         std::filesystem::path currDir;
-        bool dumpSuccess = processTitleEntry(queueEntry, config, [&currDir, &interface, &cancelledDumping, &queueEntry, &filter](WALK_EVENT event, const char *filename, const std::string &srcPath, const std::string &destPath) -> bool {
+        bool dumpSuccess = processTitleEntry(queueEntry, config, [&currDir, &interface, &cancelledDumping, &queueEntry](WALK_EVENT event, const char *filename, const std::string &srcPath, const std::string &destPath) -> bool {
             if (event == WALK_EVENT::MAKE_PATH)
                 return callback_makeDir(interface.get(), destPath, true);
             else if (event == WALK_EVENT::DIR_ENTER) {
@@ -486,36 +485,8 @@ bool dumpQueue(std::vector<std::shared_ptr<titleEntry>>& queue, dumpingConfig& c
                 currDir = currDir.parent_path();
                 return callback_moveDir(interface.get(), currDir.string());
             }
-            else if (event == WALK_EVENT::FILE) {
-
-                if (filter.has_value()) {
-                    auto& fileFilter = filter.value();
-                    bool hasMatched = false;
-
-                    std::string filenameStr(filename);
-                    for (auto& ext : fileFilter->extensions) {
-                        if (filenameStr.ends_with(ext)) {
-                            hasMatched = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasMatched) {
-                        for (auto& name : fileFilter->fileNames) {
-                            if (filenameStr.compare(name) == 0) {
-                                hasMatched = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (hasMatched)
-                        fileFilter->outMatchedFiles.push_back(srcPath);
-
-                }
-
+            else if (event == WALK_EVENT::FILE)
                 return callback_copyFile(interface.get(), cancelledDumping, filename, srcPath, destPath);
-            }
             else if (event == WALK_EVENT::BUFFER)
                 return callback_copyBuffer(interface.get(), cancelledDumping, filename, queueEntry.customFile->srcBuffer, queueEntry.customFile->srcBufferSize, destPath+"/"+filename);
             return true;
@@ -699,110 +670,6 @@ void dumpOnlineFiles() {
 
     if (dumpQueue(queue, onlineConfig)) showDialogPrompt(L"Successfully dumped all of the online files!", L"OK");
     else showDialogPrompt(L"Failed to dump the online files...", L"OK");
-}
-
-void dumpSpotpass() {
-    std::vector<std::shared_ptr<titleEntry>> queue;
-    dumpingConfig spotpassConfig = { .dumpTypes = (DUMP_TYPE_FLAGS::CUSTOM) };
-
-    if (!showOptionMenu(spotpassConfig, false)) return;
-
-    titleEntry slcSpotpassDir{ .shortTitle = L"SpotPass Directory", .customFolder = folderPart{.inputPath = convertToPosixPath("/vol/storage_mlc01/usr/save/system/boss"), .outputPath = "/SpotPass Files"} };
-    queue.emplace_back(std::make_shared<titleEntry>(slcSpotpassDir));
-
-    dumpFileFilter filter{ .fileNames = {"task.db"} };
-    if (dumpQueue(queue, spotpassConfig, &filter)) showDialogPrompt(L"Successfully dumped all of the SpotPass files!", L"OK");
-    else showDialogPrompt(L"Failed to dump the SpotPass files...", L"OK");
-
-    wchar_t promptMessage[512];
-    swprintf(promptMessage, 512, L"Do you want to upload the files to the SpotPass Archival Project?\n" 
-                                  "The files do not contain any personally identifiable information.\n"
-                                  "It will upload %d files of 1MB each!\n", filter.outMatchedFiles.size());
-
-    uint8_t doUploadFiles = showDialogPrompt(promptMessage, L"Yes", L"No");
-    if (doUploadFiles == 0) {
-
-        size_t currentUploadIdx = 0;
-        bool taskUploadError = false;
-
-        struct userdata_upload_t {
-            bool* taskUploadError;
-            size_t* currentUploadIdx;
-            dumpFileFilter* filter;
-        } userdata = { &taskUploadError, &currentUploadIdx, &filter };
-
-        auto uploadCallback = [](UploadQueueEntry& entry, float progress) {
-            bool has_started = entry.started;
-            bool has_finished = entry.finished;
-            bool has_error = entry.error;
-
-            userdata_upload_t* userdata = (userdata_upload_t*)entry.userdata;
-            bool& taskUploadError = *userdata->taskUploadError;
-            size_t& currentUploadIdx = *userdata->currentUploadIdx;
-            dumpFileFilter& filter = *userdata->filter;
-
-            if(has_started && has_error) {
-                taskUploadError = true;
-                return;
-            }
-
-            if(has_started && has_finished) {
-                currentUploadIdx++;
-                return;
-            }
-
-            WHBLogFreetypeStartScreen();
-            WHBLogFreetypeScreenPrintBottom(L"===============================");
-            WHBLogFreetypeScreenPrintBottom(L"SpotPass Uploader");
-
-            WHBLogFreetypePrintf(L"Uploading SpotPass task file ... (%d out %d)", currentUploadIdx + 1, filter.outMatchedFiles.size());
-            WHBLogFreetypePrintf(L"File path: %s", filter.outMatchedFiles[currentUploadIdx].c_str());
-            WHBLogFreetypePrint(L"");
-            WHBLogFreetypePrintf(L"Progress: %.1f%%", progress * 100.0f);
-            WHBLogFreetypePrint(L"");
-            if(!has_started && progress <= std::numeric_limits<float>::epsilon()) {
-                WHBLogFreetypePrint(L"Status: Waiting for server to start upload...");
-            } else {
-                WHBLogFreetypePrint(L"Status: Uploading...");
-            }
-
-            WHBLogFreetypeDrawScreen();
-        };
-
-        for (size_t i = 0; i < filter.outMatchedFiles.size(); i++) {
-            std::string filePath = filter.outMatchedFiles[i];
-            
-            std::ifstream instream(filePath, std::ios::binary | std::ios::ate);
-            if (!instream) {
-                taskUploadError = true;
-                break;
-            }
-
-            auto fileSize = instream.tellg();
-            instream.seekg(0, std::ios::beg);
-
-            std::vector<uint8_t> data(fileSize);
-            instream.read((char*)data.data(), fileSize);
-
-            http_submitUploadQueue("https://bossarchive.raregamingdump.ca/api/upload/wup", data, uploadCallback, &userdata);
-            WHBLogPrintf("Submitting upload for SpotPass task file ... (%d out %d)", i + 1, filter.outMatchedFiles.size());
-        }
-
-        if (taskUploadError) {
-            showDialogPrompt(L"Failed to read the SpotPass files for upload...", L"OK");
-        }
-
-        while(!taskUploadError && currentUploadIdx < filter.outMatchedFiles.size()) {
-            std::this_thread::yield();
-        }
-
-        if (taskUploadError) {
-            showDialogPrompt(L"Failed to upload the SpotPass files...", L"OK");
-        } else {
-            showDialogPrompt(L"Successfully uploaded all of the SpotPass files!", L"OK");
-        }
-    }
-
 }
 
 void cleanDumpingProcess() {

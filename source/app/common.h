@@ -188,7 +188,6 @@ struct userAccount {
     bool networkAccount;
     bool passwordCached;
     std::wstring miiName;
-    std::string accountId;
     std::string persistentIdString;
     nn::act::SlotNo slot;
     nn::act::PersistentId persistentId;
@@ -242,20 +241,13 @@ struct titleEntry {
     std::wstring shortTitle;
     std::wstring productCode;
     std::string folderName;
-
+    
     std::optional<titlePart> base;
     std::optional<titlePart> update;
     std::optional<titlePart> dlc;
     std::optional<savePart> saves;
     std::optional<folderPart> customFolder;
     std::optional<filePart> customFile;
-};
-
-struct dumpFileFilter {
-    std::vector<std::string> fileNames;
-    std::vector<std::string> extensions;
-
-    std::vector<std::string> outMatchedFiles;
 };
 
 #if USE_DEBUG_STUBS
