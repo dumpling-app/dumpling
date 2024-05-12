@@ -24,7 +24,7 @@ You don't need to run/have Mocha CFW or Haxchi, just launch Dumpling from the Ho
 
 ## How to compile
  - Install [DevkitPro](https://devkitpro.org/wiki/Getting_Started) for your platform.
- - Install xxd if you don't have it already. You can do this using your Linux package manager or something equivalent on Windows/MacOS.
+ - Install xxd and zip if you don't have it already through your Linux package manager (or something equivalent for msys2 on Windows).
  - Install [wut](https://github.com/devkitpro/wut) through DevkitPro's pacman or compile (and install) the latest source yourself.
  - Compile [libmocha](https://github.com/wiiu-env/libmocha).
  - Then, with all those dependencies installed, you can just run `make` to get the .rpx file that you can run on your Wii U.
