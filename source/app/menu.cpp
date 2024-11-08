@@ -158,10 +158,10 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             WHBLogFreetypePrint(L"===============================");
         }
         if (selectedOption == 0) {
-            WHBLogFreetypePrint(L"Select an fat32/exfat device to write the files too.");
+            WHBLogFreetypePrint(L"Select a fat32/exfat device to write the files to.");
             WHBLogFreetypePrint(L"Press \uE000 to refresh list. If your device doesn't show up:");
             WHBLogFreetypePrint(L" - Reinsert the SD card/USB drive and double-check the lock switch");
-            WHBLogFreetypePrint(L" - Make sure its formatted as fat32/exfat drive");
+            WHBLogFreetypePrint(L" - Make sure it's formatted as fat32/exfat drive");
             WHBLogFreetypePrint(L" - It doesn't have multiple (hidden) partitions");
             WHBLogFreetypePrint(L" - Try a different SD card (recommended) or USB drive");
         }
@@ -175,14 +175,14 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
         else if (selectedOption == 2 && dumpingOnlineFiles) {
             WHBLogFreetypePrint(L"Select the account you want to dump the online files for.");
             if (!allUsers[selectedAccount].networkAccount) {
-                WHBLogFreetypePrint(L"This account doesn't have a NNID connected!");
+                WHBLogFreetypePrint(L"This account doesn't have an NNID connected!");
                 WHBLogFreetypePrint(L" - Click the Mii icon on the Wii U's homescreen");
-                WHBLogFreetypePrint(L" - Click on Link a Nintendo Network ID option");
+                WHBLogFreetypePrint(L" - Click on the Link a Nintendo Network ID option");
                 WHBLogFreetypePrint(L" - Enable the Save Password option");
                 WHBLogFreetypePrint(L" - Return to Dumpling");
             }
             else if (!allUsers[selectedAccount].passwordCached) {
-                WHBLogFreetypePrint(L"This account doesn't have it's password saved!");
+                WHBLogFreetypePrint(L"This account doesn't have its password saved!");
                 WHBLogFreetypePrint(L"This is required to use Cemu online!");
                 WHBLogFreetypePrint(L" - Click the Mii icon on the Wii U's homescreen");
                 WHBLogFreetypePrint(L" - Enable the Save Password option");
@@ -217,7 +217,7 @@ bool showOptionMenu(dumpingConfig& config, bool showAccountOption) {
             WHBLogFreetypePrint(L"in memory before they are actually written. Used for trial and");
             WHBLogFreetypePrint(L"erroring a good value for all games, since some options might");
             WHBLogFreetypePrint(L"favor games with a few very large files but be detrimental");
-            WHBLogFreetypePrint(L"for small files. Recommended Values: 32,64,128,256 etc.");
+            WHBLogFreetypePrint(L"for small files. Recommended values: 32,64,128,256 etc.");
         }
         WHBLogFreetypeScreenPrintBottom(L"===============================");
         WHBLogFreetypeScreenPrintBottom(L"\uE000 Button = Select Option \uE001 Button = Cancel");
