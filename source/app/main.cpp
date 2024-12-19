@@ -27,7 +27,7 @@ int main() {
 
     // Start Dumpling
     showLoadingScreen();
-    if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
+    if (testCFW() != FAILED && ((getCFWVersion() == MOCHA_FSCLIENT || getCFWVersion() == CEMU || getCFWVersion() == CUSTOM_MOCHA) || executeExploit()) && initCFW() && mountSystemDrives() && loadUsers() && loadTitles(true)) {
         WHBLogFreetypePrint(L"");
         WHBLogPrint("Finished loading!");
         WHBLogFreetypeDraw();
@@ -36,7 +36,7 @@ int main() {
     }
 
     WHBLogPrint("");
-    WHBLogPrint(getCFWVersion() == MOCHA_FSCLIENT ? "Exiting Dumpling..." : "Exiting Dumpling and shutting off Wii U...");
+    WHBLogPrint(getCFWVersion() == MOCHA_FSCLIENT ? "Exiting Dumpling..." : "Exiting Dumpling and rebooting Wii U...");
     WHBLogFreetypeDraw();
     sleep_for(5s);
 

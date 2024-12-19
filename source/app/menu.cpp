@@ -69,7 +69,7 @@ void showMainMenu() {
                 break;
             }
             if (pressedBack()) {
-                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == MOCHA_FSCLIENT ? L"Do you really want to exit Dumpling?" : L"Do you really want to exit Dumpling?\nYour console will shutdown to prevent compatibility issues!", L"Yes", L"No");
+                uint8_t exitSelectedOption = showDialogPrompt(getCFWVersion() == MOCHA_FSCLIENT ? L"Do you really want to exit Dumpling?" : L"Do you really want to exit Dumpling?\nYour console will reboot to prevent compatibility issues!", L"Yes", L"No");
                 if (exitSelectedOption == 0) {
                     WHBLogFreetypeClear();
                     return;
