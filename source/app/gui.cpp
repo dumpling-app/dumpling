@@ -52,7 +52,7 @@ bool stillRunning() {
     return true;
 }
 
-void exitApplication(bool shutdownOnExit) {
+void exitApplication(bool rebootOnExit) {
     // Loop through ProcUI messages until it says Dumpling should exit
     if (getCFWVersion() == MOCHA_FSCLIENT) {
         SYSLaunchMenu();
@@ -72,7 +72,7 @@ void exitApplication(bool shutdownOnExit) {
                 continue;
             }
 
-            if (shutdownOnExit) OSShutdown();
+            if (rebootOnExit) OSLaunchTitlel(OS_TITLE_ID_REBOOT, 0);
             else if (usingHBL) SYSRelaunchTitle(0, nullptr);
         }
     }

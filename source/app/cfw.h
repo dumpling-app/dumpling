@@ -6,6 +6,7 @@ enum CFWVersion {
     FAILED,
     NONE,
     MOCHA_FSCLIENT,
+    CUSTOM_MOCHA,
     DUMPLING,
     CEMU,
 };
