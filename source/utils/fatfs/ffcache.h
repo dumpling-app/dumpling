@@ -1,12 +1,12 @@
 #ifndef _FFCACHE_DEFINED
 #define _FFCACHE_DEFINED
 
+#include "ff.h"
+#include "diskio.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "ff.h"
-#include "diskio.h"
 
 DRESULT ffcache_initialize(BYTE pdrv, DWORD sectorByteSize, DWORD sectorCount);
 void ffcache_shutdown(BYTE pdrv);

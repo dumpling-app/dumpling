@@ -5,11 +5,11 @@
 #ifndef _DISKIO_DEFINED
 #define _DISKIO_DEFINED
 
+#include <coreinit/filesystem_fsa.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <coreinit/filesystem_fsa.h>
 
 #define DEV_SD_REF		0
 #define DEV_USB01_REF	1
